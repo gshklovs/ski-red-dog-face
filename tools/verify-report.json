@@ -1,6 +1,6 @@
 {
   "desktop": {
-    "bootMs": 14318,
+    "bootMs": 9812,
     "ready": true,
     "err": null,
     "info": {
@@ -28,7 +28,7 @@
       "upAxis": "z",
       "upFrom": "declared",
       "colliderNote": "declared colliders[]",
-      "collisionMs": 117,
+      "collisionMs": 96,
       "collision": {
         "triangles": 895816,
         "cellEntries": 4012445,
@@ -435,17 +435,24 @@
       "trees": 24951,
       "cars": 254,
       "rocks": 194,
-      "buildMs": 2045
+      "buildMs": 1442
     },
     "touchMode": false,
     "paused": true,
     "fence": {
-      "x0": -720,
-      "x1": 680,
-      "y0": -980,
-      "y1": 750,
+      "x0": -8470,
+      "x1": 8430,
+      "y0": -8730,
+      "y1": 8500,
       "graceMs": 2000,
-      "trips": 0
+      "voidMarginM": 60,
+      "rule": "surface-aware",
+      "trips": 0,
+      "why": null,
+      "outT": 0,
+      "voidY": -144.36128997802697,
+      "grounded": false,
+      "groundBelow": 399.52578859413796
     },
     "title": "Red Dog Chair — Palisades Tahoe",
     "favicon": {
@@ -454,14 +461,14 @@
       "rel": "icon"
     },
     "introStage": null,
-    "href": "http://127.0.0.1:60938/",
+    "href": "http://127.0.0.1:56867/",
     "params": "",
     "heap": 254000000,
     "pixelRatio": 1,
     "errors": [],
     "failed": [],
     "http4xx": [],
-    "wireBytes": 2318556,
+    "wireBytes": 2319212,
     "wireFiles": 59
   },
   "favicon": {
@@ -629,6 +636,7 @@
     "introCredit": "terrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
     "introHasOdbl": true,
     "markers": [
+      "kt22",
       "exhibition",
       "red-dog-express",
       "red-dog-face",
@@ -646,7 +654,7 @@
     "introUp": false,
     "paused": false,
     "pointerLocked": true,
-    "visibleText": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nW\nFINISH\n—"
+    "visibleText": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nTOP STATION\nRED DOG EXPRESS\nThe 2023 six-pack, unloading on the Snow King knoll. The whole east half of the front side hangs off this point.\nW\nskate — get it rolling\nFINISH\n—"
   },
   "pausePanel": {
     "visible": true,
@@ -667,65 +675,49 @@
   },
   "ride": {
     "before": [
-      306.94,
-      -408.07,
-      399.525788594138
+      306.9345855565087,
+      -408.0724183608144,
+      399.5249331658785
     ],
     "after": [
-      224.75,
-      -434.31,
-      379.5
+      223.56,
+      -434.67,
+      379.21
     ],
-    "dist": 86.27707517063847,
-    "drop": 20.02578859413802,
+    "dist": 87.514300921465,
+    "drop": 20.31493316587853,
     "track": [
       {
-        "x": 300.87,
-        "y": 398.55,
-        "z": 409.98,
-        "speed": 6.12,
+        "x": 298.35,
+        "y": 398.09,
+        "z": 410.74,
+        "speed": 7.03,
         "grounded": true,
-        "simT": 1.7
+        "simT": 2.03
       },
       {
-        "x": 287.28,
-        "y": 395.79,
-        "z": 414.08,
-        "speed": 10.31,
+        "x": 279.9,
+        "y": 394.22,
+        "z": 416.39,
+        "speed": 11.67,
         "grounded": true,
-        "simT": 3.42
+        "simT": 4.05
       },
       {
-        "x": 264.38,
-        "y": 390.47,
-        "z": 421.45,
-        "speed": 13.83,
+        "x": 254.1,
+        "y": 387.77,
+        "z": 424.89,
+        "speed": 14.81,
         "grounded": true,
-        "simT": 5.38
+        "simT": 6.08
       },
       {
-        "x": 239.7,
-        "y": 383.29,
-        "z": 429.61,
-        "speed": 16.56,
+        "x": 223.56,
+        "y": 379.21,
+        "z": 434.67,
+        "speed": 17.65,
         "grounded": true,
-        "simT": 7.1
-      },
-      {
-        "x": 226.43,
-        "y": 379.92,
-        "z": 433.8,
-        "speed": 17.45,
-        "grounded": true,
-        "simT": 7.92
-      },
-      {
-        "x": 224.75,
-        "y": 379.5,
-        "z": 434.31,
-        "speed": 17.58,
-        "grounded": true,
-        "simT": 8.02
+        "simT": 8.03
       }
     ]
   },
@@ -764,7 +756,7 @@
     ],
     "idleVisible": false,
     "paused": false,
-    "speed": 18.89,
+    "speed": 18.71,
     "introGone": true,
     "hudVisible": true,
     "readInDom": false,
@@ -810,17 +802,17 @@
     "game": {
       "plain": {
         "gear": "skis",
-        "hash": "1bda3d4",
-        "dist": 39.8611097175614,
-        "drop": 7.934773756108939,
-        "end": 13.324670002808702
+        "hash": "8ea67916",
+        "dist": 39.76790693176318,
+        "drop": 7.911545926915096,
+        "end": 13.300489077325874
       },
       "held": {
         "gear": "skis",
-        "hash": "72fd2945",
-        "dist": 39.546265171971996,
-        "drop": 7.856428069065942,
-        "end": 13.271614988785258
+        "hash": "8ea67916",
+        "dist": 39.76790693176318,
+        "drop": 7.911545926915096,
+        "end": 13.300489077325874
       },
       "again": {
         "gear": "skis",
@@ -836,10 +828,10 @@
         "drop": 4.9550968679512835,
         "end": 11.007283143963726
       },
-      "distDeltaPct": 0.789853939893431,
-      "speedDeltaPct": 0.3981713169051152,
-      "noiseFloorPct": 0.23381884362631608,
-      "brakeDeltaPct": 33.64680677013928
+      "distDeltaPct": 0,
+      "speedDeltaPct": 0,
+      "noiseFloorPct": 0,
+      "brakeDeltaPct": 33.49129688961571
     }
   },
   "hiddenFeatures": {
@@ -875,14 +867,14 @@
     },
     "held": {
       "burning": true,
-      "throttle": 0.7426935000000159,
-      "fuel": 5.883399999999995,
-      "frac": 0.9805666666666658,
+      "throttle": 0.9222471393749856,
+      "fuel": 5.783300000000018,
+      "frac": 0.9638833333333364,
       "tank": 6,
       "accel": 35,
       "cap": 100,
       "dry": false,
-      "burned": 0.11660000000000582,
+      "burned": 0.21669999999998252,
       "ignitions": 1,
       "gear": "rocket",
       "worn": true,
@@ -895,14 +887,14 @@
     },
     "after": {
       "burning": false,
-      "throttle": 0.1908976667523555,
-      "fuel": 6,
-      "frac": 1,
+      "throttle": 0.5072359266562421,
+      "fuel": 5.833300000000018,
+      "frac": 0.9722166666666697,
       "tank": 6,
       "accel": 35,
       "cap": 100,
       "dry": false,
-      "burned": 0.11660000000000582,
+      "burned": 0.21669999999998252,
       "ignitions": 1,
       "gear": "rocket",
       "worn": true,
@@ -924,11 +916,11 @@
     "markN": 1,
     "source": "teleport",
     "away": {
-      "x": -283.34,
+      "x": -284.66,
       "y": 6.61,
-      "z": -528.14
+      "z": -528.08
     },
-    "rode": 21.64,
+    "rode": 22.52,
     "simSpeed": 0.47,
     "back": {
       "x": -268.47,
@@ -1033,54 +1025,160 @@
       "z": 315.55
     },
     "after": {
-      "x": -712.47,
-      "y": 183.05,
-      "z": 229.7
+      "x": -712.44,
+      "y": 183.07,
+      "z": 229.73
     },
     "skiSpeed": 28.24,
     "carriedM": 746.6053681162492,
     "climbedM": 247.64999999999998,
     "landedOffM": 0.005825450574553229,
-    "skiedM": 140.89563832851607,
-    "droppedM": 76.20999999999998
+    "skiedM": 140.85357112973747,
+    "droppedM": 76.19
+  },
+  "outsideRides": {
+    "rides": [
+      {
+        "id": "gold-coast-funitel",
+        "rode": true,
+        "carriedM": 2669,
+        "climbedM": 528,
+        "topEnu": [
+          -2916,
+          -281,
+          539
+        ],
+        "unloadRun": "riviera",
+        "unloadSlope": 8.73,
+        "skiedM": 350.7,
+        "droppedM": 44.4,
+        "endSpeed": 17.74,
+        "trips0": 0,
+        "tripsAtTop": 0,
+        "tripsAfter": 0,
+        "respawns": 0,
+        "flashes": 0,
+        "why": null,
+        "grounded": false,
+        "groundBelow": 492.7
+      },
+      {
+        "id": "kt22-express",
+        "rode": true,
+        "carriedM": 1427,
+        "climbedM": 534,
+        "topEnu": [
+          -982,
+          -977,
+          543
+        ],
+        "unloadRun": "the-saddle",
+        "unloadSlope": 8.31,
+        "skiedM": 653.3,
+        "droppedM": 183,
+        "endSpeed": 11.59,
+        "trips0": 0,
+        "tripsAtTop": 0,
+        "tripsAfter": 0,
+        "respawns": 0,
+        "flashes": 0,
+        "why": null,
+        "grounded": true,
+        "groundBelow": 359.6
+      }
+    ],
+    "allOutside": [
+      "olympic-lady",
+      "kt22-express",
+      "gold-coast-funitel",
+      "gold-coast-express"
+    ]
+  },
+  "ktWaypoint": {
+    "row": {
+      "pos": [
+        -913.4,
+        573.6,
+        996.4
+      ],
+      "ground": 573.6,
+      "sky": 809.6,
+      "tierH": 236
+    },
+    "travelledM": 802,
+    "landedOffM": 2.9,
+    "standingOn": 573.8,
+    "stoodBackM": 300,
+    "offAxisDeg": 0.95,
+    "cardAlpha": 1,
+    "hov": 1,
+    "distM": 315.3,
+    "aim": "kt22",
+    "aimEl": {
+      "name": "KT-22",
+      "key": "T"
+    },
+    "hovered": "kt22",
+    "occluded": false,
+    "skiedM": 564.4,
+    "droppedM": 207.2,
+    "endSpeed": 26.94,
+    "trips": 0,
+    "respawns": 0,
+    "grounded": true
   },
   "idleNudge": {
     "start": {
       "hook": true,
       "threshold": 7000,
       "grounded": true,
-      "speed": 0.046,
+      "speed": 0.078,
       "paused": false,
       "liftPrompt": null,
       "introUp": false,
       "visible": false,
-      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nTHE VILLAGE\nTREE\nThe tree was there first.\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\ngate missed — get back in the dye\nTIME\n9.15s\nRACE SCORE\n0\nGATES\n0/44\nFINISH\n—"
+      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nTHE VILLAGE\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\nskate to Red Dog Express · 181 m\nCOURSE RECORD\n1:43.53\nrace score 0 · 0/44 gates · 28 missed\nsaved to the board"
     },
     "at4": {
       "visible": false,
-      "ms": 6183.70000000298,
-      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nTHE VILLAGE\nTREE\nThe tree was there first.\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\ngate missed — get back in the dye\nTIME\n9.55s\nRACE SCORE\n0\nGATES\n0/44\nFINISH\n—"
+      "ms": 6256,
+      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nTHE VILLAGE\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\nskate to Red Dog Express · 181 m\nCOURSE RECORD\n1:43.53\nrace score 0 · 0/44 gates · 28 missed\nsaved to the board"
     },
     "up": {
       "visible": true,
-      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nTHE VILLAGE\nTREE\nThe tree was there first.\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\ngate missed — get back in the dye\nTIME\n9.65s\nRACE SCORE\n0\nGATES\n0/44\nFINISH\n—\nR\n— BACK TO THE RUN",
-      "speed": 0.129,
-      "ms": 1093
+      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\nskate to Red Dog Express · 181 m\nCOURSE RECORD\n1:43.53\nrace score 0 · 0/44 gates · 28 missed\nsaved to the board\nR\n— BACK TO THE RUN",
+      "speed": 0.169,
+      "idleMs": 7044,
+      "grounded": true,
+      "paused": false,
+      "liftPrompt": null,
+      "keysHeld": [],
+      "ms": 788
     },
     "shownText": "R\n— BACK TO THE RUN",
     "gone": {
       "visible": false,
-      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nTREE\nThe tree was there first.\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\ngate missed — get back in the dye\nTIME\n10.52s\nRACE SCORE\n0\nGATES\n0/44\nFINISH\n—",
-      "speed": 0.248,
-      "ms": 2
+      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\nskate to Red Dog Express · 181 m\nCOURSE RECORD\n1:43.53\nrace score 0 · 0/44 gates · 28 missed\nsaved to the board",
+      "speed": 0.256,
+      "idleMs": 0,
+      "grounded": true,
+      "paused": false,
+      "liftPrompt": null,
+      "keysHeld": [],
+      "ms": 1
     },
     "again": {
       "visible": true,
-      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\ngate missed — get back in the dye\nTIME\n11.38s\nRACE SCORE\n0\nGATES\n0/44\nFINISH\n—\nR\n— BACK TO THE RUN",
-      "speed": 0.359,
-      "ms": 7329
+      "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nR\nRESET\nESC\nPAUSE\nBASE AREA\nTHE VILLAGE\nThe valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.\nskate to Red Dog Express · 181 m\nCOURSE RECORD\n1:43.53\nrace score 0 · 0/44 gates · 28 missed\nsaved to the board\nR\n— BACK TO THE RUN",
+      "speed": 0.322,
+      "idleMs": 7018,
+      "grounded": true,
+      "paused": false,
+      "liftPrompt": null,
+      "keysHeld": [],
+      "ms": 7089
     },
-    "seenMs": 7276.70000000298,
+    "seenMs": 7044,
     "banner": "R — back to the run"
   },
   "guideBeat": {
@@ -1529,7 +1627,7 @@
     "cam": "fp",
     "ski": "Red Dog 180",
     "gear": "skis",
-    "speed": 2.81
+    "speed": 3.48
   },
   "budget": {
     "draw calls": {
@@ -1545,11 +1643,11 @@
       "cap": 900000
     },
     "build ms": {
-      "got": 2045,
+      "got": 1442,
       "cap": 20000
     },
     "transfer (brotli, measured at build)": {
-      "got": 2322269,
+      "got": 2322925,
       "cap": 2621440
     },
     "stamp raster heap": {
@@ -1562,17 +1660,59 @@
     }
   },
   "fenceTest": {
-    "spawn": [
+    "probe": [
       -900,
       -400
     ],
-    "trips": 1,
-    "ms": 19514.20000000298,
-    "sim": 2.03,
-    "back": {
-      "respawns": 1,
-      "x": -900
-    }
+    "control": {
+      "tripped": false,
+      "trips": 0,
+      "sim": 15.03,
+      "why": null,
+      "grounded": true,
+      "groundBelow": 94.62214858932802,
+      "respawns": 0
+    },
+    "voids": [
+      {
+        "label": "off the west edge of the world",
+        "to": [
+          -6000,
+          800,
+          400
+        ],
+        "landedAt": {
+          "x": -4526.3,
+          "y": 799.5,
+          "z": 400
+        },
+        "groundBelow": null,
+        "firedAtSimS": 2.25,
+        "why": "no ground under the player",
+        "flashes": 1,
+        "respawned": 1,
+        "duringSteps": 0
+      },
+      {
+        "label": "below the map",
+        "to": [
+          0,
+          -184.36128997802697,
+          0
+        ],
+        "landedAt": {
+          "x": 0,
+          "y": -184.4,
+          "z": 0
+        },
+        "groundBelow": null,
+        "firedAtSimS": 2.25,
+        "why": "below the world",
+        "flashes": 1,
+        "respawned": 140,
+        "duringSteps": 135
+      }
+    ]
   },
   "lookSensitivity": {
     "LOOK": 0.00022,
@@ -1590,7 +1730,7 @@
     "coarse": true,
     "dpr": 3,
     "pixelRatio": 1.5,
-    "heap": 286000000,
+    "heap": 239000000,
     "lifts": [
       "red-dog-express",
       "far-east-express",
@@ -1615,11 +1755,11 @@
     "fpsInDom": false,
     "errors": [],
     "moved": {
-      "x": 305.95829059199224,
-      "z": 408.41138932299054,
-      "speed": 3.2464844827227552,
+      "x": 305.6221565306559,
+      "z": 408.526147974169,
+      "speed": 3.6512937857925656,
       "sim": true
     },
-    "wireBytes": 2322269
+    "wireBytes": 2322925
   }
 }

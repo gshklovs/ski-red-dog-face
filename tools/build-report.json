@@ -2,7 +2,7 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "pin": "37045523d42f25da8215abf385ba94d4dae3a8d1",
-  "builtAt": "2026-08-31T03:59:34.231Z",
+  "builtAt": "2026-08-31T05:05:38.442Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -21,9 +21,15 @@
     "rasterPadM": 40,
     "markerFilter": {
       "x0": -620,
-      "y1": 740
+      "y1": 740,
+      "$keep": "D37a is POSITIONAL, and one waypoint has to survive it by name: the KT-22 summit. All seven lifts board, kt22-express is one of them, and a lift you can ride to a summit with no sign on it is a worse outcome than a sign 900 m west of CORE. It is the only allowlisted id.",
+      "keep": [
+        "kt22"
+      ]
     },
-    "fencePadM": 250,
+    "$fence": "D16.2 is SURFACE-AWARE as of 2026-08-30 (see patches/play-main.patch.mjs). It no longer fires on POSITION at CORE+250: standing on real collision ground never trips it, at any coordinate, because four of the seven rideable top terminals are outside that box and riding to one used to fade you home in a loop. It fires on the absence of recoverable ground. fenceHardPadM is a backstop for coordinates no physics can produce, not a play boundary.",
+    "fenceHardPadM": 8000,
+    "fenceVoidMarginM": 60,
     "fenceGraceMs": 2000
   },
   "raster": {
@@ -41,11 +47,13 @@
     "srcBytes": 141169536
   },
   "fence": {
-    "x0": -720,
-    "x1": 680,
-    "y0": -980,
-    "y1": 750,
-    "graceMs": 2000
+    "x0": -8470,
+    "x1": 8430,
+    "y0": -8730,
+    "y1": 8500,
+    "graceMs": 2000,
+    "voidMarginM": 60,
+    "rule": "surface-aware"
   },
   "spawn": {
     "position": [
@@ -97,9 +105,9 @@
   "files": 61,
   "sizes": {
     "n": 61,
-    "raw": 7212540,
-    "gz": 2997511,
-    "br": 2322269,
+    "raw": 7214620,
+    "gz": 2998334,
+    "br": 2322925,
     "byGroup": {
       "css": {
         "n": 3,
@@ -109,15 +117,15 @@
       },
       "html": {
         "n": 1,
-        "raw": 6789,
-        "gz": 3134,
-        "br": 2510
+        "raw": 6833,
+        "gz": 3165,
+        "br": 2536
       },
       "player": {
         "n": 26,
-        "raw": 871403,
-        "gz": 302054,
-        "br": 260676
+        "raw": 873321,
+        "gz": 302792,
+        "br": 261271
       },
       "scene:data": {
         "n": 7,
@@ -127,9 +135,9 @@
       },
       "scene:code": {
         "n": 23,
-        "raw": 638536,
-        "gz": 230582,
-        "br": 195143
+        "raw": 638654,
+        "gz": 230636,
+        "br": 195178
       },
       "vendor": {
         "n": 1,
@@ -171,9 +179,15 @@
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85629,
-        "gzip": 30545,
-        "brotli": 26178
+        "raw": 85747,
+        "gzip": 30599,
+        "brotli": 26213
+      },
+      {
+        "file": "js/play/main.js",
+        "raw": 86889,
+        "gzip": 29416,
+        "brotli": 25454
       },
       {
         "file": "js/play/markers.js",
@@ -186,12 +200,6 @@
         "raw": 90080,
         "gzip": 29295,
         "brotli": 25000
-      },
-      {
-        "file": "js/play/main.js",
-        "raw": 84971,
-        "gzip": 28678,
-        "brotli": 24859
       },
       {
         "file": "scene/layout.mjs",
@@ -245,9 +253,15 @@
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85629,
-        "gzip": 30545,
-        "brotli": 26178
+        "raw": 85747,
+        "gzip": 30599,
+        "brotli": 26213
+      },
+      {
+        "file": "js/play/main.js",
+        "raw": 86889,
+        "gzip": 29416,
+        "brotli": 25454
       },
       {
         "file": "js/play/markers.js",
@@ -260,12 +274,6 @@
         "raw": 90080,
         "gzip": 29295,
         "brotli": 25000
-      },
-      {
-        "file": "js/play/main.js",
-        "raw": 84971,
-        "gzip": 28678,
-        "brotli": 24859
       },
       {
         "file": "scene/layout.mjs",
@@ -509,9 +517,9 @@
       },
       {
         "file": "index.html",
-        "raw": 6789,
-        "gzip": 3134,
-        "brotli": 2510
+        "raw": 6833,
+        "gzip": 3165,
+        "brotli": 2536
       },
       {
         "file": "css/intro.css",

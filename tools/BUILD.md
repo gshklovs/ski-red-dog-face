@@ -6,7 +6,7 @@ Everything under `public/` is written by one script in a private research repo:
 poi-lab/tools/export-red-dog/build.mjs --out <this repo> --gate
 ```
 
-Built from poi-lab commit `37045523d42f25da8215abf385ba94d4dae3a8d1` on `2026-08-31T03:59:23Z`.
+Built from poi-lab commit `37045523d42f25da8215abf385ba94d4dae3a8d1` on `2026-08-31T05:05:31Z`.
 
 A hand-edited change here is lost on the next bake, silently. If something in
 `public/` is wrong, the fix belongs in one of three places in poi-lab:
@@ -66,12 +66,26 @@ breakage sites is touched.
   F *chip* stays dark in the legend; the contextual prompt at the terminal is
   still the only thing that announces a ride.
 
-  One consequence worth knowing before you ride west: four of the seven top
-  terminals — Olympic Lady, KT-22 Express and both Gold Coast lines — are
-  **outside the D16.2 respawn fence**, so those rides put you in the grace
-  window and fade you back to the top of Red Dog. That is the crop's boundary,
-  not the lift code. Red Dog Express, Far East Express and Exhibition unload
-  inside the box and ski normally.
+- **The respawn fence is surface-aware** (2026-08-30, same day, and it is the
+  bill for the line above). Four of the seven top terminals — Olympic Lady,
+  KT-22 Express and both Gold Coast lines — unload *outside* the CORE+250 m box
+  the old D16.2 fence used. That fence fired on position, so riding one started
+  its 2 s grace the moment you pushed off, faded the screen white and put you
+  back on Red Dog. Ride up again, same again. Greg played it: "flashing and
+  teleporting".
+
+  The rule now is the one that was always meant: **standing on real ground never
+  trips the fence, at any coordinate.** It is not a boundary any more, it is the
+  recovery from falling into nothing, and it fires only when there is no ground
+  under you to land on — off the west edge of the world, through a hole, or
+  below the map. Probed on the built scene before the change: every one of the
+  seven terminals, the whole Mountain Run corridor down to the village and the
+  KT descent all have collidable ground under them, so nothing had to be added
+  to the collision to make this ski. See `patches/play-main.patch.mjs`.
+
+  The old box survives as a hard backstop at CORE ± 8 km and nothing in play can
+  reach it — `controller.js` clamps you into the collision grid, which runs to
+  about x -4527. It is there for a teleport that goes wrong.
 
 **Tier B** — pruning `SECTORS`, `RUNS`, `LIFTS` and `KT_DETAIL`, and deleting
 the upper-mountain blocks in `world.mjs` — is a later wave. It buys the
@@ -138,11 +152,19 @@ a broken promise rather than a smaller one:
   exactly what the spec asked of it — the array is a fraction of its old size —
   but the absolute number is correspondingly higher than the spec's row.
   `tools/build-report.json` carries the measured figure.
-- **Seven markers survive the positional filter, not D37a's five.** The filter
-  is exactly the one D37a specifies (`pos[0] > -620 && pos[1] < 740`); the
-  spec's count of what it would keep was off by two. `funitel-base` (the
-  village station, x -395) is not in D37a's list of eleven upper-mountain
-  markers at all, and `exhibition` is its lift's **top** station at x -591.7,
-  inside the box rather than west of it. Both are stations of lifts this build
-  still renders in full, so they are signs pointing at real structures. The
-  build gate asserts instead that **zero** upper-mountain markers survive.
+- **More markers survive the positional filter than D37a's five.** The filter is
+  exactly the one D37a specifies (`pos[0] > -620 && pos[1] < 740`); the spec's
+  count of what it would keep was off by two. `funitel-base` (the village
+  station, x -395) is not in D37a's list of eleven upper-mountain markers at
+  all, and `exhibition` is its lift's **top** station at x -591.7, inside the box
+  rather than west of it. Both are stations of lifts this build still renders in
+  full, so they are signs pointing at real structures.
+
+  One more survives **by name**: `kt22`, the KT-22 summit, allowlisted in
+  `manifest.json` (`crop.markerFilter.keep`). Its lift boards and, since the
+  fence rewrite, its summit is a place you can ski down from — a rideable summit
+  with no sign on it is a worse outcome than a sign 900 m west of CORE.
+  `eagles-nest`, 19 m away on the same knob, is deliberately *not* allowlisted:
+  two signs on one summit is the clutter D37a exists to prevent. The build gate
+  asserts both halves — zero *unlisted* upper-mountain markers, and every
+  allowlisted one actually present, aimable and fast-travellable.

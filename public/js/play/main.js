@@ -1381,22 +1381,50 @@ let frames = 0;
 let simTime = 0;          // seconds of simulation actually stepped
 let perfectPops = 0;      // lifetime count, surfaced on __player for tests
 
-// ---- D16.2 the respawn fence. NOT a wall: an invisible wall on a ski game
-// reads as a bug, and this world's own REPORT treats "continuous standable
-// ground with no invisible wall anywhere" as a shipped property. This fires
-// only after graceMs CONTINUOUSLY outside the padded box, so an over-carve onto
-// Snow King Road never trips it and a deliberate hike west always does.
+// ---- D16.2 the respawn fence. NOT a wall, and as of 2026-08-30 not a boundary
+// either: it is the recovery from falling into nothing. See
+// patches/play-main.patch.mjs for the whole argument. In one line —
+//
+//     grounded on real surface  =>  never, at any coordinate
+//     no recoverable ground under you for graceMs  =>  fade and respawn
+//
+// The world's own REPORT treats "continuous standable ground with no invisible
+// wall anywhere" as a shipped property, and a position fence quietly broke that
+// the moment all seven lifts started boarding.
 const FENCE = (cfg.fence && typeof cfg.fence.x0 === 'number') ? cfg.fence : null;
+// Below the lowest collidable triangle in the world, with a margin, is "under
+// the map" by construction — derived from the scene, not a guessed altitude.
+const FENCE_VOID_Y = collision.bounds.minY - ((FENCE && FENCE.voidMarginM) || 60) * unitScale;
 const fenceFade = document.createElement('div');
 fenceFade.className = 'fence-fade';
 document.body.appendChild(fenceFade);
-let fenceOutT = 0, fencing = false, fenceTrips = 0;
+let fenceOutT = 0, fencing = false, fenceTrips = 0, fenceWhy = null;
 function fenceStep(dt) {
   if (!FENCE || fencing) return;
+  const p = ctrl.position;
   // the world is z-up ENU; main.js stores it as (x, z_enu, -y_enu)
-  const wx = ctrl.position.x, wy = -ctrl.position.z;
-  const out = wx < FENCE.x0 || wx > FENCE.x1 || wy < FENCE.y0 || wy > FENCE.y1;
-  fenceOutT = out ? fenceOutT + dt : 0;
+  const wx = p.x, wy = -p.z;
+
+  let why = null;
+  // 1. THE HARD BACKSTOP, and the only test that outranks standing on ground.
+  //    At CORE ± 8 km no collider exists, so nothing in normal play reaches it.
+  if (wx < FENCE.x0 || wx > FENCE.x1 || wy < FENCE.y0 || wy > FENCE.y1) {
+    why = 'past the hard world limit';
+  } else if (ctrl.grounded) {
+    // 2. ON THE SURFACE. Unconditional, and the whole point of the rewrite.
+    fenceOutT = 0; fenceWhy = null; return;
+  } else if (p.y < FENCE_VOID_Y) {
+    why = 'below the world';
+  } else if (collision.groundAt(p.x, p.z, p.y + 0.5 * unitScale) === null) {
+    // 3. AIRBORNE WITH NOTHING UNDER YOU. Distance is deliberately not capped:
+    //    a glider 300 m over the Funitel line has recoverable ground and is
+    //    doing exactly what the glider is for.
+    why = 'no ground under the player';
+  }
+
+  if (!why) { fenceOutT = 0; fenceWhy = null; return; }
+  fenceWhy = why;
+  fenceOutT += dt;
   if (fenceOutT * 1000 < (FENCE.graceMs || 2000)) return;
   fencing = true; fenceOutT = 0; fenceTrips++;
   fenceFade.classList.add('is-on');
@@ -1413,6 +1441,10 @@ let paidPumps = 0;        // pump transitions that actually paid, for the combo 
 // test stepper (__player.stepFixed) has to drive exactly the same set — a trick
 // accumulator that only advances under requestAnimationFrame is untestable.
 function playerSystems(dt, live) {
+  // D16.2 — see patches/play-main.patch.mjs. Here rather than on the rAF line
+  // so that __player.stepFixed drives it: a containment layer no deterministic
+  // test can ride against is a containment layer nobody can prove.
+  if (live) fenceStep(dt);
   tricks.update(dt, live);
   // the one place §1 and §3 touch: a transition clean enough (eta >= 1.2) LINKS
   // a combo, so a trick line can be carried across flat ground by carving well
@@ -1442,7 +1474,7 @@ function frame(now) {
   // the rocket writes velocity BEFORE the controller integrates it, so the
   // thrust, the cancelled gravity and the collision all belong to one frame
   boost.step(dt, live);
-  if (live) { ctrl.update(dt); simTime += dt; fenceStep(dt); }
+  if (live) { ctrl.update(dt); simTime += dt; }
   const ev = ctrl.takeEvents();
   lifts.tick(!devOn && !hud.isPaused());
   if (!devOn) {
@@ -1649,7 +1681,14 @@ window.__player = {
   // intro.js calls this when the controls card is dismissed
   enter: () => enter(),
   touchMode: () => touchMode,
-  fence: () => (FENCE ? { ...FENCE, trips: fenceTrips } : null),
+  // D16.2 — "why" and "outT" are what make the surface-aware rule testable:
+  // "the fence did not fire" is also true of a fence that is not wired up, and
+  // the gate has to be able to tell those apart.
+  fence: () => (FENCE ? {
+    ...FENCE, trips: fenceTrips, why: fenceWhy, outT: +fenceOutT.toFixed(3),
+    voidY: FENCE_VOID_Y, grounded: ctrl.grounded,
+    groundBelow: collision.groundAt(ctrl.position.x, ctrl.position.z, ctrl.position.y + 0.5 * unitScale),
+  } : null),
   // D42 — the build gate reads these. world.report.stats is the world's own
   // count, not an estimate, and simTime is what a "seconds of ride" test has to
   // measure against on a software renderer running at 8 fps.

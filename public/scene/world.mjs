@@ -1410,9 +1410,10 @@ export async function buildWorld(THREE, opts = {}) {
     // `pos` is the place ON THE GROUND. `z` is a hint the player re-probes
     // against the shipped colliders, but every one of these is dropped onto
     // groundZ() here so it is over ground that exists.
-    // D37a — filtered by POSITION at the bottom of this literal: eleven of the
-    // seventeen are upper-mountain, and after the crop they are signs floating
-    // over backdrop. Five is right for a 900 m box.
+    // D37a — filtered at the bottom of this literal, by POSITION plus a
+    // one-name allowlist. Most of the upper-mountain markers are signs floating
+    // over backdrop after the crop and they go. The KT-22 summit stays: its lift
+    // boards, and you can ski down from it.
     markers: [
       { id: 'kt22', name: 'KT-22', kind: 'landmark', tier: 'major',
         pos: [-913.4, -996.4, gz(-913.4, -996.4)], sub: 'SUMMIT',
@@ -1510,7 +1511,8 @@ export async function buildWorld(THREE, opts = {}) {
         pos: (() => { const [x, y] = parkToWorld(PARK_HIP.tc - 26, PARK_HIP.vc); return [x, y, parkSurfaceZ(x, y) ?? gz(x, y)]; })(),
         sub: 'GOLD COAST HIP', tag: '30 ft × 25 ft × 50 ft (2025 build)',
         line: 'Two days of cat work for one feature. It is a speed brake as much as a jump — it bleeds you off and points you at the rails.' },
-    ].filter((m) => m.pos[0] > -620 && m.pos[1] < 740),
+    ].filter((m) => (m.pos[0] > -620 && m.pos[1] < 740)
+                 || ["kt22"].indexOf(m.id) >= 0),
   };
 }
 
