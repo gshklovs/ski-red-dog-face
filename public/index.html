@@ -13,7 +13,14 @@
 <link rel="stylesheet" href="css/te.css">
 <link rel="stylesheet" href="css/play.css">
 <link rel="stylesheet" href="css/intro.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23171614'/%3E%3Cpath d='M4 24 L14 7 L20 17 L23 12 L28 24 Z' fill='%23e8eef6'/%3E%3Ccircle cx='24' cy='7' r='3' fill='%23ff4d00'/%3E%3C/svg%3E">
+<!-- The tab icon is the 🎿 emoji, drawn by the OS font inside an inline SVG
+     data URI: no file to request, no bytes on the wire, nothing to 404. The
+     <text> is centred with dominant-baseline + text-anchor and sized to fill
+     the 32-unit viewBox, because a bare font-size:32 emoji sits on its
+     alphabetic baseline and hangs out of the bottom of the box. The dark plate
+     behind it is the same #171614 as <meta name="theme-color">, so the icon
+     reads on a light tab strip as well as a dark one. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23171614'/%3E%3Ctext x='16' y='17' font-size='24' text-anchor='middle' dominant-baseline='central'%3E%F0%9F%8E%BF%3C/text%3E%3C/svg%3E">
 </head>
 <!-- `intro-up` is in the STATIC markup on purpose. main.js boots the desktop
      game paused (that is what makes the first click a real user gesture, which
@@ -108,6 +115,10 @@
   import(ROOT + 'js/play/main.js')
     .then(function () { return import(ROOT + 'js/play/touch.js'); })
     .then(function () { return import(ROOT + 'js/play/intro.js'); })
+    // LAST in the chain, and it has to be: idle.js polls `window.__player` and
+    // watches for `.intro` leaving the DOM, so both of those must already exist
+    // before it starts counting. It owns one <div> and one 200 ms interval.
+    .then(function () { return import(ROOT + 'js/play/idle.js'); })
     .catch(function (e) {
       console.error(e);
       // never leave the chrome suppressed by a module that failed to load

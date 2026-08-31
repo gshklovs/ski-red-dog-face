@@ -1374,11 +1374,7 @@ export async function buildWorld(THREE, opts = {}) {
     //   the teleport you can ride Red Dog up, ski Snow King Road to Easy
     //   Street, ride Exhibition, ski Women's Downhill, ride Olympic Lady, ski
     //   The Saddle to the KT summit — the whole front side without walking.
-    // D15 — the other six lines stay in the scene as static visuals. There is
-    // no rideable flag in the world, and the player treats everything in this
-    // array as boardable, so the array IS the flag. Do not reorder LIFTS:
-    // world.mjs:884 assumes liftState[0] is Red Dog Express.
-    lifts: liftState.filter((st) => st.L.id === 'red-dog-express').map((st) => {
+    lifts: liftState.map((st) => {
       const b = st.fr.at(0), t = st.fr.at(st.fr.L);
       // `loadPoint` / `unloadPoint` / `loadRadius` are at the top of this file
       // with the measurements that forced them. In one line: the two

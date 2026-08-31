@@ -95,6 +95,7 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
     lift: dark('F', 'lift'),
     spin: mk('← →', 'spin'),
     cam: mk('C', 'camera'),
+    reset: mk('R', 'reset'),
     // D34/D37 — the 'B refs' and 'F8 dev' chips are gone from the legend. The
     // dev element still exists (nothing else would satisfy the toggle below);
     // it is simply never appended to the strip.

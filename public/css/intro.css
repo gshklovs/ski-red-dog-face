@@ -116,6 +116,57 @@ body.intro-up > *:not(canvas):not(.intro):not(.pboot) { display: none !important
   opacity: 0.62;
 }
 
+/* ---------------------------------------------------------------- the idle
+   nudge (idle.js). Stop moving for seven seconds and the game offers R.
+
+   Deliberately the SAME OBJECT as the rest of the key language on this screen:
+   a `.pkey` chip's plate, a `.pkey b` cap for the letter, `.phud__prompt`'s
+   accent border and centre column. It is one notch quieter than the boarding
+   prompt — smaller, lower, no accent fill on the cap — because the boarding
+   prompt announces something you can do RIGHT HERE and this only says the key
+   you already have is still there.
+
+   It sits low-centre: above the legend strip's row, below the crosshair and
+   well clear of `.phud__prompt` (which lives 26 px BELOW screen centre), so the
+   two can never overlap even if a player manages to be idle on a boarding
+   circle — which idle.js suppresses anyway. */
+.pidle {
+  position: fixed;
+  left: 50%;
+  bottom: 66px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  background: rgba(23, 22, 20, 0.82);
+  border: 1px solid rgba(255, 77, 0, 0.55);
+  border-radius: 4px;
+  padding: 6px 11px;
+  color: #f4f1ea;
+  font: 700 10px / 1.5 ui-monospace, "Cascadia Mono", Consolas, "Segoe UI Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 420ms ease;
+}
+/* `display: inline-flex` above outranks the UA's [hidden] rule — the same trap
+   `.phud__ref` and `.phud__prompt` already carry a note about in play.css — and
+   here it would be worse than a cosmetic bug: `hidden` is what keeps this line
+   out of document.body.innerText, so a banner that ignored it would read as
+   "on the screen" forever. */
+.pidle[hidden] { display: none; }
+.pidle.is-on { opacity: 1; }
+.pidle b {
+  color: #f4f1ea;
+  background: rgba(244, 241, 234, 0.13);
+  border-radius: 2px;
+  padding: 1px 5px;
+  letter-spacing: 0.06em;
+}
+
 /* D16.2 — the respawn fence fades the screen out and back */
 .fence-fade {
   position: fixed;
@@ -129,5 +180,5 @@ body.intro-up > *:not(canvas):not(.intro):not(.pboot) { display: none !important
 .fence-fade.is-on { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .intro, .intro__card, .intro__go, .fence-fade { animation: none !important; transition-duration: 1ms !important; }
+  .intro, .intro__card, .intro__go, .fence-fade, .pidle { animation: none !important; transition-duration: 1ms !important; }
 }

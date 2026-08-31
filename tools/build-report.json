@@ -2,7 +2,7 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "pin": "37045523d42f25da8215abf385ba94d4dae3a8d1",
-  "builtAt": "2026-08-30T19:24:34.690Z",
+  "builtAt": "2026-08-31T03:59:34.231Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -94,30 +94,30 @@
       }
     }
   },
-  "files": 60,
+  "files": 61,
   "sizes": {
-    "n": 60,
-    "raw": 7204232,
-    "gz": 2993812,
-    "br": 2319255,
+    "n": 61,
+    "raw": 7212540,
+    "gz": 2997511,
+    "br": 2322269,
     "byGroup": {
       "css": {
         "n": 3,
-        "raw": 59591,
-        "gz": 14062,
-        "br": 12070
+        "raw": 61571,
+        "gz": 14853,
+        "br": 12717
       },
       "html": {
         "n": 1,
-        "raw": 5968,
-        "gz": 2761,
-        "br": 2206
+        "raw": 6789,
+        "gz": 3134,
+        "br": 2510
       },
       "player": {
-        "n": 25,
-        "raw": 865553,
-        "gz": 299391,
-        "br": 258501
+        "n": 26,
+        "raw": 871403,
+        "gz": 302054,
+        "br": 260676
       },
       "scene:data": {
         "n": 7,
@@ -127,9 +127,9 @@
       },
       "scene:code": {
         "n": 23,
-        "raw": 638879,
-        "gz": 230710,
-        "br": 195255
+        "raw": 638536,
+        "gz": 230582,
+        "br": 195143
       },
       "vendor": {
         "n": 1,
@@ -171,9 +171,9 @@
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85972,
-        "gzip": 30673,
-        "brotli": 26290
+        "raw": 85629,
+        "gzip": 30545,
+        "brotli": 26178
       },
       {
         "file": "js/play/markers.js",
@@ -189,9 +189,9 @@
       },
       {
         "file": "js/play/main.js",
-        "raw": 84667,
-        "gzip": 28556,
-        "brotli": 24748
+        "raw": 84971,
+        "gzip": 28678,
+        "brotli": 24859
       },
       {
         "file": "scene/layout.mjs",
@@ -245,9 +245,9 @@
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85972,
-        "gzip": 30673,
-        "brotli": 26290
+        "raw": 85629,
+        "gzip": 30545,
+        "brotli": 26178
       },
       {
         "file": "js/play/markers.js",
@@ -263,9 +263,9 @@
       },
       {
         "file": "js/play/main.js",
-        "raw": 84667,
-        "gzip": 28556,
-        "brotli": 24748
+        "raw": 84971,
+        "gzip": 28678,
+        "brotli": 24859
       },
       {
         "file": "scene/layout.mjs",
@@ -365,9 +365,9 @@
       },
       {
         "file": "js/play/hud.js",
-        "raw": 28848,
-        "gzip": 9704,
-        "brotli": 8432
+        "raw": 28877,
+        "gzip": 9712,
+        "brotli": 8447
       },
       {
         "file": "js/play/fx.js",
@@ -509,9 +509,15 @@
       },
       {
         "file": "index.html",
-        "raw": 5968,
-        "gzip": 2761,
-        "brotli": 2206
+        "raw": 6789,
+        "gzip": 3134,
+        "brotli": 2510
+      },
+      {
+        "file": "css/intro.css",
+        "raw": 6636,
+        "gzip": 2728,
+        "brotli": 2208
       },
       {
         "file": "js/play/spawn.js",
@@ -520,22 +526,22 @@
         "brotli": 2023
       },
       {
+        "file": "js/play/idle.js",
+        "raw": 5447,
+        "gzip": 2494,
+        "brotli": 2012
+      },
+      {
         "file": "js/play/touch.js",
-        "raw": 5364,
-        "gzip": 2090,
-        "brotli": 1787
+        "raw": 5434,
+        "gzip": 2129,
+        "brotli": 1824
       },
       {
         "file": "js/play/intro.js",
         "raw": 4431,
         "gzip": 2068,
         "brotli": 1701
-      },
-      {
-        "file": "css/intro.css",
-        "raw": 4656,
-        "gzip": 1937,
-        "brotli": 1561
       },
       {
         "file": "scene/env.mjs",

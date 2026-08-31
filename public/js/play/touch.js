@@ -33,7 +33,7 @@ function start() {
   const TAP_PX = 14;
   const DBL_MS = 320;
   const SPIN_MS = 400;
-  const LOOK = 0.0022;
+  const LOOK = 0.00022;   // 10x down from 0.0022 — phone drag-look was far too hot (Greg)
 
   const K = {};               // what we are currently asserting
   const set = (k, v) => { if (K[k] !== v) { K[k] = v; P.keys({ [k]: v }); } };

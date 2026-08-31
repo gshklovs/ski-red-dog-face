@@ -6,7 +6,7 @@ Everything under `public/` is written by one script in a private research repo:
 poi-lab/tools/export-red-dog/build.mjs --out <this repo> --gate
 ```
 
-Built from poi-lab commit `37045523d42f25da8215abf385ba94d4dae3a8d1` on `2026-08-30T19:24:25Z`.
+Built from poi-lab commit `37045523d42f25da8215abf385ba94d4dae3a8d1` on `2026-08-31T03:59:23Z`.
 
 A hand-edited change here is lost on the next bake, silently. If something in
 `public/` is wrong, the fix belongs in one of three places in poi-lab:
@@ -57,8 +57,21 @@ breakage sites is touched.
   `DEM_KT` decimated 4× — those are backdrop 2–3 km west of anywhere you can
   ski. `dem-data.mjs` and `canopy-data.mjs`, the playable frame, are untouched.
 - The stamp raster is sized to the crop instead of to the whole world.
-- Red Dog Express is the only *rideable* lift; every other lift is still built
-  and still renders, towers, cables and moving chairs included.
+- **All seven lifts are rideable** (2026-08-30). The Tier A wave shipped a
+  one-line filter in `scene-world.patch.mjs` that cut `world.lifts` down to Red
+  Dog Express — there is no rideable flag anywhere in the world or the player,
+  so that array *is* the flag. The filter is gone: `world.mjs` ships the seven
+  lifts it already built, `lift.js` derives an unload spawn for each of them
+  from `LIFT_SPAWNS`, and the F boarding circles follow off the same list. The
+  F *chip* stays dark in the legend; the contextual prompt at the terminal is
+  still the only thing that announces a ride.
+
+  One consequence worth knowing before you ride west: four of the seven top
+  terminals — Olympic Lady, KT-22 Express and both Gold Coast lines — are
+  **outside the D16.2 respawn fence**, so those rides put you in the grace
+  window and fade you back to the top of Red Dog. That is the crop's boundary,
+  not the lift code. Red Dog Express, Far East Express and Exhibition unload
+  inside the box and ski normally.
 
 **Tier B** — pruning `SECTORS`, `RUNS`, `LIFTS` and `KT_DETAIL`, and deleting
 the upper-mountain blocks in `world.mjs` — is a later wave. It buys the
@@ -75,6 +88,14 @@ W A S D   move
    R      reset
    C      camera
 ```
+
+The bottom-left legend strip carries **six chips** and they are the same keys:
+`WASD move · SPACE jump · ← → spin · C camera · R reset · ESC pause`. R earned
+its chip on 2026-08-30 — it is the key you want at the exact moment you are
+least likely to reopen a panel to look it up. And if you stop moving for seven
+seconds on the ground with no input, one quiet line says `R — back to the run`;
+it is gone on the first key, the first touch or the first metre travelled, and
+it re-arms. That is `templates/idle.js`, ~120 lines, deploy-only.
 
 Everything else the player can do still works and is simply not advertised —
 SHIFT, SPACE, carve and snowplow are found in about four seconds by anyone who

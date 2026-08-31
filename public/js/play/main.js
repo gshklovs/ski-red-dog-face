@@ -1665,7 +1665,11 @@ window.__player = {
   respawn: () => { ctrl.respawn(); camRig.applyTo(camera); },
   toggleCam: () => camRig.setMode(camRig.mode === 'tp' ? 'fp' : 'tp'),
   clearKeys: () => { for (const k of Object.keys(ctrl.keys)) ctrl.keys[k] = false; },
-  look: (dx, dy) => ctrl.look(dx, dy, 1),
+  // NOTE: this is the SECOND `look` in this object literal and therefore the
+  // only one that exists — see patches/play-main.patch.mjs. It takes the
+  // sensitivity touch.js passes it, and still defaults to the 1 rad/px the
+  // two-argument form has always used.
+  look: (dx, dy, sens) => ctrl.look(dx, dy, sens === undefined ? 1 : sens),
   paused: (v) => { if (v !== undefined) hud.setPaused(!!v); return hud.isPaused(); },
   respawn: () => ctrl.respawn(),
   teleport: (x, y, z) => ctrl.teleport(new THREE.Vector3(x, y, z)),
