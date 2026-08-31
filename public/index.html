@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/te.css">
 <link rel="stylesheet" href="css/play.css">
 <link rel="stylesheet" href="css/intro.css">
+<link rel="stylesheet" href="css/speedo.css">
 <!-- The tab icon is the 🎿 emoji, drawn by the OS font inside an inline SVG
      data URI: no file to request, no bytes on the wire, nothing to 404. The
      <text> is centred with dominant-baseline + text-anchor and sized to fill
@@ -119,6 +120,14 @@
     // watches for `.intro` leaving the DOM, so both of those must already exist
     // before it starts counting. It owns one <div> and one 200 ms interval.
     .then(function () { return import(ROOT + 'js/play/idle.js'); })
+    // The speedometer and the clean-frame key, in that order and both AFTER
+    // idle.js, for the reason idle.js is last: they poll `window.__player`, and
+    // clean.js also reaches for `window.__playMarkers`, so everything they read
+    // has to already exist. Neither one is load-bearing for the game — a failure
+    // in either lands in the .catch below and the mountain still boots — but
+    // putting them ahead of main.js would make that untrue.
+    .then(function () { return import(ROOT + 'js/play/speedo.js'); })
+    .then(function () { return import(ROOT + 'js/play/clean.js'); })
     .catch(function (e) {
       console.error(e);
       // never leave the chrome suppressed by a module that failed to load

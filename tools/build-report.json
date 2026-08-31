@@ -2,7 +2,7 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "pin": "37045523d42f25da8215abf385ba94d4dae3a8d1",
-  "builtAt": "2026-08-31T05:05:38.442Z",
+  "builtAt": "2026-08-31T06:27:32.418Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -102,30 +102,30 @@
       }
     }
   },
-  "files": 61,
+  "files": 64,
   "sizes": {
-    "n": 61,
-    "raw": 7214620,
-    "gz": 2998334,
-    "br": 2322925,
+    "n": 64,
+    "raw": 7252919,
+    "gz": 3013576,
+    "br": 2335701,
     "byGroup": {
       "css": {
-        "n": 3,
-        "raw": 61571,
-        "gz": 14853,
-        "br": 12717
+        "n": 4,
+        "raw": 67242,
+        "gz": 17393,
+        "br": 14763
       },
       "html": {
         "n": 1,
-        "raw": 6833,
-        "gz": 3165,
-        "br": 2536
+        "raw": 7482,
+        "gz": 3364,
+        "br": 2697
       },
       "player": {
-        "n": 26,
-        "raw": 873321,
-        "gz": 302792,
-        "br": 261271
+        "n": 28,
+        "raw": 905300,
+        "gz": 315295,
+        "br": 271840
       },
       "scene:data": {
         "n": 7,
@@ -366,6 +366,12 @@
         "brotli": 8661
       },
       {
+        "file": "js/play/speedo.js",
+        "raw": 26380,
+        "gzip": 9919,
+        "brotli": 8485
+      },
+      {
         "file": "scene/sector-data.mjs",
         "raw": 32060,
         "gzip": 10828,
@@ -516,16 +522,22 @@
         "brotli": 2900
       },
       {
-        "file": "index.html",
-        "raw": 6833,
-        "gzip": 3165,
-        "brotli": 2536
+        "file": "css/intro.css",
+        "raw": 8307,
+        "gzip": 3322,
+        "brotli": 2705
       },
       {
-        "file": "css/intro.css",
-        "raw": 6636,
-        "gzip": 2728,
-        "brotli": 2208
+        "file": "index.html",
+        "raw": 7482,
+        "gzip": 3364,
+        "brotli": 2697
+      },
+      {
+        "file": "js/play/clean.js",
+        "raw": 5599,
+        "gzip": 2584,
+        "brotli": 2084
       },
       {
         "file": "js/play/spawn.js",
@@ -550,6 +562,12 @@
         "raw": 4431,
         "gzip": 2068,
         "brotli": 1701
+      },
+      {
+        "file": "css/speedo.css",
+        "raw": 4000,
+        "gzip": 1946,
+        "brotli": 1549
       },
       {
         "file": "scene/env.mjs",

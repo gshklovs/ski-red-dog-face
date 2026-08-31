@@ -16,6 +16,36 @@
    page is covered without anyone remembering to come back here. */
 body.intro-up > *:not(canvas):not(.intro):not(.pboot) { display: none !important; }
 
+/* ------------------------------------------------- clean-frame mode (js/play/clean.js)
+   The secret H key: every overlay off, so the mountain can be recorded.
+
+   STRUCTURAL, and for the same reason the rule above it is. The first instinct
+   is a list — `.phud, .pspeedo, .pmk, .gd` — and a list is exactly what left
+   `T · fast travel` on the boot screen when this file's other rule was a list.
+   What is meant is "during a clean frame the screen is the mountain, full
+   stop", so that is what is written, and anything a later re-bake adds to the
+   page is covered without anyone remembering to come back here.
+
+   `.pfail` and `.pboot` are the two carve-outs and they are not negotiable: an
+   INVISIBLE toggle must never be able to hide the card that says why the game
+   did not start. A player who cannot see the error and cannot see the key that
+   caused it has a broken game, not a clean frame.
+
+   The second rule is the belt to that brace. Every overlay this build ships is
+   a direct child of <body> today, but `.pmk-aim` is already built-and-detached
+   and a future re-bake could just as easily nest one of these inside another
+   element — at which point the child combinator would quietly stop covering it
+   and H would leave a card on Greg's video. Naming them again, unscoped, costs
+   one rule and removes that whole class of silent miss. */
+body.clean-frame > *:not(canvas):not(.pfail):not(.pboot) { display: none !important; }
+body.clean-frame .phud,
+body.clean-frame .pspeedo,
+body.clean-frame .pidle,
+body.clean-frame .gd,
+body.clean-frame .pmk,
+body.clean-frame .pmk-aim,
+body.clean-frame .pmk-flash { display: none !important; }
+
 .intro {
   position: fixed;
   inset: 0;
