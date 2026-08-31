@@ -1,0 +1,1252 @@
+{
+  "desktop": {
+    "bootMs": 13082,
+    "ready": true,
+    "err": null,
+    "info": {
+      "poi": "red-dog-palisades",
+      "run": "red-dog-face",
+      "adapter": "contract",
+      "spawn": {
+        "position": [
+          306.94,
+          399.525788594138,
+          408.07
+        ],
+        "yaw": 1.8938411324673547,
+        "pitch": 0,
+        "source": "world.mjs"
+      },
+      "spawnSource": "world.mjs",
+      "defaultGear": "skis",
+      "gear": "skis",
+      "skiModel": "lab-standard",
+      "gliderModel": "aang",
+      "bikeModel": "lab-standard",
+      "unitScale": 1,
+      "unitNote": "metres (span 30000 u)",
+      "upAxis": "z",
+      "upFrom": "declared",
+      "colliderNote": "declared colliders[]",
+      "collisionMs": 122,
+      "collision": {
+        "triangles": 895816,
+        "cellEntries": 4012445,
+        "cells": 1144900,
+        "cell": 6,
+        "meshesUsed": 37,
+        "meshesSkipped": 0,
+        "skippedOversize": 0,
+        "skippedOutside": 0,
+        "bytes": 48299156
+      },
+      "collidableMeshes": 135,
+      "lifts": 1,
+      "bbox": {
+        "min": [
+          -16309.6298828125,
+          -84.3612899780279,
+          -14780.7001953125
+        ],
+        "max": [
+          13690.3701171875,
+          973.9617309570317,
+          15219.2998046875
+        ]
+      },
+      "tuning": {
+        "eyeHeight": 1.7,
+        "radius": 0.36,
+        "walk": 4.5,
+        "sprint": 8,
+        "jump": 4.5,
+        "gravity": 16,
+        "accelGround": 14,
+        "accelAir": 2.5,
+        "friction": 11,
+        "stepUp": 0.55,
+        "maxFall": 60,
+        "voidDrop": 90,
+        "snapDown": 0.45,
+        "ski": {
+          "maxSpeed": 29,
+          "slopeAccel": 0.92,
+          "glideFriction": 0.45,
+          "dragQuad": 0.0085,
+          "grip": 6,
+          "gripAtMax": 0.3,
+          "carveRecover": 0.55,
+          "steer": 2,
+          "steerAtMax": 0.34,
+          "airSteer": 1.1,
+          "spinTorque": 6.4,
+          "brake": 13,
+          "brakeGrip": 3,
+          "skate": 5.5,
+          "skateMax": 5.5,
+          "airDrag": 0.0022,
+          "landBoost": 0.4,
+          "landMin": 3,
+          "maxRoll": 0.26,
+          "rollPerLateral": 0.05,
+          "rollRate": 8,
+          "carveRoll": 0.68,
+          "carveRollV0": 0.08,
+          "carveRollSpan": 0.52,
+          "carveRollRate": 7,
+          "carveRollAir": 0.55,
+          "carveRollChat": 0.075,
+          "snapMul": 2,
+          "chatterSpeed": null,
+          "chatterSpan": 6,
+          "chatterGrip": 0,
+          "chatterYaw": 0,
+          "chatterDrag": 0,
+          "popMul": 1,
+          "wipeTol": 0.06,
+          "pumpRadius": 18,
+          "pumpCharge": 6.4,
+          "pumpMax": 4,
+          "pumpDecay": 0.6,
+          "pumpLoadK": 1.5,
+          "pumpEtaMin": 0.35,
+          "pumpEtaMax": 1.45,
+          "pumpWindow": 0.22,
+          "pumpMinSweep": 0.35,
+          "pumpMinTurnT": 0.25,
+          "pumpReleaseT": 0.35,
+          "pumpFlatK": 0.6,
+          "pumpCrossT": 0.25,
+          "pumpEdge0": 0.12,
+          "pumpEdgeSpan": 0.4,
+          "pumpVr0": 0.6,
+          "pumpVrSpan": 2.5,
+          "pumpFlatEps": 0.04,
+          "pumpRadK": 1,
+          "pumpTuckMul": 1.35,
+          "tuckDrag": 0.72,
+          "pumpAirT": 0.3,
+          "stivotAng": 0.55,
+          "stivotVr": 3,
+          "stivotRate": 1.6,
+          "stivotShortT": 0.45,
+          "stivotGrip": 0.35,
+          "stivotHook": 1.55,
+          "stivotHookT": 0.3,
+          "hockeyMul": 1.6,
+          "plowSplay": 0.22,
+          "plowRoll": 0.18,
+          "hockeyRoll": 0.55
+        },
+        "bike": {
+          "maxSpeed": 22,
+          "pedalMax": 11,
+          "pedalAccel": 7,
+          "pedalFloor": 0.35,
+          "slopeAccel": 0.88,
+          "rollFriction": 0.3,
+          "dragQuad": 0.008,
+          "airDrag": 0.002,
+          "brake": 10,
+          "brakeGripMul": 0.55,
+          "grip": 3.2,
+          "gripAtMax": 0.4,
+          "bermGripGain": 7,
+          "carveRecover": 0.3,
+          "bermRecoverGain": 0.55,
+          "steer": 2.3,
+          "steerAtMax": 0.22,
+          "airSteer": 1.5,
+          "washAngle": 0.35,
+          "washSpeed": 8,
+          "washScrub": 9,
+          "washTiltExempt": 0.25,
+          "hop": 2.5,
+          "popFull": 5,
+          "preloadTime": 0.5,
+          "preloadAccel": 3.5,
+          "perfectSlope": 0.12,
+          "perfectWindow": 0.15,
+          "perfectVyMul": 1.3,
+          "perfectCarryTime": 0.35,
+          "pumpDownGain": 0.5,
+          "pumpUpRelief": 0.25,
+          "pumpPop": 3,
+          "pumpPopMax": 2.5,
+          "pumpMinSpeed": 2,
+          "slopeTau": 0.12,
+          "lipCarry": 1,
+          "lipMaxVy": 9.5,
+          "lipDetach": 0.8,
+          "lipCarryPerfect": 1.15,
+          "lipMaxVyPerfect": 13,
+          "landBoost": 0.35,
+          "landMin": 2.5,
+          "landBonusCap": 0.1,
+          "landMisalign": 1.05,
+          "landScrubHard": 0.4,
+          "flatLandScrub": 0.012,
+          "maxRoll": 0.18,
+          "rollPerLateral": 0.03,
+          "rollRate": 8,
+          "snapMul": 2,
+          "spinTorque": 6.4
+        },
+        "glider": {
+          "maxSpeed": 32,
+          "vTrim": 16,
+          "gLimit": 4,
+          "stallSpeed": 6,
+          "stallFade": 2.2,
+          "stallSag": 0.55,
+          "alphaGain": 3.2,
+          "alphaMax": 0.42,
+          "alphaMin": -0.4,
+          "clMax": 2.4,
+          "clMin": -0.35,
+          "noseMax": 1.15,
+          "noseAssist": 0.3,
+          "dragBase": 0.2,
+          "dragQuad": 0.003,
+          "dragInduced": 0.55,
+          "vSoft": 20,
+          "dragOver": 0.11,
+          "bankMax": 1.15,
+          "bankPerErr": 2.4,
+          "bankKeys": 0.85,
+          "rollRate": 3.4,
+          "rollSpin": 7,
+          "rollRecover": 3,
+          "rollVisual": 0.55,
+          "ridgeProbe": 14,
+          "ridgeRange": 45,
+          "ridgeGain": 0.55,
+          "ridgeMaxSlope": 1,
+          "ridgeMax": 9,
+          "skimHeight": 2.2,
+          "skimLift": 0.35,
+          "skimSpeed": 8,
+          "flareAlpha": 0.3,
+          "flareDrag": 3.2,
+          "landVy": 6.5,
+          "landSpeed": 13,
+          "landSteep": 0.62,
+          "landScrub": 0.55,
+          "landRun": 9,
+          "maxRoll": 1.15,
+          "landMin": 3,
+          "snapMul": 1
+        },
+        "rocket": {
+          "maxSpeed": 110,
+          "snapMul": 1,
+          "landMin": 3,
+          "airDrag": 0.1,
+          "leanRecover": 6,
+          "landVy": 9,
+          "landSpeed": 16,
+          "landSteep": 0.62,
+          "landScrub": 0.45,
+          "landRun": 9
+        },
+        "sled": {
+          "maxSpeed": 31,
+          "snapMul": 2.2,
+          "slopeAccel": 1.02,
+          "glideFriction": 0.3,
+          "dragQuad": 0.0058,
+          "flatSin": 0.16,
+          "flatFriction": 5,
+          "stallSpeed": 2.2,
+          "stallFriction": 7,
+          "grip": 3.4,
+          "gripAtMax": 0.26,
+          "carveRecover": 0.22,
+          "steer": 1.25,
+          "steerAtMax": 0.3,
+          "airSteer": 0.22,
+          "spinTorque": 1.5,
+          "brake": 5,
+          "brakeGrip": 2.2,
+          "airDrag": 0.0016,
+          "landBoost": 0.46,
+          "landMin": 3,
+          "maxRoll": 0.3,
+          "rollPerLateral": 0.055,
+          "rollRate": 7,
+          "deckRoll": 0.34,
+          "deckRollRate": 6,
+          "popMul": 0.55,
+          "wipeTol": -0.28
+        },
+        "snowmobile": {
+          "maxSpeed": 30,
+          "snapMul": 2.2,
+          "landMin": 5,
+          "driveAccel": 13,
+          "driveTop": 32,
+          "driveFloor": 0.05,
+          "reverseAccel": 5,
+          "reverseMax": 5,
+          "brake": 12,
+          "rollFriction": 0.5,
+          "dragQuad": 0.0045,
+          "airDrag": 0.0018,
+          "slopeAccel": 0.95,
+          "boostMaxSpeed": 60,
+          "boostDrag": 0.014,
+          "boostCeilFall": 8,
+          "climbAssist": 0.8,
+          "climbSlip0": 0.47,
+          "climbSlipSpan": 0.38,
+          "climbSpinGrip": 0.45,
+          "grip": 3,
+          "gripAtMax": 0.34,
+          "carveRecover": 0.25,
+          "steer": 2.3,
+          "steerAtMax": 0.26,
+          "steerLag": 5.5,
+          "airSteer": 0.7,
+          "spinTorque": 3.2,
+          "landBoost": 0.38,
+          "landSquash": 0.075,
+          "squashRecover": 3,
+          "landScrubMisalign": 0.55,
+          "maxRoll": 0.2,
+          "rollPerLateral": 0.03,
+          "rollRate": 7,
+          "popMul": 0.85,
+          "wipeTol": 0.3
+        },
+        "defaultGear": "skis"
+      }
+    },
+    "lifts": [
+      "red-dog-express"
+    ],
+    "stats": {
+      "drawCalls": 138,
+      "triangles": 1886810,
+      "collidableTriangles": 895816,
+      "trees": 24951,
+      "cars": 254,
+      "rocks": 194,
+      "buildMs": 1863
+    },
+    "touchMode": false,
+    "paused": true,
+    "fence": {
+      "x0": -720,
+      "x1": 680,
+      "y0": -980,
+      "y1": 750,
+      "graceMs": 2000,
+      "trips": 0
+    },
+    "title": "Red Dog Chair — Palisades Tahoe",
+    "introStage": null,
+    "href": "http://127.0.0.1:57193/",
+    "params": "",
+    "heap": 254000000,
+    "pixelRatio": 1,
+    "errors": [],
+    "failed": [],
+    "http4xx": [],
+    "wireBytes": 2317554,
+    "wireFiles": 59
+  },
+  "spawnCrossCheck": {
+    "boot": {
+      "x": 306.94,
+      "y": 399.53,
+      "z": 408.07
+    },
+    "bootYaw": 1.8938,
+    "bootFallYaw": 0.6544984694978736,
+    "bootAimDropM": 5.61,
+    "unload": {
+      "id": "red-dog-express",
+      "name": "Red Dog Express",
+      "declared": {
+        "x": 312.67,
+        "y": 396.98,
+        "z": 384.38
+      },
+      "x": 334.8431087802709,
+      "y": 403.35006929979977,
+      "z": 393.56440237676213,
+      "yaw": 0.8377580409572781,
+      "slopeDeg": 7.44,
+      "fallYaw": 0.5235987755982988,
+      "aimSource": "run-clamped",
+      "aimOffDeg": 18,
+      "aimDropM": 11.11,
+      "commits": true,
+      "dropM": 10.8,
+      "walkM": 60,
+      "committed": true,
+      "why": "ok",
+      "run": "snow-king-road",
+      "runD": 14.3,
+      "movedM": 24,
+      "ring": 24,
+      "score": 55.49,
+      "derived": true
+    },
+    "unloadFallYaw": 0.5235987755982988,
+    "sepM": 31.448304278782885,
+    "aimDeltaDeg": 60.506747241875296,
+    "bootVsFallDeg": 71.0067472418753
+  },
+  "scenery": {
+    "chairMeshes": [
+      {
+        "name": "chairs-red-dog-express",
+        "count": 43
+      },
+      {
+        "name": "chairs-far-east-express",
+        "count": 25
+      },
+      {
+        "name": "chairs-exhibition",
+        "count": 72
+      },
+      {
+        "name": "chairs-olympic-lady",
+        "count": 97
+      },
+      {
+        "name": "chairs-kt22-express",
+        "count": 83
+      },
+      {
+        "name": "cabins-gold-coast-funitel",
+        "count": 35
+      },
+      {
+        "name": "chairs-gold-coast-express",
+        "count": 46
+      }
+    ],
+    "structures": {
+      "minX": -3811.2,
+      "maxX": 332
+    },
+    "cables": {
+      "minX": -3797,
+      "maxX": 325.1
+    },
+    "meshes": 447
+  },
+  "firstPaint": {
+    "text": "RED DOG CHAIR\n\nPalisades Tahoe · Olympic Valley, California\n\nterrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
+    "pauseVisible": false,
+    "hudVisible": false,
+    "introUp": true,
+    "readInDom": false,
+    "fpsInDom": false,
+    "aimInDom": false,
+    "legend": [
+      "WASDmove",
+      "SPACEjump",
+      "Gboost",
+      "← →spin",
+      "Ccamera",
+      "ESCpause"
+    ],
+    "overlays": [
+      "intro is-in"
+    ],
+    "strays": [],
+    "debugStrays": []
+  },
+  "ui": {
+    "introH1": "RED DOG CHAIR",
+    "introSub": "Palisades Tahoe · Olympic Valley, California",
+    "introRows": [
+      "ESC = settings",
+      "W A S D = move",
+      "← → = tricks in the air",
+      "C = camera",
+      "R = reset"
+    ],
+    "introCredit": "terrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
+    "introHasOdbl": true,
+    "markers": [
+      "exhibition",
+      "red-dog-express",
+      "red-dog-face",
+      "poulsens-gully",
+      "poulsens-cliff",
+      "race-venue",
+      "base-area",
+      "kt22-base",
+      "funitel-base"
+    ]
+  },
+  "clickThrough": {
+    "stage": 2,
+    "introInDom": false,
+    "introUp": false,
+    "paused": false,
+    "pointerLocked": true,
+    "visibleText": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nESC\nPAUSE\nTOP STATION\nRED DOG EXPRESS\nThe 2023 six-pack, unloading on the Snow King knoll. The whole east half of the front side hangs off this point.\nW\nskate — get it rolling\nFINISH\n—"
+  },
+  "pausePanel": {
+    "visible": true,
+    "rows": [
+      "ESC = settings",
+      "W A S D = move",
+      "← → = tricks in the air",
+      "C = camera",
+      "R = reset"
+    ],
+    "text": "PAUSED\nRED DOG CHAIR\nESC\nSETTINGS\nW A S D\nMOVE\n← →\nTRICKS IN THE AIR\nC\nCAMERA\nR\nRESET\nCLICK TO RESUME\nterrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
+    "keysText": "ESC\nSETTINGS\nW A S D\nMOVE\n← →\nTRICKS IN THE AIR\nC\nCAMERA\nR\nRESET",
+    "buttons": [
+      "click to resume"
+    ],
+    "credit": "terrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
+    "strays": []
+  },
+  "ride": {
+    "before": [
+      306.9345730363393,
+      -408.0724239136232,
+      399.52493119030385
+    ],
+    "after": [
+      223.76,
+      -434.63,
+      379.26
+    ],
+    "dist": 87.31159400309352,
+    "drop": 20.264931190303855,
+    "track": [
+      {
+        "x": 298.45,
+        "y": 398.11,
+        "z": 410.72,
+        "speed": 6.99,
+        "grounded": true,
+        "simT": 2.02
+      },
+      {
+        "x": 279.68,
+        "y": 394.18,
+        "z": 416.46,
+        "speed": 11.7,
+        "grounded": true,
+        "simT": 4.07
+      },
+      {
+        "x": 253.54,
+        "y": 387.59,
+        "z": 425.07,
+        "speed": 14.89,
+        "grounded": true,
+        "simT": 6.12
+      },
+      {
+        "x": 223.76,
+        "y": 379.26,
+        "z": 434.63,
+        "speed": 17.62,
+        "grounded": true,
+        "simT": 8.02
+      }
+    ]
+  },
+  "inPlay": {
+    "paused": false,
+    "speed": 18.86,
+    "introGone": true,
+    "hudVisible": true,
+    "readInDom": false,
+    "readVisible": false,
+    "fpsInDom": false,
+    "fpsVisible": false,
+    "devVisible": false,
+    "aimInDom": false,
+    "legend": [
+      "WASDmove",
+      "SPACEjump",
+      "Gboost",
+      "← →spin",
+      "Ccamera",
+      "ESCpause"
+    ],
+    "text": "WASD\nMOVE\nSPACE\nJUMP\n← →\nSPIN\nC\nCAMERA\nESC\nPAUSE\nW\nhold W down the flats\nFINISH\n—",
+    "debugStrays": [],
+    "advertStrays": []
+  },
+  "shift": {
+    "trace": {
+      "steps": 900,
+      "dt": 0.016666666666666666,
+      "plain": {
+        "hash": "4b2982d56e288a514838b1c0e60bed6f5e2fc2fa8393b2bae67f65f5f19b9aa2",
+        "dist": 69.6183492844142,
+        "speed": 4.966072188907743
+      },
+      "held": {
+        "hash": "4b2982d56e288a514838b1c0e60bed6f5e2fc2fa8393b2bae67f65f5f19b9aa2",
+        "dist": 69.6183492844142,
+        "speed": 4.966072188907743
+      },
+      "braked": {
+        "hash": "4b8beacf6e3ad6a73d408c27295ecf05be05c2cb4e73fd5f3210b8af7b373670",
+        "dist": 76.05895735522449,
+        "speed": 8.331089593167095
+      },
+      "byteIdentical": true
+    },
+    "game": {
+      "plain": {
+        "gear": "skis",
+        "dist": 40.33379292092135,
+        "drop": 8.052108590871057,
+        "top": 13.355598087599972,
+        "end": 13.355598087599972,
+        "frames": 109
+      },
+      "held": {
+        "gear": "skis",
+        "dist": 39.37314271343519,
+        "drop": 7.813213358313135,
+        "top": 13.24689464441201,
+        "end": 13.24689464441201,
+        "frames": 112
+      },
+      "distDeltaPct": 2.3817502345232193,
+      "speedDeltaPct": 0.8139166997611951
+    }
+  },
+  "hiddenFeatures": {
+    "target": "base-area",
+    "travelFn": true,
+    "flashInDom": true,
+    "aimStillWired": true,
+    "lockerOpens": true,
+    "gearTypes": 5,
+    "travelled": 1076.235284859458
+  },
+  "snowmobileBoost": {
+    "mode": "snowmobile",
+    "idle": {
+      "burning": false,
+      "throttle": 0,
+      "fuel": 6,
+      "frac": 1,
+      "tank": 6,
+      "accel": 35,
+      "cap": 100,
+      "dry": false,
+      "burned": 0,
+      "ignitions": 0,
+      "gear": "rocket",
+      "worn": true,
+      "rider": "snowmobile",
+      "dir": {
+        "x": 0,
+        "y": 0,
+        "z": -1
+      }
+    },
+    "held": {
+      "burning": true,
+      "throttle": 0.937318399453576,
+      "fuel": 5.749899999999995,
+      "frac": 0.9583166666666658,
+      "tank": 6,
+      "accel": 35,
+      "cap": 100,
+      "dry": false,
+      "burned": 0.2501000000000058,
+      "ignitions": 1,
+      "gear": "rocket",
+      "worn": true,
+      "rider": "snowmobile",
+      "dir": {
+        "x": -0.4997556455709111,
+        "y": 0,
+        "z": -0.8661664359232594
+      }
+    },
+    "after": {
+      "burning": false,
+      "throttle": 0.15594634870908872,
+      "fuel": 5.899899999999994,
+      "frac": 0.9833166666666657,
+      "tank": 6,
+      "accel": 35,
+      "cap": 100,
+      "dry": false,
+      "burned": 0.2501000000000058,
+      "ignitions": 1,
+      "gear": "rocket",
+      "worn": true,
+      "rider": "snowmobile",
+      "dir": {
+        "x": -0.4997556455709111,
+        "y": 0,
+        "z": -0.8661664359232594
+      }
+    },
+    "gear": "skis"
+  },
+  "resetKey": {
+    "mark": {
+      "x": -268.50073306328727,
+      "y": 6.913743841165121,
+      "z": -512.4015006922302
+    },
+    "markN": 1,
+    "source": "teleport",
+    "away": {
+      "x": -284.49,
+      "y": 6.61,
+      "z": -528.09
+    },
+    "rode": 22.4,
+    "simSpeed": 0.45,
+    "back": {
+      "x": -268.5,
+      "y": 6.91,
+      "z": -512.4
+    },
+    "backD": 0.001670167342838016,
+    "fromWorldSpawn": 1085.5395960074418
+  },
+  "boardingPrompt": {
+    "lift": "red-dog-express",
+    "liftPrompt": "Red Dog Express",
+    "promptVisible": true,
+    "promptText": "F\nRIDE RED DOG EXPRESS",
+    "boarded": null
+  },
+  "guideBeat": {
+    "before": "PAUSED\nRED DOG CHAIR\nESC\nSETTINGS\nW A S D\nMOVE\n← →\nTRICKS IN THE AIR\nC\nCAMERA\nR\nRESET\nCLICK TO RESUME\nterrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)\nW\nFINISH\n—\nCONTROLS\nESC\nsettings\nW A S D\nmove\n← →\ntricks in the air\nC\ncamera\nR\nreset\n\nclick to drop in\n\nterrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
+    "after": "PAUSED\nRED DOG CHAIR\nESC\nSETTINGS\nW A S D\nMOVE\n← →\nTRICKS IN THE AIR\nC\nCAMERA\nR\nRESET\nCLICK TO RESUME\nterrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)\nW\nhold W down the flats\nFINISH\n—\nCONTROLS\nESC\nsettings\nW A S D\nmove\n← →\ntricks in the air\nC\ncamera\nR\nreset\n\nclick to drop in\n\nterrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
+    "stage": "carve",
+    "samples": [
+      {
+        "t": 1.25,
+        "stage": "teach-w",
+        "toastOn": true,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      },
+      {
+        "t": 2.5,
+        "stage": "teach-w",
+        "toastOn": true,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      },
+      {
+        "t": 3.75,
+        "stage": "carve",
+        "toastOn": true,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      },
+      {
+        "t": 5,
+        "stage": "carve",
+        "toastOn": true,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      },
+      {
+        "t": 6.25,
+        "stage": "carve",
+        "toastOn": true,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      },
+      {
+        "t": 7.5,
+        "stage": "carve",
+        "toastOn": false,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      },
+      {
+        "t": 8.75,
+        "stage": "carve",
+        "toastOn": false,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      },
+      {
+        "t": 10,
+        "stage": "carve",
+        "toastOn": false,
+        "toastText": "W hold W down the flats",
+        "inBodyText": true
+      }
+    ],
+    "prompts": [
+      "W — skate — get it rolling",
+      "W — hold W down the flats"
+    ],
+    "promptTexts": [
+      "skate — get it rolling",
+      "hold W down the flats"
+    ],
+    "live": null,
+    "stageLog": [
+      "teach-w",
+      "carve"
+    ],
+    "t": 10
+  },
+  "slalom": {
+    "went": "slalom",
+    "gates": [
+      {
+        "s": 606.3,
+        "x": -61.3,
+        "z": 237.1,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 644.3,
+        "x": -86.6,
+        "z": 270.6,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 682.3,
+        "x": -127.2,
+        "z": 281.1,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 720.3,
+        "x": -136.5,
+        "z": 322.1,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 758.3,
+        "x": -168.9,
+        "z": 347.2,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 796.3,
+        "x": -169.5,
+        "z": 389.2,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 834.3,
+        "x": -201.4,
+        "z": 415.9,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 872.3,
+        "x": -208.5,
+        "z": 456.8,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 910.3,
+        "x": -247.2,
+        "z": 472.6,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 948.3,
+        "x": -260.7,
+        "z": 511.6,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 986.3,
+        "x": -296.7,
+        "z": 531.5,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1024.3,
+        "x": -306.7,
+        "z": 571.9,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1062.3,
+        "x": -341.9,
+        "z": 594.1,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1100.3,
+        "x": -348.7,
+        "z": 635.5,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1138.3,
+        "x": -387.9,
+        "z": 635.2,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1176.3,
+        "x": -422,
+        "z": 620.3,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1214.3,
+        "x": -412.7,
+        "z": 580.4,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1252.3,
+        "x": -422.1,
+        "z": 540.5,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1290.3,
+        "x": -390.2,
+        "z": 512.9,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1328.3,
+        "x": -387.6,
+        "z": 471.4,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1366.3,
+        "x": -354.8,
+        "z": 445.9,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1404.3,
+        "x": -350.8,
+        "z": 404.5,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1442.3,
+        "x": -316.6,
+        "z": 380.6,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1480.3,
+        "x": -312,
+        "z": 339.2,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1518.3,
+        "x": -283.7,
+        "z": 309.9,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1556.3,
+        "x": -294.7,
+        "z": 269.5,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1594.3,
+        "x": -273.9,
+        "z": 233.3,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1632.3,
+        "x": -287.4,
+        "z": 194,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1670.3,
+        "x": -268.6,
+        "z": 157,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1708.3,
+        "x": -282.5,
+        "z": 117.7,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1746.3,
+        "x": -259.5,
+        "z": 83.1,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1784.3,
+        "x": -265.8,
+        "z": 42.8,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1822.3,
+        "x": -238.8,
+        "z": 11.5,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1860.3,
+        "x": -241.5,
+        "z": -29.8,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1898.3,
+        "x": -215,
+        "z": -61.4,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 1936.3,
+        "x": -226,
+        "z": -101.9,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 1974.3,
+        "x": -208.1,
+        "z": -138.9,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 2012.3,
+        "x": -225.4,
+        "z": -176.7,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 2050.3,
+        "x": -211.7,
+        "z": -216.9,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 2088.3,
+        "x": -237.4,
+        "z": -249.7,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 2126.3,
+        "x": -238.1,
+        "z": -289.9,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 2164.3,
+        "x": -272.4,
+        "z": -313.3,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      },
+      {
+        "s": 2202.3,
+        "x": -279.3,
+        "z": -354.1,
+        "side": 1,
+        "color": "R",
+        "half": 6
+      },
+      {
+        "s": 2240.3,
+        "x": -313.5,
+        "z": -376.2,
+        "side": -1,
+        "color": "B",
+        "half": 6
+      }
+    ],
+    "poles": 88,
+    "banners": 44,
+    "tally": {
+      "snow-king-road": 14,
+      "lower-champs": 15,
+      "red-dog-face": 15
+    },
+    "worstOff": 8.548309779363109
+  },
+  "firstPerson": {
+    "cam": "fp",
+    "ski": "Red Dog 180",
+    "gear": "skis",
+    "speed": 2.93
+  },
+  "budget": {
+    "draw calls": {
+      "got": 138,
+      "cap": 250
+    },
+    "triangles": {
+      "got": 1886810,
+      "cap": 1900000
+    },
+    "collidable triangles": {
+      "got": 895816,
+      "cap": 900000
+    },
+    "build ms": {
+      "got": 1863,
+      "cap": 20000
+    },
+    "transfer (brotli, measured at build)": {
+      "got": 2319255,
+      "cap": 2621440
+    },
+    "stamp raster heap": {
+      "got": 31664304,
+      "cap": 34000000
+    },
+    "used JS heap": {
+      "got": 254000000,
+      "cap": 420000000
+    }
+  },
+  "fenceTest": {
+    "spawn": [
+      -900,
+      -400
+    ],
+    "trips": 1,
+    "ms": 17794.10000000894,
+    "back": {
+      "respawns": 1,
+      "x": -900
+    }
+  },
+  "touch": {
+    "ready": true,
+    "touchMode": true,
+    "paused": false,
+    "coarse": true,
+    "dpr": 3,
+    "pixelRatio": 1.5,
+    "heap": 269000000,
+    "lifts": [
+      "red-dog-express"
+    ],
+    "introRows": [
+      "DRAG LEFT = carve",
+      "DRAG RIGHT = look",
+      "TAP = jump",
+      "SWIPE ← → = tricks in the air"
+    ],
+    "introHasOdbl": true,
+    "touchActive": true,
+    "firstPaintText": "RED DOG CHAIR\n\nPalisades Tahoe · Olympic Valley, California\n\nterrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)",
+    "pauseVisible": false,
+    "hudVisible": false,
+    "readInDom": false,
+    "fpsInDom": false,
+    "errors": [],
+    "moved": {
+      "x": 305.8349862357148,
+      "z": 408.45400892916905,
+      "speed": 3.402899876354876,
+      "sim": true
+    },
+    "wireBytes": 2319255
+  }
+}

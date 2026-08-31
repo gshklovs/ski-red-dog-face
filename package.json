@@ -1,0 +1,11 @@
+{
+  "name": "ski-red-dog-face",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Ski Red Dog Face at Palisades Tahoe, in a browser. Real USGS 3DEP terrain, real OpenStreetMap trails.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "npx --yes serve public",
+    "start": "npx --yes serve public"
+  }
+}
