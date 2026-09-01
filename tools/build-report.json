@@ -1,8 +1,8 @@
 {
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
-  "pin": "420bde3d9373f043c725bc3a33f5143957907ce8",
-  "builtAt": "2026-09-01T04:05:16.370Z",
+  "pin": "2f692c5bff884fa166ce3710598b6db84ff92f50",
+  "builtAt": "2026-09-01T22:26:53.975Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -32,8 +32,7 @@
         "gold-coast",
         "high-camp",
         "mountain-run",
-        "gold-coast-park",
-        "gold-coast-hip"
+        "gold-coast-park"
       ]
     },
     "$fence": "D16.2 is SURFACE-AWARE as of 2026-08-30, and since specs/0003 the rule lives in bench/public/js/play/main.js rather than in a patch — the bench simply declares no `fence` for it to read. It no longer fires on POSITION at CORE+250: standing on real collision ground never trips it, at any coordinate, because four of the seven rideable top terminals are outside that box and riding to one used to fade you home in a loop. It fires on the absence of recoverable ground. fenceHardPadM is a backstop for coordinates no physics can produce, not a play boundary.",
@@ -114,9 +113,9 @@
   "files": 65,
   "sizes": {
     "n": 65,
-    "raw": 7265258,
-    "gz": 3020296,
-    "br": 2341065,
+    "raw": 7521402,
+    "gz": 3116225,
+    "br": 2422242,
     "byGroup": {
       "css": {
         "n": 4,
@@ -126,15 +125,15 @@
       },
       "html": {
         "n": 1,
-        "raw": 8825,
-        "gz": 4146,
-        "br": 3316
+        "raw": 9789,
+        "gz": 4497,
+        "br": 3631
       },
       "player": {
         "n": 29,
-        "raw": 915982,
-        "gz": 321088,
-        "br": 276444
+        "raw": 1047891,
+        "gz": 369005,
+        "br": 316980
       },
       "scene:data": {
         "n": 7,
@@ -144,9 +143,9 @@
       },
       "scene:code": {
         "n": 23,
-        "raw": 638782,
-        "gz": 230681,
-        "br": 195217
+        "raw": 762053,
+        "gz": 278342,
+        "br": 235543
       },
       "vendor": {
         "n": 1,
@@ -187,28 +186,34 @@
         "brotli": 98326
       },
       {
+        "file": "js/play/ski.js",
+        "raw": 117655,
+        "gzip": 39077,
+        "brotli": 33399
+      },
+      {
+        "file": "js/play/guide.js",
+        "raw": 104890,
+        "gzip": 35679,
+        "brotli": 30251
+      },
+      {
         "file": "js/play/main.js",
-        "raw": 93576,
-        "gzip": 32266,
-        "brotli": 27792
+        "raw": 98878,
+        "gzip": 34439,
+        "brotli": 29523
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85875,
-        "gzip": 30644,
-        "brotli": 26252
+        "raw": 87762,
+        "gzip": 31523,
+        "brotli": 26998
       },
       {
         "file": "js/play/markers.js",
-        "raw": 84769,
-        "gzip": 29915,
-        "brotli": 25406
-      },
-      {
-        "file": "js/play/ski.js",
-        "raw": 90399,
-        "gzip": 29472,
-        "brotli": 25127
+        "raw": 84596,
+        "gzip": 29863,
+        "brotli": 25367
       },
       {
         "file": "scene/layout.mjs",
@@ -221,12 +226,6 @@
         "raw": 64814,
         "gzip": 23993,
         "brotli": 20793
-      },
-      {
-        "file": "js/play/guide.js",
-        "raw": 68143,
-        "gzip": 23315,
-        "brotli": 20088
       }
     ],
     "perFile": [
@@ -261,28 +260,34 @@
         "brotli": 98326
       },
       {
+        "file": "js/play/ski.js",
+        "raw": 117655,
+        "gzip": 39077,
+        "brotli": 33399
+      },
+      {
+        "file": "js/play/guide.js",
+        "raw": 104890,
+        "gzip": 35679,
+        "brotli": 30251
+      },
+      {
         "file": "js/play/main.js",
-        "raw": 93576,
-        "gzip": 32266,
-        "brotli": 27792
+        "raw": 98878,
+        "gzip": 34439,
+        "brotli": 29523
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85875,
-        "gzip": 30644,
-        "brotli": 26252
+        "raw": 87762,
+        "gzip": 31523,
+        "brotli": 26998
       },
       {
         "file": "js/play/markers.js",
-        "raw": 84769,
-        "gzip": 29915,
-        "brotli": 25406
-      },
-      {
-        "file": "js/play/ski.js",
-        "raw": 90399,
-        "gzip": 29472,
-        "brotli": 25127
+        "raw": 84596,
+        "gzip": 29863,
+        "brotli": 25367
       },
       {
         "file": "scene/layout.mjs",
@@ -297,16 +302,22 @@
         "brotli": 20793
       },
       {
-        "file": "js/play/guide.js",
-        "raw": 68143,
-        "gzip": 23315,
-        "brotli": 20088
-      },
-      {
         "file": "js/play/bike.js",
         "raw": 70284,
         "gzip": 23356,
         "brotli": 20031
+      },
+      {
+        "file": "scene/kt-rocks.mjs",
+        "raw": 58185,
+        "gzip": 21817,
+        "brotli": 18812
+      },
+      {
+        "file": "scene/terrain.mjs",
+        "raw": 58118,
+        "gzip": 21162,
+        "brotli": 18349
       },
       {
         "file": "js/play/inventory.js",
@@ -327,6 +338,18 @@
         "brotli": 15411
       },
       {
+        "file": "js/play/fx.js",
+        "raw": 47038,
+        "gzip": 17382,
+        "brotli": 14986
+      },
+      {
+        "file": "js/play/hud.js",
+        "raw": 47455,
+        "gzip": 16485,
+        "brotli": 14217
+      },
+      {
         "file": "js/play/surprise.js",
         "raw": 46558,
         "gzip": 16180,
@@ -337,6 +360,12 @@
         "raw": 42774,
         "gzip": 14457,
         "brotli": 12647
+      },
+      {
+        "file": "scene/forest.mjs",
+        "raw": 39586,
+        "gzip": 14518,
+        "brotli": 12537
       },
       {
         "file": "scene/village-props.mjs",
@@ -351,16 +380,10 @@
         "brotli": 11438
       },
       {
-        "file": "js/play/hud.js",
-        "raw": 37723,
-        "gzip": 13137,
-        "brotli": 11345
-      },
-      {
-        "file": "scene/terrain.mjs",
-        "raw": 35443,
-        "gzip": 12639,
-        "brotli": 10969
+        "file": "scene/kt-runs-data.mjs",
+        "raw": 44447,
+        "gzip": 15140,
+        "brotli": 11026
       },
       {
         "file": "js/play/sled.js",
@@ -375,10 +398,10 @@
         "brotli": 9763
       },
       {
-        "file": "scene/forest.mjs",
-        "raw": 27784,
-        "gzip": 10118,
-        "brotli": 8661
+        "file": "js/play/controller.js",
+        "raw": 28333,
+        "gzip": 10098,
+        "brotli": 8827
       },
       {
         "file": "js/play/speedo.js",
@@ -393,40 +416,34 @@
         "brotli": 8449
       },
       {
-        "file": "js/play/fx.js",
-        "raw": 26253,
-        "gzip": 9354,
-        "brotli": 8100
+        "file": "scene/lib/core.mjs",
+        "raw": 24019,
+        "gzip": 9596,
+        "brotli": 8280
       },
       {
-        "file": "js/play/controller.js",
-        "raw": 25739,
-        "gzip": 9086,
-        "brotli": 7933
+        "file": "scene/granite.mjs",
+        "raw": 23309,
+        "gzip": 9255,
+        "brotli": 8065
       },
       {
         "file": "js/play/tricks.js",
-        "raw": 22462,
-        "gzip": 8322,
-        "brotli": 7259
+        "raw": 23528,
+        "gzip": 8763,
+        "brotli": 7659
       },
       {
         "file": "js/play/lift.js",
-        "raw": 22819,
-        "gzip": 8156,
-        "brotli": 7110
+        "raw": 24185,
+        "gzip": 8642,
+        "brotli": 7529
       },
       {
         "file": "js/play/glider.js",
         "raw": 20467,
         "gzip": 8119,
         "brotli": 7081
-      },
-      {
-        "file": "scene/kt-rocks.mjs",
-        "raw": 22333,
-        "gzip": 8184,
-        "brotli": 7077
       },
       {
         "file": "scene/kit.mjs",
@@ -447,6 +464,12 @@
         "brotli": 6402
       },
       {
+        "file": "js/play/touch.js",
+        "raw": 18300,
+        "gzip": 6993,
+        "brotli": 5984
+      },
+      {
         "file": "scene/lift.mjs",
         "raw": 18469,
         "gzip": 6730,
@@ -459,22 +482,16 @@
         "brotli": 5580
       },
       {
-        "file": "scene/kt-runs-data.mjs",
-        "raw": 25279,
-        "gzip": 7464,
-        "brotli": 5256
+        "file": "scene/env.mjs",
+        "raw": 14372,
+        "gzip": 6089,
+        "brotli": 5243
       },
       {
-        "file": "scene/lib/core.mjs",
-        "raw": 14229,
-        "gzip": 5704,
-        "brotli": 4929
-      },
-      {
-        "file": "scene/granite.mjs",
-        "raw": 11911,
-        "gzip": 4974,
-        "brotli": 4326
+        "file": "js/play/spawn.js",
+        "raw": 13562,
+        "gzip": 5339,
+        "brotli": 4620
       },
       {
         "file": "scene/village.mjs",
@@ -489,10 +506,22 @@
         "brotli": 4107
       },
       {
+        "file": "js/play/intro.js",
+        "raw": 11167,
+        "gzip": 4813,
+        "brotli": 3987
+      },
+      {
         "file": "js/play/rocket.js",
         "raw": 10793,
         "gzip": 4426,
         "brotli": 3793
+      },
+      {
+        "file": "index.html",
+        "raw": 9789,
+        "gzip": 4497,
+        "brotli": 3631
       },
       {
         "file": "js/play/collision.js",
@@ -511,12 +540,6 @@
         "raw": 10078,
         "gzip": 3951,
         "brotli": 3341
-      },
-      {
-        "file": "index.html",
-        "raw": 8825,
-        "gzip": 4146,
-        "brotli": 3316
       },
       {
         "file": "scene/pou-data.mjs",
@@ -549,24 +572,6 @@
         "brotli": 2062
       },
       {
-        "file": "js/play/spawn.js",
-        "raw": 5738,
-        "gzip": 2330,
-        "brotli": 2023
-      },
-      {
-        "file": "js/play/touch.js",
-        "raw": 5530,
-        "gzip": 2186,
-        "brotli": 1879
-      },
-      {
-        "file": "js/play/intro.js",
-        "raw": 4527,
-        "gzip": 2118,
-        "brotli": 1751
-      },
-      {
         "file": "js/play/flags.js",
         "raw": 4665,
         "gzip": 2054,
@@ -577,12 +582,6 @@
         "raw": 4093,
         "gzip": 1992,
         "brotli": 1598
-      },
-      {
-        "file": "scene/env.mjs",
-        "raw": 3673,
-        "gzip": 1712,
-        "brotli": 1514
       },
       {
         "file": "scene/upper-props.mjs",
@@ -617,7 +616,7 @@
       {
         "file": "js/play/dev.js",
         "raw": 562,
-        "gzip": 341,
+        "gzip": 342,
         "brotli": 295
       }
     ]

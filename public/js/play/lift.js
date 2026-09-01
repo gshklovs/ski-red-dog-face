@@ -115,53 +115,23 @@ export const LIFT_SPAWNS = {
   'gold-coast-express': {},
 };
 
-export function createLifts({ THREE, lifts, collision, ctrl, hud, scene, runs, unitScale = 1, onRide }) {
-  const RADIUS = BOARD_RADIUS_M * unitScale;
-  const HEIGHT = BOARD_HEIGHT_M * unitScale;
-  const FADE = DECAL_FADE_M * unitScale;
-
-  const list = [];
-  for (const raw of Array.isArray(lifts) ? lifts : []) {
-    if (!raw) continue;
-    const base = vec(raw.base), top = vec(raw.top);
-    if (!finite(base) || !finite(top)) continue;
-    list.push({
-      name: String(raw.name || raw.id || 'lift ' + (list.length + 1)),
-      id: raw.id || null,
-      base, top,
-      // a declared radius may only WIDEN the trigger — see (2) above
-      radius: Math.max(RADIUS, Number.isFinite(raw.radius) ? raw.radius * unitScale : 0),
-      speed: Number.isFinite(raw.speed) ? raw.speed : null,
-      chairSpacing: Number.isFinite(raw.chairSpacing) ? raw.chairSpacing : null,
-      length: Math.hypot(top.x - base.x, top.y - base.y, top.z - base.z),
-      rise: top.y - base.y,
-      // step off pointing back down the line — away from the shed, down the hill.
-      // Replaced by the derived unload below when the search finds something.
-      yaw: yawToward(top, base),
-      unload: null,
-    });
-  }
-
-  let rides = 0;
-  let last = null;
-  let prompt = null;                   // the lift the HUD is currently offering
-
-  // The declared y is the author's idea of ground. Trust the triangles instead,
-  // widening the probe until something answers, so a metre of drift in the
-  // declaration cannot drop anybody through the floor or bury them in it.
-  function groundY(x, z, hintY) {
-    for (const up of [2.5, 12, 45]) {
-      const g = collision.groundAt(x, z, hintY + up * unitScale);
-      if (g !== null) return g;
-    }
-    const g = collision.groundAt(x, z, collision.bounds.maxY + 5 * unitScale);
-    return g === null ? hintY : g;
-  }
+// ======================================================== the stand-up search
+// LIFTED OUT OF createLifts, unchanged, because it stopped being only a lift
+// thing. spawn.js asks the same question for a shareable waypoint URL — "put me
+// on this place, standing on ground that works, facing down the hill" — and the
+// answer has to be the SAME answer, from the same code, or /kt22 and riding the
+// KT-22 chair would quietly stand you up in two different places by two
+// different rules. One search, two callers.
+//
+// `anchor` is the declared point (a lift's top terminal, or a marker/run head);
+// `T` is a LIFT_SPAWNS row already merged over `_default`. Returns null when
+// there is no ground anywhere on the rings, which is a real answer and the
+// caller is expected to have a fallback for it.
+export function makeStandUp({ collision, runs, unitScale = 1 }) {
   // the unconditional probe — used by the spawn search, where "no ground here"
   // is a real answer and must not be papered over
   const gAt = (x, z) => collision.groundAt(x, z, collision.bounds.maxY + 5 * unitScale);
 
-  // ================================================== 3 — the unload spawns
   // slope in degrees, and the downhill gradient direction, at (x, z)
   function surfaceAt(x, z, arm) {
     const h = arm * unitScale;
@@ -275,9 +245,8 @@ export function createLifts({ THREE, lifts, collision, ctrl, hud, scene, runs, u
     };
   }
 
-  function deriveUnload(L) {
-    const T = { ...LIFT_SPAWNS._default, ...(LIFT_SPAWNS[L.id] || LIFT_SPAWNS[(L.name || '').toLowerCase()] || {}) };
-    const home = { ...L.top };
+  return function standUp(anchor, T) {
+    const home = { x: anchor.x, y: anchor.y, z: anchor.z };
     if (Array.isArray(T.offset)) { home.x += T.offset[0] * unitScale; home.z += T.offset[1] * unitScale; }
     let best = null;
     for (const r of T.rings) {
@@ -303,7 +272,7 @@ export function createLifts({ THREE, lifts, collision, ctrl, hud, scene, runs, u
         score -= Math.max(0, s.slopeDeg - T.maxSlopeDeg) * 6.0;   // ...never a cliff
         score += Math.min(w.drop, 30) * 0.25;
         score += w.ok ? 6 : -8;
-        score -= Math.hypot(x - L.top.x, z - L.top.z) * T.homeBiasPerM;
+        score -= Math.hypot(x - anchor.x, z - anchor.z) * T.homeBiasPerM;
         if (run) score += 8 - run.d * 0.06;
         if (!best || score > best.score) {
           best = { x, z, y: s.y, score, slopeDeg: s.slopeDeg, walk: w, run, ring: r, h, ad };
@@ -323,9 +292,69 @@ export function createLifts({ THREE, lifts, collision, ctrl, hud, scene, runs, u
       dropM: +best.walk.drop.toFixed(1), walkM: +best.walk.dist.toFixed(1),
       committed: !!best.walk.ok, why: best.walk.why,
       run: best.run ? best.run.id : null, runD: best.run ? +best.run.d.toFixed(1) : null,
-      movedM: +Math.hypot(best.x - L.top.x, best.z - L.top.z).toFixed(1),
+      movedM: +Math.hypot(best.x - anchor.x, best.z - anchor.z).toFixed(1),
       ring: best.ring, score: +best.score.toFixed(2),
     };
+  };
+}
+
+// The LIFT_SPAWNS row for one lift, merged over `_default`. Exported because
+// spawn.js needs the same merge when a named waypoint lands on a lift top.
+export function standUpTuning(id, name) {
+  return {
+    ...LIFT_SPAWNS._default,
+    ...(LIFT_SPAWNS[id] || LIFT_SPAWNS[String(name || '').toLowerCase()] || {}),
+  };
+}
+
+export function createLifts({ THREE, lifts, collision, ctrl, hud, scene, runs, unitScale = 1, onRide }) {
+  const RADIUS = BOARD_RADIUS_M * unitScale;
+  const HEIGHT = BOARD_HEIGHT_M * unitScale;
+  const FADE = DECAL_FADE_M * unitScale;
+
+  const list = [];
+  for (const raw of Array.isArray(lifts) ? lifts : []) {
+    if (!raw) continue;
+    const base = vec(raw.base), top = vec(raw.top);
+    if (!finite(base) || !finite(top)) continue;
+    list.push({
+      name: String(raw.name || raw.id || 'lift ' + (list.length + 1)),
+      id: raw.id || null,
+      base, top,
+      // a declared radius may only WIDEN the trigger — see (2) above
+      radius: Math.max(RADIUS, Number.isFinite(raw.radius) ? raw.radius * unitScale : 0),
+      speed: Number.isFinite(raw.speed) ? raw.speed : null,
+      chairSpacing: Number.isFinite(raw.chairSpacing) ? raw.chairSpacing : null,
+      length: Math.hypot(top.x - base.x, top.y - base.y, top.z - base.z),
+      rise: top.y - base.y,
+      // step off pointing back down the line — away from the shed, down the hill.
+      // Replaced by the derived unload below when the search finds something.
+      yaw: yawToward(top, base),
+      unload: null,
+    });
+  }
+
+  let rides = 0;
+  let last = null;
+  let prompt = null;                   // the lift the HUD is currently offering
+
+  // The declared y is the author's idea of ground. Trust the triangles instead,
+  // widening the probe until something answers, so a metre of drift in the
+  // declaration cannot drop anybody through the floor or bury them in it.
+  function groundY(x, z, hintY) {
+    for (const up of [2.5, 12, 45]) {
+      const g = collision.groundAt(x, z, hintY + up * unitScale);
+      if (g !== null) return g;
+    }
+    const g = collision.groundAt(x, z, collision.bounds.maxY + 5 * unitScale);
+    return g === null ? hintY : g;
+  }
+  // ================================================== 3 — the unload spawns
+  // The search itself is makeStandUp() above — shared, verbatim, with spawn.js.
+  const standUp = makeStandUp({ collision, runs, unitScale });
+
+  function deriveUnload(L) {
+    return standUp(L.top, standUpTuning(L.id, L.name));
   }
 
   for (const L of list) {

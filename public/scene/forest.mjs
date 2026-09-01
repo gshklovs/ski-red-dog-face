@@ -18,11 +18,59 @@ import { groundZ, slopeAt, demAt, RUN_PREP,
          groundZ0, masksAt0, slopeAt0, KT_WORK, POU_WORK } from './ground.mjs';
 import { canopyAt } from './canopy.mjs';
 import { rockAt } from './rock.mjs';
+import { FIN_RIBS, FIN_CHUTES, FIN_NOSES } from './kt-runs-data.mjs';
 import { RUNS, LIFTS, CORE, TIGHT, UTIGHT_E, UTIGHT_W, SECTORS, LOTS, BUILDINGS,
          inSector, inCoreBox, sectorOwner, sectorDist } from './layout.mjs';
 import { UPPER_BUILDINGS } from './upper-props.mjs';
 import { parkVeto } from './park.mjs';
 import { VILLAGE_BUILDINGS } from './village-props.mjs';
+
+// ==========================================================================
+// THE SILHOUETTES — lookbook option T1.
+//
+// Every tier class shipped ONE geometry seed, so every big fir in the world was
+// literally the same tree: same trunk lean, same seven skirt radii, same snow
+// lace, rotated about z and scaled. At the range the corridor-lining band is
+// actually looked at (renders/trees/T1/before/treeline-close.png) the repeat is
+// the first thing the eye finds — the same notch in the same skirt, six times
+// across the frame.
+//
+// TREE_SEEDS_PER_LOD = 3 geometry seeds per class. `firGeo`'s triangle count is
+// a function of `tiers` and `sides` alone and never of the seed, so this is a
+// ZERO-TRIANGLE change: it costs three InstancedMeshes per class instead of one
+// (+6 draws) and two extra copies of a 67- / 36- / 22-triangle buffer (~27 kB).
+//
+// INDEX 0 IS THE SHIPPED SEED for each class, deliberately: a third of every
+// stand is bit-identical to the world before this change, and the diff a
+// reviewer looks at is only the two new silhouettes.
+export const TREE_SEEDS_PER_LOD = 3;
+export const TREE_SEEDS = {
+  big: [3, 41, 77],       // 7 tiers x 7 sides
+  mid: [9, 53, 89],       // 4 x 5
+  far: [21, 61, 103],     // 4 x 4, lite trunk
+};
+
+/** Which silhouette the tree at (x, y) wears.
+ *
+ *  A HASH OF THE POSITION, NOT A DRAW, and that is the whole design. Every
+ *  placement loop in `placeForest` is a rejection loop over one shared rng (see
+ *  the header of `distToRuns` below, and REPORT §17.3): a single extra call on
+ *  that stream moves every snag, granite outcrop and boulder placed after it.
+ *  This function is called AFTER placement, reads nothing but x and y, and is
+ *  therefore free and stable across builds — the same tree wears the same
+ *  silhouette in every world anyone ever builds from this run.
+ *
+ *  The mixing is a 32-bit integer avalanche over the two coordinates quantised
+ *  to ~3 cm. Measured over the shipped forest: every class lands inside
+ *  32-35 % per bucket, and two trees standing within 12 m of each other share a
+ *  silhouette 33.4 % of the time (8,855 such pairs among the big firs) — i.e.
+ *  the hash is not banded, which a plain `(x + y) % 3` very much would be. */
+export function treeVariant(x, y, n = TREE_SEEDS_PER_LOD) {
+  let h = Math.imul((Math.round(x * 32.7) | 0) ^ 0x9e3779b9, 0x85ebca6b);
+  h = Math.imul((h ^ (Math.round(y * 32.7) | 0)) ^ (h >>> 13), 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) % n;
+}
 
 export function distToRuns(x, y) {
   let best = 1e9;
@@ -154,6 +202,161 @@ export function pouVeto(x, y) {
     }
   }
   return false;
+}
+
+// ==========================================================================
+// THE FINGERS' OWN CLEARANCE — increment 23. Applied POST-DRAW in `keep()`,
+// never inside a loop; REPORT §17.3's rule for the fourth time.
+//
+// GREG'S ASK IS THE SPEC: "remove the trees that are on the cliff part". His
+// reference photo and view-4 agree about where that is — the reef's rock band
+// carries NO mature firs at all, only a handful of wind-bent pines on its crest
+// and its shoulders, while the bench above it and the runout below it are
+// treed. The canopy raster does not know that: aerial-2 reads 87-100 % canopy
+// over most of the reef (work/fin_probe.mjs), because in summer imagery the
+// reef's own shadow classifies as conifer.
+//
+// SO THE VETO IS A SLOPE TEST, NOT A BOX. A tree goes if it is inside the reef's
+// band AND standing on ground steeper than `FIN_SLOPE`. That keeps every tree on
+// the bench, in the runout and out on the low-angle shoulders — which is
+// precisely the arrangement both photographs show — and takes only the ones
+// standing on the cliff. It is measured on the LIVE ground, which for this
+// increment is the same as the basis (nothing here writes the raster), and it is
+// free because it runs after every loop has finished.
+//
+// THE BAND IS A ZONE, AND IT USED TO BE A LINE BUFFER — increment 24's fix.
+//
+// Increment 23 vetoed a tree if it stood within 15 m of one of the eleven baked
+// lines AND on ground over 33 deg. It took 118 TREES out of the 628 standing
+// inside the working box, and Greg's verdict on the top-down proof render was
+// the obvious one: the reef was still fully treed. Two reasons, both structural
+// rather than a matter of degree:
+//
+//   1. A 15 m BUFFER ROUND A LINE IS NOT A BAND. Increment 23's chutes were
+//      short and scattered — three of the five ended up strung across the
+//      runout — so eleven buffers round eleven short lines covered a fraction of
+//      the face and left a lattice of treed gaps between them.
+//   2. 33 deg WAS TOO HIGH A GATE. The reef's own measured slope over the rib
+//      crests runs 23-63 deg with a long shoulder in the low thirties, so a
+//      33 deg gate spared a third of the band.
+//
+// So the clearance is now A ZONE, and the zone is DERIVED FROM THE BAKE rather
+// than typed: every station of every rib and every chute is projected into the
+// OSM stub's own (down-slope, across-slope) frame, and the band is the bounding
+// rectangle of all of them in that frame, grown by FIN_PAD on all four sides.
+// In world XY that is an oriented quadrilateral covering the whole built reef —
+// the ribs, the chutes between them, and one tree-length of margin outside the
+// outer ribs. It is measured at load, so it follows the bake: re-run
+// work/bake_fingers.mjs with different offsets and the cleared zone moves with
+// them and cannot drift out of step with the rock.
+//
+//   band, this bake   s [-6.0, 197.2] m down the stub, o [-41.0, 94.5] m across
+//   FIN_PAD  14 m     one mature fir's own crown radius outside the outer rib
+//   FIN_SLOPE 27 deg  still a SLOPE TEST and still for the reason increment 23
+//                     gave: what Greg asked to remove is "the trees that are on
+//                     the cliff part", and a bench inside the band is not the
+//                     cliff. 25 trees stand on sub-27 deg ground inside the zone
+//                     and they stay, which is what stops the clearance reading
+//                     as a rectangle somebody drew.
+//
+// MEASURED YIELD: 373 trees stand inside the padded band and 348 of them go,
+// out of the 628 in the box — against increment 23's 118. The 280 that stay are
+// the bench above the reef, the runout below it and the low-angle shoulders
+// either side, which is the arrangement both photographs show. Zero big firs
+// are taken because zero stand here: the box holds 169 mid and 459 small and no
+// big at all, so the reef was scrubbed in the placement long before this veto.
+// work/fin_forest.mjs prints all of it and asserts the post-draw rule.
+const FIN_BOX = { x0: -905, x1: -675, y0: -430, y1: -185 };
+const FIN_PAD = 14, FIN_SLOPE = 27;
+const FIN_BAND = (() => {
+  const S = RUNS.find((r) => r.id === 'the-fingers').pts;
+  const T0 = S[0], B0 = S[S.length - 1];
+  let ax = B0[0] - T0[0], ay = B0[1] - T0[1];
+  const L = Math.hypot(ax, ay) || 1; ax /= L; ay /= L;
+  const nx = -ay, ny = ax;                       // +n is Greg's right, see the bake
+  let s0 = Infinity, s1 = -Infinity, o0 = Infinity, o1 = -Infinity;
+  for (const A of [...FIN_RIBS, ...FIN_CHUTES]) {
+    for (const p of A) {
+      const dx = p[0] - T0[0], dy = p[1] - T0[1];
+      const s = dx * ax + dy * ay, o = dx * nx + dy * ny;
+      if (s < s0) s0 = s; if (s > s1) s1 = s;
+      if (o < o0) o0 = o; if (o > o1) o1 = o;
+    }
+  }
+  return { x0: T0[0], y0: T0[1], ax, ay, nx, ny,
+           s0: s0 - FIN_PAD, s1: s1 + FIN_PAD, o0: o0 - FIN_PAD, o1: o1 + FIN_PAD };
+})();
+// ---- AND THE SIX LANDING CORRIDORS — INCREMENT 25.
+//
+// The v3 spines each END IN A DROP you air (scene/kt-rocks.mjs §THE FINGERS,
+// FIN_NOSES), and a landing with a mature fir standing in it is worse than a
+// flat one. The band above cannot cover them: it is the bounding rectangle of
+// the ribs and chutes, and increment 25 CUT EVERY SPINE BACK to the last
+// station with a proven landing — so the ground a rider now flies onto is 25 to
+// 45 m BELOW the reef's own band, and most of it is below FIN_BOX's own y1
+// (-185) as well.
+//
+// MEASURED, WHICH IS WHY THIS EXISTS: with the band alone, the 45 m fall-line
+// corridor under the six noses held 0, 8, 9, 18, 44 and 30 trees within 14 m of
+// the centreline, the nearest 3.2 m off it. work/fin_ride.mjs lands the body 26
+// to 42 m out from each lip, so those are trees in the landing zone.
+//
+// So the corridor is the fall line itself, walked 46 m from each nose, with a
+// half-width that TAPERS 13 m -> 8 m over the run. It is a corridor and not a
+// clearing: 8 m is one fir's crown either side of a rider's line, the glades
+// below and beside it are untouched, and the taper is why the cleared ground
+// reads as a chute mouth rather than as a rectangle somebody drew.
+//
+// NO SLOPE GATE HERE, deliberately, and that is the one difference from the
+// band. The band's slope test exists because Greg asked for the trees off "the
+// cliff part" and a bench inside the band is not the cliff; a landing is a
+// landing at any angle, and the bake has already refused to put a nose over
+// ground shallower than 34 deg.
+const LAND_RUN = 46, LAND_W0 = 13, LAND_W1 = 8;
+const LAND_LINES = FIN_NOSES.map((N) => {
+  // the FROZEN basis, like everything else placement reads: nothing in
+  // increment 25 writes the raster, so this is also the live ground.
+  let x = N.x, y = N.y, d = 0;
+  const P = [[x, y, 0]];
+  while (d < LAND_RUN) {
+    const h = 3.0;
+    const gx = (groundZ0(x + h, y) - groundZ0(x - h, y)) / (2 * h);
+    const gy = (groundZ0(x, y + h) - groundZ0(x, y - h)) / (2 * h);
+    const g = Math.hypot(gx, gy) || 1e-9;
+    x += (-gx / g) * 2.5; y += (-gy / g) * 2.5; d += 2.5;
+    P.push([x, y, d]);
+  }
+  return P;
+});
+/** true if (x, y) is inside a nose's landing corridor. Exported so
+ *  work/fin_forest.mjs can assert WHERE the extra trees came from rather than
+ *  widening a box until the gate stops complaining. */
+export function landVeto(x, y) {
+  for (const P of LAND_LINES) {
+    for (let i = 0; i < P.length - 1; i++) {
+      const a = P[i], b = P[i + 1];
+      const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1e-9;
+      let t = ((x - a[0]) * dx + (y - a[1]) * dy) / L2; t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const dist = Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t);
+      const s = a[2] + t * (b[2] - a[2]);
+      if (dist < LAND_W0 + (LAND_W1 - LAND_W0) * (s / LAND_RUN)) return true;
+    }
+  }
+  return false;
+}
+
+export function finVeto(x, y) {
+  // the landing corridors first — they reach BELOW FIN_BOX, which is the whole
+  // reason they are a separate test rather than a wider band
+  if (landVeto(x, y)) return true;
+  if (!(x > FIN_BOX.x0 && x < FIN_BOX.x1 && y > FIN_BOX.y0 && y < FIN_BOX.y1)) return false;
+  const F = FIN_BAND;
+  const dx = x - F.x0, dy = y - F.y0;
+  const s = dx * F.ax + dy * F.ay;
+  if (s < F.s0 || s > F.s1) return false;
+  const o = dx * F.nx + dy * F.ny;
+  if (o < F.o0 || o > F.o1) return false;
+  return slopeAt(x, y, 6) > FIN_SLOPE;
 }
 
 export function forestDensity(x, y) {
@@ -478,8 +681,19 @@ export function placeForest(opts = {}) {
                          && y > KT_WORK.y0 && y < KT_WORK.y1;
   const inPouBox = (x, y) => x > POU_WORK.x0 && x < POU_WORK.x1
                           && y > POU_WORK.y0 && y < POU_WORK.y1;
+  // THE FINGERS JOINS THE SAME FILTER, by the same route, for the fifth time —
+  // and it brings NO re-seat, because increment 23 writes no ground at all: its
+  // ribs are built geometry standing on an untouched hill (scene/kt-rocks.mjs's
+  // header), so a surviving tree's z is still the z it was drawn on.
+  //
+  // `opts.noFinVeto` is a TEST HOOK: work/fin_forest.mjs builds the arrays both
+  // ways in one process and hashes them, which is how this increment proves what
+  // work/park_forest.mjs and work/probe_forest.mjs proved before it — that a
+  // post-draw filter cannot move a placement it does not remove.
+  const fv = opts.noFinVeto ? () => false : finVeto;
   const keep = (A) => A.filter((p) => !upperVeto(p[0], p[1]) && !inVillage(p[0], p[1])
-                                      && !pv(p[0], p[1]) && !kv(p[0], p[1]) && !uv(p[0], p[1]))
+                                      && !pv(p[0], p[1]) && !kv(p[0], p[1]) && !uv(p[0], p[1])
+                                      && !fv(p[0], p[1]))
     .map((p) => (inKtBox(p[0], p[1]) || inPouBox(p[0], p[1])
       ? [p[0], p[1], groundZ(p[0], p[1]), p[3], p[4]] : p));
   return { big: keep(big), mid: keep(mid), small: keep(small),

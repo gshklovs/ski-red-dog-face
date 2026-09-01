@@ -541,11 +541,10 @@ const CSS = `
   display: flex; justify-content: center; pointer-events: none; }
 .pmk__card {
   display: flex; align-items: center; gap: 14px;
-  max-width: min(70vw, 620px);
+  max-width: min(80vw, 820px);
   background: rgba(23, 22, 20, .88); color: #f4f1ea;
   border: 1px solid rgba(244, 241, 234, .20);
-  border-left: 3px solid var(--pmk-accent, #ff4d00);
-  border-radius: 4px; padding: 12px 20px 12px 15px;
+  border-radius: 4px; padding: 16px 26px 16px 22px;
   box-shadow: 0 10px 34px rgba(0, 0, 0, .40);
   opacity: 0;
 }
@@ -553,14 +552,14 @@ const CSS = `
   background: center/contain no-repeat; }
 .pmk__txt { min-width: 0; }
 .pmk__kind { font-family: ui-monospace, Consolas, monospace;
-  font-size: 9px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
+  font-size: 14px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
   color: var(--pmk-accent, #ff4d00); margin-bottom: 3px; }
 .pmk__name { font-family: ui-monospace, Consolas, monospace;
-  font-size: 19px; font-weight: 700; letter-spacing: .05em; line-height: 1.15;
+  font-size: 29px; font-weight: 700; letter-spacing: .05em; line-height: 1.15;
   text-shadow: 0 1px 6px rgba(0, 0, 0, .55); }
-.pmk__line { margin-top: 4px; font-size: 12.5px; line-height: 1.42; color: #c6c0b3; }
+.pmk__line { margin-top: 5px; font-size: 19px; line-height: 1.42; color: #c6c0b3; }
 .pmk__dist { font-family: ui-monospace, Consolas, monospace;
-  font-size: 10px; letter-spacing: .14em; color: #8b8578; margin-top: 5px; }
+  font-size: 15px; letter-spacing: .14em; color: #8b8578; margin-top: 6px; }
 
 /* fast travel — the prompt sits just under the crosshair, so the thing you are
    aiming at and the offer to go there are the same glance */
@@ -732,9 +731,8 @@ const REG = {
     { id: 'red-dog-face', name: 'RED DOG FACE', kind: 'ski-run', tier: 'major', diff: 'double',
       pos: [-276.5, 167.4, 135.3], sub: 'MOGULS', tag: '86 m wide · 600 m of bumps',
       line: 'The bump run the resort races on. Every mogul on it was built by somebody braking.' },
-    { id: 'race-venue', name: 'FINISH ARENA', kind: 'venue', tier: 'mid',
-      pos: [-309.5, 13.0, -384.7], sub: 'GS COURSE', tag: 'Stifel Palisades Tahoe Cup',
-      line: 'Finish arch, A-net and a banner wall at the foot of the Face. Come through it fast and the crowd is yours.' },
+    { id: 'race-venue', name: 'OLYMPIC VILLAGE', kind: 'venue', tier: 'mid',
+      pos: [-309.5, 13.0, -384.7], sub: 'GS COURSE', tag: 'Stifel Palisades Tahoe Cup' },
     { id: 'base-area', name: 'THE VILLAGE', kind: 'venue', tier: 'major',
       pos: [-270.0, 16.0, -515.0], sub: 'BASE AREA', tag: '1,890 m · lifts, lodges, lots',
       line: 'The valley floor. Five lift bases meet here, and every run in the world ends somewhere on this flat.' },

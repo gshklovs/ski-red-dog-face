@@ -6,14 +6,15 @@
 // gear: 'skis'.
 
 import {
-  buf, appendBuf, toGeo, splitForCollision, tri, quad, box, tube, prism, plate, makeRng, rr, ri, pick,
-  lin, mixc, scalec, clamp, lerp, smooth, fbm,
+  buf, appendBuf, bufTris, toGeo, splitForCollision, tri, quad, box, tube, prism, plate, makeRng, rr, ri, pick,
+  lin, mixc, scalec, clamp, lerp, smooth, fbm, installLook,
 } from './lib/core.mjs';
 import { RUNS, LIFTS, LOTS, BUILDINGS, ROADS, A, CORE, TIGHT } from './layout.mjs';
 import { UPPER_BUILDINGS } from './upper-props.mjs';
 import { groundZ, demAt, masksAt, slopeAt, normalAt, RUN_PREP, DEM_Z0 } from './ground.mjs';
 import { buildTerrain, SUN_DIR, SUN_AZ, SUN_EL } from './terrain.mjs';
-import { placeForest, forestDensity, distToRuns } from './forest.mjs';
+import { placeForest, forestDensity, distToRuns,
+         treeVariant, TREE_SEEDS } from './forest.mjs';
 import {
   PAL, firGeo, pineGeo, snagGeo, boulderGeo, outcropGeo, skierGeo, carGeo,
   snowcatGeo, lodgeGeo, hutGeo, fenceRun, wand, aNet, gatePanel, finishArch, bannerWall, carGeoLo,
@@ -143,6 +144,12 @@ const LIFT_TITLE = {
 
 export async function buildWorld(THREE, opts = {}) {
   const t0 = (globalThis.performance || Date).now();
+  // THE SHADER LOOK GOES IN BEFORE ANYTHING IS BUILT (specs/0005; the plumbing
+  // is at the bottom of lib/core.mjs, the L2 layer itself is in env.mjs).
+  // It patches THREE.ShaderChunk and THREE.ShaderLib, which three reads when it
+  // COMPILES a program, so this only has to beat the first render — but doing
+  // it here means no material in the world can be created outside it.
+  installLook(THREE);
   const scene = new THREE.Scene();
   const report = { stats: {}, runs: [], notes: [] };
   const colliders = [];
@@ -156,6 +163,10 @@ export async function buildWorld(THREE, opts = {}) {
 
   // ----------------------------------------------------------- atmosphere
   scene.background = new THREE.Color(0x9dc2e8);
+  // THE BANDED-FOG SWITCH AND FALLBACK. Under specs/0005 L2 the depth bands in
+  // env.mjs own the atmosphere and fogColor/fogNear/fogFar go inactive — but a
+  // scene still has to HAVE a fog for three to compile the fog chunks at all,
+  // and this exact line is the deploy build's D16.1 anchor. Leave it verbatim.
   // D16.1 — the first and least noticeable containment layer. Past the KT
   // massif everything is sky-coloured, so the far west reads as a real horizon
   // instead of somewhere to walk to. No wall, nothing to enforce.
@@ -776,15 +787,20 @@ export async function buildWorld(THREE, opts = {}) {
   // sample groundZ on their own lattice, so between vertices the drawn surface
   // sits a few cm below the analytic height and an exactly-placed trunk shows
   // daylight under it.
-  function instance(name, geoBuf, pts, mat, { castShadow = true, zScale = true, sink = 0 } = {}) {
+  // `idx` overrides the index the per-instance z-stretch is drawn from. It
+  // exists so splitting one InstancedMesh into several (T1's silhouettes, T8's
+  // shadow split) cannot change a single tree's height: the stretch stays keyed
+  // to the tree's position in the ORIGINAL array, not to its row in whichever
+  // sub-mesh it ended up in.
+  function instance(name, geoBuf, pts, mat, { castShadow = true, zScale = true, sink = 0, idx = null } = {}) {
     const g = toGeo(THREE, geoBuf);
     const im = new THREE.InstancedMesh(g, mat, Math.max(1, pts.length));
     im.name = name;
     im.castShadow = castShadow; im.receiveShadow = false;
     pts.forEach((p, i) => {
       _v.set(p[0], p[1], p[2] - sink); _e.set(0, 0, p[3], 'XYZ'); _q.setFromEuler(_e);
-      const k = p[4];
-      _s.set(k, k, zScale ? k * (0.9 + 0.25 * ((i * 37) % 7) / 7) : k);
+      const k = p[4], j = idx ? idx[i] : i;
+      _s.set(k, k, zScale ? k * (0.9 + 0.25 * ((j * 37) % 7) / 7) : k);
       _m4.compose(_v, _q, _s);
       im.setMatrixAt(i, _m4);
     });
@@ -792,14 +808,33 @@ export async function buildWorld(THREE, opts = {}) {
     scene.add(im);
     return im;
   }
+  // ---------------------------------------------- T1: THREE SILHOUETTES / LOD
+  // One geometry seed per class meant every big fir in the world was the same
+  // tree. `treeVariant()` (forest.mjs) buckets the finished placement arrays by
+  // a HASH OF THE POSITION — no rng draw, nothing moves — and each bucket gets
+  // its own seed's buffer. `firGeo`'s triangle count depends on `tiers` and
+  // `sides` only, so the world's triangle total is unchanged to the triangle;
+  // the cost is +2 InstancedMeshes per class and two more small buffers.
+  function instanceVariants(name, geoOfSeed, seeds, pts, mat, opts = {}) {
+    const B = seeds.map(() => ({ pts: [], idx: [] }));
+    pts.forEach((p, i) => {
+      const b = B[treeVariant(p[0], p[1], seeds.length)];
+      b.pts.push(p); b.idx.push(i);
+    });
+    return B.map((b, k) => instance(`${name}-${k}`, geoOfSeed(seeds[k]), b.pts, mat,
+      { ...opts, idx: b.idx }));
+  }
   // three LODs. Big firs line the corridors (that is where you look at them).
   // The merge's fourth reclaim, and the last one it needs: the MID fir loses a
   // skirt tier, 5 -> 4, for 5 triangles a tree across ~10,000 of them. These
   // are the general pod forest, not the corridor-lining band — `firs-big` is
   // untouched at 7 tiers, which is what the player actually skis past.
-  instance('firs-big', firGeo(3, { h: 31, tiers: 7, sides: 7, flock: 0.32 }), F.big, SOLID, { sink: 0.9 });
-  instance('firs-mid', firGeo(9, { h: 25, tiers: 4, sides: 5, flock: 0.28 }), F.mid, SOLID, { sink: 0.8 });
-  instance('firs-far', firGeo(21, { h: 22, tiers: 4, sides: 4, flock: 0.24, lite: true }), F.small, SOLID, { castShadow: false, sink: 1.2 });
+  instanceVariants('firs-big', (s) => firGeo(s, { h: 31, tiers: 7, sides: 7, flock: 0.32 }),
+    TREE_SEEDS.big, F.big, SOLID, { sink: 0.9 });
+  instanceVariants('firs-mid', (s) => firGeo(s, { h: 25, tiers: 4, sides: 5, flock: 0.28 }),
+    TREE_SEEDS.mid, F.mid, SOLID, { sink: 0.8 });
+  instanceVariants('firs-far', (s) => firGeo(s, { h: 22, tiers: 4, sides: 4, flock: 0.24, lite: true }),
+    TREE_SEEDS.far, F.small, SOLID, { castShadow: false, sink: 1.2 });
   instance('snags', snagGeo(5, { h: 17 }), F.snags, SOLID, { castShadow: false, sink: 0.6 });
   instance('boulders', boulderGeo(31, 1.1), F.boulders, SOLID, { castShadow: false, sink: 0.5 });
 
@@ -900,10 +935,16 @@ export async function buildWorld(THREE, opts = {}) {
   ktHero.name = 'kt-eagles-nest';
   ktHero.castShadow = true; ktHero.receiveShadow = true;
   scene.add(ktHero); colliders.push(ktHero);
-  const ktField = new THREE.Mesh(toGeo(THREE, KT.field), KTROCK);
-  ktField.name = 'kt-rock-field';
-  ktField.castShadow = false; ktField.receiveShadow = true;
-  scene.add(ktField);
+  // The raster-seeded scatter is gated off for deploy parity (kt-rocks.mjs
+  // RASTER_OUTCROPS), so this buffer is normally empty — and an empty
+  // BufferGeometry computes a NaN bounding sphere and warns on every frustum
+  // test. No triangles, no mesh; flip the switch back and it returns.
+  if (bufTris(KT.field)) {
+    const ktField = new THREE.Mesh(toGeo(THREE, KT.field), KTROCK);
+    ktField.name = 'kt-rock-field';
+    ktField.castShadow = false; ktField.receiveShadow = true;
+    scene.add(ktField);
+  }
   report.notes.push(`KT identity layer: ${KT.stats.corniceSamples} cornice crest samples, `
     + `${KT.stats.outcrops} outcrop clusters, statue at `
     + `${KT.statue.map((v) => v.toFixed(1)).join(', ')}`);
@@ -1460,10 +1501,9 @@ export async function buildWorld(THREE, opts = {}) {
                      : [POU_BAND.centre[0], POU_BAND.centre[1], gz(POU_BAND.centre[0], POU_BAND.centre[1])],
         sub: '2,140 m', tag: 'patrol disc on the lip',
         line: 'A 5 m step in bare rock, 105 m below the fork. The roll above it is convex, so the landing is hidden until you have committed.' },
-      { id: 'race-venue', name: 'FINISH ARENA', kind: 'venue', tier: 'minor',
+      { id: 'race-venue', name: 'OLYMPIC VILLAGE', kind: 'venue', tier: 'minor',
         pos: [-309.5, 384.7, gz(-309.5, 384.7)], sub: 'GS COURSE',
-        tag: 'Stifel Palisades Tahoe Cup',
-        line: 'Finish arch, A-net and a banner wall at the foot of the Face. Come through it fast and the crowd is yours.' },
+        tag: 'Stifel Palisades Tahoe Cup' },
       { id: 'base-area', name: 'THE VILLAGE', kind: 'venue', tier: 'major',
         pos: [-270.0, 515.0, gz(-270.0, 515.0)], sub: 'BASE AREA',
         tag: '1,890 m · lifts, lodges, lots',
@@ -1499,20 +1539,15 @@ export async function buildWorld(THREE, opts = {}) {
         pos: [A.mrTop[0], A.mrTop[1], gz(A.mrTop[0], A.mrTop[1])],
         sub: 'THE CRUISER', tag: '3,445 m · 546 m vertical · 9.0°',
         line: 'Top to bottom without a flat spot worth the name, and it finishes 20 m from the Funitel you rode up.' },
-      // ---- increment 3. Two of the three remaining marker slots; the cap is 20
-      // and this takes the world to 17. The park is what a visitor standing on
-      // the Gold Coast bench would ask about, and the hip is the thing the
-      // resort itself names.
-      { id: 'gold-coast-park', name: 'GOLD COAST PARK', kind: 'venue', tier: 'major',
+      // ---- increment 3, revised per Greg 2026-09-01: THE HIP marker removed
+      // (the feature itself stays built in park.mjs); the park sign is named
+      // plainly TERRAIN PARK.
+      { id: 'gold-coast-park', name: 'TERRAIN PARK', kind: 'venue', tier: 'major',
         pos: (() => { const [x, y] = parkToWorld(120, 6); return [x, y, parkSurfaceZ(x, y) ?? gz(x, y)]; })(),
-        sub: 'TERRAIN PARK', tag: 'three-pack · the hip · the rail garden',
+        sub: 'GOLD COAST', tag: 'three-pack · the hip · the rail garden',
         line: 'A three-pack of larger jumps, the famous Gold Coast Hip and a rail garden threaded through them, all under the six-pack.' },
-      { id: 'gold-coast-hip', name: 'THE HIP', kind: 'landmark', tier: 'mid',
-        pos: (() => { const [x, y] = parkToWorld(PARK_HIP.tc - 26, PARK_HIP.vc); return [x, y, parkSurfaceZ(x, y) ?? gz(x, y)]; })(),
-        sub: 'GOLD COAST HIP', tag: '30 ft × 25 ft × 50 ft (2025 build)',
-        line: 'Two days of cat work for one feature. It is a speed brake as much as a jump — it bleeds you off and points you at the rails.' },
     ].filter((m) => (m.pos[0] > -620 && m.pos[1] < 740)
-                 || ["kt22","eagles-nest","gs-bowl","olympic-lady","funitel-top","gold-coast","high-camp","mountain-run","gold-coast-park","gold-coast-hip"].indexOf(m.id) >= 0),
+                 || ["kt22","eagles-nest","gs-bowl","olympic-lady","funitel-top","gold-coast","high-camp","mountain-run","gold-coast-park"].indexOf(m.id) >= 0),
   };
 }
 

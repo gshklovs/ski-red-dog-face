@@ -277,3 +277,211 @@ export function tube(B, p0, p1, r, col, sides = 6, r1 = null) {
 export function plate(B, pts, col) {
   for (let i = 1; i < pts.length - 1; i++) tri(B, pts[0], pts[i], pts[i + 1], col);
 }
+
+// ==================================================== THE SHADER-LOOK PLUMBING
+//
+// specs/0005. Landed by L2 — atmosphere and light — and built so L1 (snow),
+// L3 (tracks) and L4 (rock) plug into it later without restructuring anything:
+// a layer is a DATA registration, not an edit to this file's shape.
+//
+// WHY IT LIVES IN core.mjs AND NOT IN A look.mjs OF ITS OWN. Two hard reasons,
+// both found by trying the other way first:
+//   * the exporter's manifest is an EXPLICIT allowlist of scene modules
+//     (tools/export-red-dog/manifest.json, D4) and it is not this layer's file
+//     to edit — a new module would simply be absent from the shipped build and
+//     404 on import. `lib/core.mjs` is already on the list.
+//   * terrain.mjs and env.mjs both need it, and env.mjs already imports
+//     terrain.mjs for SUN_DIR. A third module imported by terrain would close
+//     that cycle and put `SUN_DIR` in the temporal dead zone at env's own
+//     evaluation. core.mjs imports nothing, so it cannot.
+//
+// ------------------------------------------------------------------ WHY THIS
+// The world has ~14 materials spread over a dozen modules, three of which are
+// other agents' territory, and two of which already own an `onBeforeCompile`
+// (granite.mjs, kt-rocks.mjs). Reaching every one of them by hand is neither
+// possible nor revert-able. So the look is installed ONCE, at the THREE module
+// level:
+//
+//   1. `THREE.ShaderChunk` — the GLSL. three resolves `#include <name>` from
+//      this table at COMPILE time, so replacing a chunk before the first render
+//      reaches every material in the scene, including the two that patch their
+//      own shaders (they splice `<color_fragment>`, which nothing here touches).
+//   2. `THREE.ShaderLib[*].uniforms` — the uniform DECLARATIONS. Every built-in
+//      material clones its uniform map out of ShaderLib at program-build time
+//      (WebGLPrograms.getUniforms), so an entry added here is present on every
+//      material three compiles. This matters more than it looks: three uploads
+//      by walking the PROGRAM's active uniforms and indexing the material's
+//      map, so a uniform that is declared in GLSL but missing from the map is a
+//      hard crash, not a no-op.
+//   3. `Material.prototype.onBeforeCompile` — the safety net for a material
+//      three does NOT source from ShaderLib, i.e. a `ShaderMaterial` with
+//      `fog: true`. Nothing in the world or the bench is one today; this is so
+//      that adding one later cannot crash the page.
+//
+// ------------------------------------------------- WHY THE VALUES ARE TYPED ARRAYS
+// `cloneUniforms()` (three r180) deep-copies Colors and Vectors and slices JS
+// arrays — but a TYPED array falls through to plain assignment and is therefore
+// SHARED by every material's clone. So every tunable in this system lives in a
+// `Float32Array`, and one write to it reaches the whole world on the next
+// frame with no material walk, no recompile and no per-material bookkeeping.
+// That is what makes ground rule 6 cheap: a `timeOfDay` scrub or a golden-hour
+// preset is `LOOK.SUN_STEP_EDGE = x` in a loop, not a shader edit.
+//
+// Greg tunes by NAME: every dial is exposed on `LOOK` (and on `window.__look`)
+// as a named property, live, e.g.
+//
+//     __look.FOG_BAND_MIX[1] = 0.7
+//     __look.SUN_STEP_EDGE = 0.30
+//     __look.SHADOW_TINT = 0x8f7fd0
+
+// ------------------------------------------------------------- the registry
+const LAYERS = new Map();
+
+/**
+ * Register one look layer. Call BEFORE installLook().
+ *   id       — 'L2-atmosphere', 'L1-snow', ...
+ *   uniforms — { name: { value: Float32Array } }. Typed arrays only: anything
+ *              else is cloned per material and stops being live-tunable.
+ *   chunks   — { shaderChunkName: (src) => newSrc }. Applied in registration
+ *              order, so two layers can both extend the same chunk.
+ */
+export function registerLookLayer({ id, uniforms = {}, chunks = {} }) {
+  LAYERS.set(id, { id, uniforms, chunks });
+}
+
+/** The named-tunable surface. Layers hang their dials here (see `dial`). */
+export const LOOK = { layers: () => [...LAYERS.keys()] };
+
+// ------------------------------------------------------------- named dials
+/** a Float32Array preloaded with `init` */
+export const f32 = (init) => Float32Array.from(init);
+
+/** LOOK.NAME <-> arr[i], a live float. */
+export function dial(name, arr, i) {
+  Object.defineProperty(LOOK, name, {
+    get: () => arr[i], set: (v) => { arr[i] = +v; }, enumerable: true, configurable: true,
+  });
+}
+
+/**
+ * LOOK.NAME <-> arr[i..i+n-1], a live float vector (per-band dials).
+ * `derive` (optional) keeps a second slot `d` cells along in step with it —
+ * used for the reciprocal half-widths the shaders actually want (see below).
+ */
+export function dialVec(name, arr, i, n, stride = 1, derive = null, d = 0) {
+  const view = {};
+  for (let k = 0; k < n; k++) {
+    const at = i + k * stride, dat = d + k * stride;
+    Object.defineProperty(view, k, {
+      get: () => arr[at],
+      set: (v) => { arr[at] = +v; if (derive) arr[dat] = derive(+v); },
+      enumerable: true, configurable: true,
+    });
+    if (derive) arr[dat] = derive(arr[at]);
+  }
+  view.length = n;
+  Object.defineProperty(LOOK, name, { value: view, enumerable: true, configurable: true });
+}
+
+/**
+ * A softness dial stored as the RECIPROCAL HALF-WIDTH the shader wants.
+ *
+ * Every edge in this system is `clamp((x - edge) * inv + 0.5, 0, 1)` rather
+ * than `smoothstep(edge - soft, edge + soft, x)`. That is a measured choice,
+ * not a stylistic one: the four smoothsteps L2 adds to two of the hottest
+ * fragment paths in the world cost real milliseconds on the headless raster
+ * rig, and a smoothstep either side of a 0.05-wide step edge or a 55 m fog
+ * boundary is invisible — the whole point of the layer is that these edges are
+ * HARD. So the shader multiplies by a precomputed reciprocal and the human
+ * still reads and writes a half-width in the units of the thing being stepped.
+ */
+export const halfInv = (v) => 0.5 / Math.max(Math.abs(+v), 1e-4);
+export function dialSoft(name, arr, i, initial) {
+  arr[i] = halfInv(initial);
+  Object.defineProperty(LOOK, name, {
+    get: () => 0.5 / arr[i], set: (v) => { arr[i] = halfInv(v); },
+    enumerable: true, configurable: true,
+  });
+}
+
+/**
+ * LOOK.NAME <-> an sRGB hex written into arr[off..off+2] as LINEAR rgb — the
+ * space every colour in this world is authored in (lib/core.mjs `lin`).
+ * `norm: 'luma'` divides the triple by its own Rec.709 luma, which turns the
+ * colour into a HUE-ONLY multiplier: SUN_RAMP_* and SHADOW_TINT change the
+ * cast of the light without changing how bright it is, so a warmth dial and an
+ * exposure dial never fight.
+ */
+export function dialColor(name, arr, off, hex, { norm = null } = {}) {
+  const write = (h) => {
+    let c = lin(h);
+    if (norm === 'luma') {
+      const y = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] || 1;
+      c = [c[0] / y, c[1] / y, c[2] / y];
+    }
+    arr[off] = c[0]; arr[off + 1] = c[1]; arr[off + 2] = c[2];
+    hexes.set(name, h);
+  };
+  write(hex);
+  Object.defineProperty(LOOK, name, {
+    get: () => hexes.get(name), set: write, enumerable: true, configurable: true,
+  });
+}
+const hexes = new Map();
+
+/** the same, for an N-entry colour array: LOOK.NAME[i] = 0xrrggbb */
+export function dialColorArray(name, arr, hexList, { stride = 3 } = {}) {
+  const view = { length: hexList.length };
+  hexList.forEach((h0, k) => {
+    const key = `${name}[${k}]`;
+    dialColor(key, arr, k * stride, h0);
+    const d = Object.getOwnPropertyDescriptor(LOOK, key);
+    delete LOOK[key];
+    Object.defineProperty(view, k, { ...d, enumerable: true });
+  });
+  Object.defineProperty(LOOK, name, { value: view, enumerable: true, configurable: true });
+}
+
+// ------------------------------------------------------------- the install
+/**
+ * Patch THREE for every registered layer. Must run before the first render;
+ * world.mjs calls it at the top of buildWorld(), before any material exists.
+ * Idempotent — the harness and the standalone page both boot the same modules.
+ */
+export function installLook(THREE) {
+  // The `three` namespace is a frozen Module object, so the "already done" flag
+  // hangs off ShaderChunk — a plain table, and the thing being patched.
+  if (INSTALLED.has(THREE.ShaderChunk)) return LOOK;
+  INSTALLED.add(THREE.ShaderChunk);
+
+  const uniforms = {};
+  for (const L of LAYERS.values()) Object.assign(uniforms, L.uniforms);
+
+  // (2) every built-in material type carries the declarations
+  for (const k of Object.keys(THREE.ShaderLib)) Object.assign(THREE.ShaderLib[k].uniforms, uniforms);
+
+  // (3) the safety net. A material with its OWN onBeforeCompile (granite,
+  // kt-rocks) shadows this — both are MeshLambertMaterial and so are already
+  // covered by (2), and both pin their own customProgramCacheKey.
+  const inherited = THREE.Material.prototype.onBeforeCompile;
+  THREE.Material.prototype.onBeforeCompile = function poiLookUniforms(shader, renderer) {
+    if (shader && shader.uniforms) {
+      for (const n in uniforms) if (!(n in shader.uniforms)) shader.uniforms[n] = uniforms[n];
+    }
+    return inherited.call(this, shader, renderer);
+  };
+
+  // (1) the GLSL
+  for (const L of LAYERS.values()) {
+    for (const [name, patch] of Object.entries(L.chunks)) {
+      const src = THREE.ShaderChunk[name];
+      if (src === undefined) throw new Error(`look: ${L.id} patches unknown chunk <${name}>`);
+      THREE.ShaderChunk[name] = patch(src);
+    }
+  }
+
+  // the tuning handle, alongside index.html's own __world / __cams / __stats
+  try { globalThis.__look = LOOK; } catch { /* no global to hang it on */ }
+  return LOOK;
+}
+const INSTALLED = new WeakSet();

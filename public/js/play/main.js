@@ -7,6 +7,7 @@ import { createController, TUNING } from './controller.js';
 import {
   skiTuningFor, resolveSkiId, rememberSkiId,
   makeSkiRig, styleSkiRig, getSkiModel, skiState, rollSkiRigs, SKI_MODELS,
+  takeSkiLaunch, skiPopPreview,
 } from './ski.js';
 import * as tricks from './tricks.js';
 import { createInventory } from './inventory.js';
@@ -28,7 +29,10 @@ import {
   makeSnowmobileRig, makeSnowmobileFP, styleSnowmobileRig, poseSnowmobileRig,
   getSnowmobileModel, SNOWMOBILE_MODELS,
 } from './snowmobile.js';
-import { pickSpawn } from './spawn.js';
+import {
+  pickSpawn, waypointIndex,
+  namedSpawn as namedSpawnFor, ALIASES as SPAWN_ALIASES,
+} from './spawn.js';
 import { createHud } from './hud.js';
 import { createLifts } from './lift.js';
 import { createBoost } from './boost.js';
@@ -203,7 +207,18 @@ if (collision.stats.triangles === 0) {
 
 // ------------------------------------------------------------------ spawn
 const layout = (cfg.info && cfg.info.layout && cfg.info.layout.data) || null;
-const spawn = pickSpawn(THREE, { collision, world, layout, qs: cfg.qs, unitScale });
+// `upAxis` and `pathname` are what make NAMED spawns work: the first lets
+// spawn.js tip the world's raw contract markers into the three frame the same
+// way this file tips spawnHint/lifts/runs, and the second is the shareable
+// pretty URL — /kt22 — read as a waypoint slug. `?spawn=` still wins over the
+// path, and an unknown slug is not an error: it falls through to the default.
+const spawn = pickSpawn(THREE, {
+  collision, world, layout, qs: cfg.qs, unitScale, upAxis,
+  pathname: (typeof location !== 'undefined' ? location.pathname : null),
+});
+// TRUE when the URL asked for a specific waypoint and the world had one. The
+// guided run reads it below.
+const namedSpawn = !!(spawn && spawn.slug);
 
 // lengths and speeds scale with the scene's unit; accel/friction are rates (1/s)
 const tuning = {};
@@ -1122,6 +1137,10 @@ window.__playBoost = boost;      // fx.js reads burning() for the speed lines
 const dev = createDev({
   THREE, camera, canvas: world.renderer.domElement, cfg, hud, unitScale,
   renderNow: () => world.renderer.render(world.scene, camera),
+  // specs/0004 — the annotator raycasts its strokes back into the world with
+  // the player's OWN grid, and reads hits back out in the frame the scene was
+  // authored in. Both are stripped with dev.js in the public build.
+  collision, upAxis,
 });
 function applyCamera() {
   if (dev.active()) dev.applyTo(camera); else camRig.applyTo(camera);
@@ -1160,34 +1179,63 @@ tricks.init({ ctrl, hud, poi: cfg.poi, run: cfg.run, skiId: () => skiId, trail: 
 // The module is DYNAMICALLY imported, so a default boot does not fetch it, does
 // not run it and cannot be changed by it. That is the whole isolation story —
 // there is no second code path through the player.
-const guideFlag = (() => {
-  const q = cfg.qs && cfg.qs.get('guide');
-  if (q != null) return q !== '0' && q !== 'off' && q !== 'false';
-  return cfg.guide === true;
+const guideQ = (cfg.qs && cfg.qs.get('guide')) ?? null;
+// `introFlag` is the PRODUCT flag: the intro card (which carries the OpenStreetMap
+// / ODbL credit) and the idle nudge. `guideFlag` is the TUTORIAL, and it is the
+// only one a named spawn switches off.
+const introFlag = guideQ != null ? (guideQ !== '0' && guideQ !== 'off' && guideQ !== 'false')
+                                 : cfg.guide === true;
+// ---- ...AND THE NAMED-SPAWN EXCEPTION. The guided run is built around ONE
+// place: it stands you at the Red Dog top, walks you down Champs Elysees and
+// puts the slalom on the pitch below it. Boot it from /kt22 — 1.2 km west and
+// 170 m higher — and every one of its anchors is somewhere you are not, which
+// is a broken tutorial rather than a relocated one. So a shareable waypoint URL
+// opens the FREE-SKI open world instead: initRace() below, the race circles
+// still on the snow, nothing anchored to a hill you did not land on.
+//
+// `?guide=1` still wins — an explicit flag is an explicit flag, and it is the
+// escape hatch for anyone who wants to see what the tutorial does from
+// somewhere else. The intro card is NOT affected: it is the credit screen as
+// much as it is the tutorial's first beat, and it shows on every visit.
+const guideFlag = introFlag && !(namedSpawn && guideQ == null);
+//
+// ...WITH ONE EXCEPTION, and it is the reason this import is no longer inside
+// the `if`. The open-world race courses (guide.js's RACE_COURSES — an orange
+// start circle on the snow, F to run the gates) have to exist when the tutorial
+// is OFF: on the bench flagship, and in the shipped build the moment the player
+// finishes or skips the tutorial. Those courses are the guided run's own
+// geometry — the resampled run polyline, the gate rhythm, the dye corridor, the
+// scoring machine — so the alternative to importing this module was a second
+// copy of all of it in a race module of its own, and two copies of the course
+// maths is how "the slalom" quietly becomes two different hills. So guide.js is
+// fetched every boot and offers two entry points: init() builds the tutorial,
+// initRace() builds nothing but the start circles until somebody skis into one.
+const guideMod = await (async () => {
+  try { return await import('./guide.js'); } catch (e) { console.warn('[play] guide module failed to load', e); return null; }
 })();
-let guideMod = null, guideApi = null;
-if (guideFlag) {
+const guideCtx = () => ({
+  THREE, scene: world.scene, camera, ctrl, hud, collision,
+  groundAt: (x, z) => collision.groundAt(x, z, collision.bounds.maxY + 5 * unitScale),
+  enter: () => enter(),
+  unitScale, upAxis, poi: cfg.poi, run: cfg.run,
+  sceneBase: cfg.sceneBase || null,
+  runs: world.runs || [],
+  lifts: lifts.list(),
+  liftRadius: lifts.radius(),
+  rides: () => lifts.rides(),
+  trickState: () => tricks.state(),
+  skiState: () => skiState(),
+  skiId: () => skiId,
+  debug: !!(cfg.qs && cfg.qs.get('guide') === 'debug'),
+});
+let guideApi = null;
+if (guideMod) {
   try {
-    guideMod = await import('./guide.js');
-    guideApi = await guideMod.init({
-      THREE, scene: world.scene, camera, ctrl, hud, collision,
-      groundAt: (x, z) => collision.groundAt(x, z, collision.bounds.maxY + 5 * unitScale),
-      enter: () => enter(),
-      unitScale, upAxis, poi: cfg.poi, run: cfg.run,
-      sceneBase: cfg.sceneBase || null,
-      runs: world.runs || [],
-      lifts: lifts.list(),
-      liftRadius: lifts.radius(),
-      rides: () => lifts.rides(),
-      trickState: () => tricks.state(),
-      skiState: () => skiState(),
-      skiId: () => skiId,
-      debug: !!(cfg.qs && cfg.qs.get('guide') === 'debug'),
-    });
+    guideApi = guideFlag ? await guideMod.init(guideCtx()) : await guideMod.initRace(guideCtx());
     window.__guide = guideApi;
   } catch (e) {
     console.warn('[play] guide failed to start', e);
-    guideMod = null;
+    guideApi = null;
   }
 }
 
@@ -1513,7 +1561,18 @@ function playerSystems(dt, live) {
       if (live && tricks.pumpLink(ss.last.eta)) window.__playAudio.trick();
     }
     if (hud.pump) hud.pump({ on: true, q: ss.pumpQ, max: ctrl.gearTuning('skis').pumpMax || 4, eta: ss.pumpEta, releasing: ss.releasing });
-  } else if (hud.pump) hud.pump({ on: false });
+    // ---- the lip/compression meter. Lab only — hud.lipMeter is a no-op unless
+    // DEBUG_HUD built the panel — and the launch record is a ONE-SHOT drain, so
+    // it has to be read every frame here whether or not anything is listening.
+    if (hud.lipMeter) {
+      const skiS = ctrl.gearTuning('skis');
+      hud.lipMeter({ on: true, s: ss, T: skiS,
+                     grounded: ctrl.grounded, launch: takeSkiLaunch(), dt,
+                     // the forward look, straight off the physics' own payout
+                     // function — jumpVel is the controller's, not ski.js's
+                     pop: skiPopPreview(skiS, ctrl.T.jump * (skiS.popMul || 1)) });
+    }
+  } else if (hud.pump) { hud.pump({ on: false }); if (hud.lipMeter) hud.lipMeter({ on: false }); }
   // the guided run, when the flag brought it in. It reads the same dt the
   // trick machine does, so the deterministic stepper drives it too.
   if (guideMod) guideMod.update(dt, live);
@@ -1642,6 +1701,10 @@ window.__player = {
   // use it to switch a feature off and re-measure; applySki() overwrites it again.
   setSkiTuning: (patch) => { Object.assign(ctrl.gearTuning('skis'), patch || {}); return { ...ctrl.gearTuning('skis') }; },
   skiState: () => skiState(),
+  // the physics' own answer to "what would SPACE pay right now" — the same
+  // popPay() the real jump spends, so a test can assert prediction == payout
+  popPreview: () => skiPopPreview(ctrl.gearTuning('skis'),
+    ctrl.T.jump * (ctrl.gearTuning('skis').popMul || 1)),
   // ---- spec 0002 test hooks. `pumpState` is the bank and the last transition's
   // whole breakdown; `trickState`/`comboState` are the air and the combo.
   pumpState: () => {
@@ -1762,6 +1825,19 @@ window.__player = {
   stats: () => (world.report && world.report.stats) || null,
   sceneRoot: () => world.scene,
   markers: () => world.markers || [],
+  // ---- shareable waypoint URLs. `waypoints()` is the WHOLE slug set as the
+  // world declares it right now — markers, then runs, then lift tops, plus the
+  // alias keys — so "does every waypoint autowire?" is a loop over live data
+  // rather than a list somebody has to remember to update. `resolveSpawn(slug)`
+  // answers the same question one slug at a time, doing the real ring search,
+  // so a gate can prove all eighteen resolve without booting eighteen pages.
+  waypoints: () => [...waypointIndex(world, upAxis).entries()]
+    .map(([slug, w]) => ({ slug, id: w.id, kind: w.kind, name: w.name })),
+  spawnAliases: () => ({ ...SPAWN_ALIASES }),
+  resolveSpawn: (slug) => {
+    const s = namedSpawnFor(THREE, { slug, collision, world, unitScale, upAxis });
+    return s ? { ...s, position: s.position.toArray() } : null;
+  },
   pixelRatio: () => (world.renderer ? world.renderer.getPixelRatio() : null),
   // ---- D27: the whole touch seam. touch.js writes the same mutable boolean
   // object the physics already reads by reference, and calls this look() — the
@@ -1891,8 +1967,12 @@ for (const [name, want] of [
   ['./speedo.js', true],
   ['./clean.js', true],
   ['./touch.js', touchMode],
-  ['./intro.js', guideFlag],
-  ['./idle.js', guideFlag],
+  // `introFlag`, not `guideFlag`: a named waypoint spawn turns the TUTORIAL off
+  // (it is anchored to the Red Dog top) but the intro card still shows, because
+  // it is also where the OpenStreetMap / ODbL credit lives and a shared /kt22
+  // link is exactly as public as the front door.
+  ['./intro.js', introFlag],
+  ['./idle.js', introFlag],
 ]) {
   if (!want) continue;
   try {

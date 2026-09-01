@@ -21,7 +21,8 @@
 //   * per-style tint: groomed corduroy banding, mogul shading by local slope,
 //     wind-scoured off-piste, plowed asphalt + snow berms at the base.
 
-import { lin, mixc, clamp, lerp, smooth, fbm, vnoise } from './lib/core.mjs';
+import { lin, mixc, clamp, lerp, smooth, fbm, vnoise,
+         registerLookLayer, LOOK, f32, dial, dialSoft, dialColor } from './lib/core.mjs';
 import { groundZ, demAt, masksAt, mogulAt, RASTER } from './ground.mjs';
 import { rockAt } from './rock.mjs';
 import { CORE, TIGHT, WIDE, WIDE_W, WORLD, PLAY, PLAY0, rasterOrigin, RIM, MASSIF, KT_DETAIL, SECTORS, FAR_R, sectorDist, sectorOwner, inSector, inCoreBox } from './layout.mjs';
@@ -52,7 +53,283 @@ const C = {
   timber:   lin(0x4a4034),
   canopy:   lin(0x1c2b21),   // far forest read from above
   canopyLo: lin(0x14201a),
+  // ---- specs/0005 L1, the aspect palette (see the L1 block below) ----
+  crust:    lin(0xc3d0e2),   // SNOW_CRUST_COLOR   blue-grey wind crust
+  powder:   lin(0xfffdf4),   // SNOW_POWDER_COLOR  bright warm-white powder
+  aspCool:  lin(0x9db2d8),   // SNOW_ASPECT_COOL_COLOR
+  aspWarm:  lin(0xfff2dc),   // SNOW_ASPECT_WARM_COLOR
 };
+
+// ============================================================== L1 — SNOW
+// specs/0005. Three things, decided against the snow lookbook:
+//
+//   ASPECT TINTING — steep faces go blue-grey wind crust, low-slope sheltered
+//   gullies go bright warm-white powder, faces turned away from the sun bearing
+//   go cool and faces turned into it go warm. Ramps on dot(n, up) and on the
+//   SUN-RELATIVE ASPECT, both of which this file already has in hand at every
+//   vertex. No noise texture, per the spec.
+//
+//   CORDUROY — groom lines that actually run ALONG the piste and actually
+//   catch the light: the micro-ridge is tilted across the corridor and RE-LIT
+//   against SUN_DIR, so a run that crosses the sun bearing gets strong lines
+//   and a run pointing into it gets almost none. Masked to `m.groom` MINUS
+//   `m.bump` — the shipped corridor rasters and nothing new — which is also the
+//   fix for the fact that ground.mjs's `moguls` style raises MG, so the old
+//   5.2 m band was painting corduroy down mogul fields.
+//
+//   SPARKLE — the one thing that cannot be baked, because it is by definition
+//   view-dependent. It is a fragment-shader layer, registered through
+//   lib/core.mjs's look plumbing, and every one of its dials is LIVE. It ships
+//   ON at SNOW_SPARKLE_GAIN = 8 — certified +0.13 ms on the real GPU; see the
+//   sparkle block below.
+//
+// ---------------------------------------------- WHY TWO OF THE THREE ARE BAKED
+// Not laziness, and not "the vertex path was already there": it is the FRAME
+// BUDGET (ground rule 4, +1.5 ms). L2 measured what a fragment path costs on
+// the headless SwiftShader rig — about 25 ALU ops a fragment bought +4.4 ms at
+// the village pan — so a per-pixel aspect ramp plus a per-pixel corduroy would
+// have spent the whole layer's budget before sparkle got a single op. Aspect
+// and slope are terrain-scale quantities that a 1.13-38 m vertex lattice
+// resolves perfectly well, and corduroy is masked to the 1.70 m piste mesh
+// where a 7.6 m period has four and a half samples to a cycle. Both are
+// therefore ALBEDO, written once at build time, and they cost zero milliseconds
+// — which is what leaves the whole of the layer's +1.5 ms for the glints, if
+// and when the glints are shown to fit inside it. They ship off; the two baked
+// terms are the layer Greg gets to play today, and they are free.
+//
+// The price is that they are BUILD-TIME dials: edit the constant, reload the
+// page. That is the same contract FOG_BAND_COUNT and FAR_HAZE_BAKE already
+// have. Every sparkle dial is live on `__look`.
+//
+// ------------------------------------------------- IS THIS DOUBLE-LIGHTING?
+// The file is emphatic that the vertex colour is ALBEDO and that re-doing the
+// real-time light in it is what flattens a 419 m face. Two of these terms are
+// pure albedo and cannot be: crust and powder are what the SNOW IS, and the
+// warm/cool aspect pair is a hue swing that is deliberately kept small enough
+// (0.30 / 0.18) to read as a tint rather than as shading.
+//
+// The corduroy's sun term is the one exception, and it is the same exception
+// the SHADE raster already is: it is a MICRO-scale light the real-time light
+// cannot resolve. A groomer ridge is a 7.6 m x 6 cm corrugation; there is no
+// geometry for it and there never will be, so the only place its lambert delta
+// can live is the albedo. Measured on the Red Dog Face lane (work/l1_probe.mjs)
+// it swings the vertex luminance by about +/-6 %, and it is masked to pistes.
+
+// -- aspect tinting (build-time)
+const SNOW_ASPECT_ON = 1;
+// tilt = 1 - dot(n, up). 0.14 is ~31 deg, 0.45 is ~57 deg.
+const SNOW_CRUST_EDGE = 0.14;        // tilt at which wind crust starts
+const SNOW_CRUST_FULL = 0.45;        // tilt at which it is fully crusted
+const SNOW_CRUST_GAIN = 0.52;        // how far the colour walks to C.crust
+// powder wants BOTH a low slope and shelter: an open low-angle bench is wind
+// board, a low-angle GULLY is where the blower collects. SKY is the baked
+// sky-occlusion term (1 = open dome, lower = walled in).
+const SNOW_POWDER_TILT = 0.045;      // tilt below which the slope counts as low
+const SNOW_POWDER_TILT_OFF = 0.17;   // tilt at which the powder read is gone
+const SNOW_POWDER_SKY = 0.86;        // SKY below which shelter starts counting
+const SNOW_POWDER_SKY_FULL = 0.60;   // SKY at which shelter is full
+const SNOW_POWDER_GAIN = 0.46;
+// sun-relative aspect: the HORIZONTAL alignment of the face with the sun
+// bearing (az 215). +1 looks straight into it, -1 straight away from it.
+const SNOW_ASPECT_EDGE = 0.06;       // |aspect| below which nothing happens
+const SNOW_ASPECT_FULL = 0.78;       // |aspect| at which the tint is full
+const SNOW_ASPECT_TILT_EDGE = 0.02;  // dead-flat ground has no aspect at all
+const SNOW_ASPECT_TILT_FULL = 0.26;
+const SNOW_ASPECT_COOL_GAIN = 0.30;  // shadow aspects -> C.aspCool
+const SNOW_ASPECT_WARM_GAIN = 0.18;  // sun aspects    -> C.aspWarm
+
+// -- corduroy (build-time)
+const CORD_ON = 1;
+// The period has to clear the Nyquist limit of the mesh it is written on. The
+// piste mesh is 1.70 m and the bump mesh 1.13 m, so 7.6 m is 4.5 samples to a
+// cycle and reads as lines; the 5.2 m the base run used is 3.1 and reads as
+// beat noise. CORD_RES_* then holds the whole term to those two meshes.
+const CORD_PERIOD_M = 7.6;
+const CORD_AMP_M = 0.075;            // groomer-ridge amplitude, metres
+const CORD_SUN_GAIN = 2.4;           // how much of the micro-lambert delta lands
+const CORD_TONE_GAIN = 0.034;        // flat ripple, the part that survives when
+                                     // the run points straight into the sun
+const CORD_MASK_EDGE = 0.06;         // m.groom ramp
+const CORD_MASK_FULL = 0.55;
+const CORD_BUMP_KILL = 1.0;          // m.bump erases it — moguls raise MG too
+const CORD_GROOM_MIX = 0.42;         // the base run's walk toward C.groom, kept
+const CORD_RES_FULL = 1.8;           // grid step at/below which corduroy is full
+const CORD_RES_OFF = 3.4;            // and above which it is gone
+
+// -- sparkle (LIVE, on __look)
+//
+// SHIPS ON at SNOW_SPARKLE_GAIN = 8. Everything below is registered, compiled
+// and live — `__look.SNOW_SPARKLE_GAIN = 0` turns it off at runtime with no
+// reload, and off is bit-exact: gate 0 in the GLSL makes GAIN 0 cost one
+// coherent uniform compare per fragment rather than the whole block times zero.
+//
+// CERTIFIED 2026-09-01 by `harness/shader-perf.mjs --headed` on the real GPU
+// (renders/look-perf/RESULTS.md): GAIN 8 costs +0.13 ms at village-pan and
+// +0.10 ms at kt-summit-pan, GPU timer, 95 % CI clear of zero, load-immune —
+// 7-12x under the spec's +1.5 ms cap. The earlier +6.4-7.3 ms headless
+// SwiftShader reading was inside that rig's own null-control spread and is
+// void. renders/look-l1/sparkle-on/ is what the glint looks like at GAIN 8.
+//
+// SNOW_SPARKLE_ON = 0 skips the registration entirely. It exists so the
+// registered-but-neutral state can be proved a BIT-EXACT no-op against a build
+// where this layer's GLSL and uniforms were never installed at all (see
+// work/l1_neutral.mjs) — which is the contract the perf tool needs in order to
+// A/B a layer by writing its gain rather than by rebuilding the page.
+const SNOW_SPARKLE_ON = 1;
+// x GAIN, y DENSITY (glint cells per metre), z NH_EDGE, w SPREAD
+// GAIN 0 = OFF, and off is bit-exact: gate 0 never reaches the additive term.
+const uSparkle = f32([8.0, 6.0, 0.90, 0.09]);
+// x 0.5/SHARP, y SNOW_EDGE (sum of linear rgb), z BLOOM, w 1/POINT^2
+const uSparkle2 = f32([0, 1.30, 0.62, 0]);
+// xyz COLOR (linear), w unused
+const uSparkleCol = f32([0, 0, 0, 0]);
+// x NEAR (m), y 1/(FAR-NEAR), z FAR, w unused — the distance window. Beyond it
+// a glint cell is smaller than a pixel and sparkle is just white noise, so it
+// is faded out; this is also the cheapest early-out in the block.
+const uSparkleFade = f32([70, 0, 320, 0]);
+
+dial('SNOW_SPARKLE_GAIN', uSparkle, 0);
+dial('SNOW_SPARKLE_DENSITY', uSparkle, 1);
+dial('SNOW_SPARKLE_NH_EDGE', uSparkle, 2);
+dial('SNOW_SPARKLE_SPREAD', uSparkle, 3);
+dialSoft('SNOW_SPARKLE_SHARP', uSparkle2, 0, 0.0075);
+dial('SNOW_SPARKLE_SNOW_EDGE', uSparkle2, 1);
+dial('SNOW_SPARKLE_BLOOM', uSparkle2, 2);
+dialColor('SNOW_SPARKLE_COLOR', uSparkleCol, 0, 0xfff6e4);
+// the glint's radius as a FRACTION OF A CELL, stored as the reciprocal square
+// the shader wants
+Object.defineProperty(LOOK, 'SNOW_SPARKLE_POINT', {
+  get: () => 1 / Math.sqrt(uSparkle2[3]),
+  set: (v) => { uSparkle2[3] = 1 / Math.max(1e-4, +v * +v); },
+  enumerable: true, configurable: true,
+});
+LOOK.SNOW_SPARKLE_POINT = 0.40;
+// NEAR and FAR are written in metres and keep the reciprocal span the shader
+// wants (uSparkleFade.y) in step, the same trick lib/core.mjs's `dialSoft` uses
+// for every soft edge in this system — the fragment path never divides.
+const syncFade = () => { uSparkleFade[1] = 1 / Math.max(1, uSparkleFade[2] - uSparkleFade[0]); };
+for (const [name, i] of [['SNOW_SPARKLE_NEAR', 0], ['SNOW_SPARKLE_FAR', 2]]) {
+  Object.defineProperty(LOOK, name, {
+    get: () => uSparkleFade[i], set: (v) => { uSparkleFade[i] = +v; syncFade(); },
+    enumerable: true, configurable: true,
+  });
+}
+syncFade();
+
+if (SNOW_SPARKLE_ON) {
+  registerLookLayer({
+    id: 'L1-snow',
+    uniforms: {
+      uSparkle: { value: uSparkle },
+      uSparkle2: { value: uSparkle2 },
+      uSparkleCol: { value: uSparkleCol },
+      uSparkleFade: { value: uSparkleFade },
+    },
+    chunks: {
+      // THE DECLARATIONS GO IN <common>, not in a lighting chunk. <common> is
+      // the one include every shader three compiles carries — vertex and
+      // fragment, lit and unlit — so the four uniforms are in scope wherever
+      // the sparkle block lands, and stay legal if a material type that is not
+      // MeshLambert is ever added. (L2 could hang its own off
+      // <lights_lambert_pars_fragment> because that chunk is where its GLSL
+      // lives; this layer's GLSL is in <opaque_fragment>, which basic materials
+      // include too.) Unused uniforms are simply inactive and never uploaded.
+      common: (src) => src + `
+uniform vec4 uSparkle;       // x SNOW_SPARKLE_GAIN  y DENSITY  z NH_EDGE  w SPREAD
+uniform vec4 uSparkle2;      // x 0.5/SHARP  y SNOW_EDGE  z BLOOM
+uniform vec4 uSparkleCol;    // rgb SNOW_SPARKLE_COLOR
+uniform vec4 uSparkleFade;   // x NEAR  y 1/(FAR-NEAR)  z FAR`,
+
+      // ------------------------------------------------------------ SPARKLE
+      // Sparse sharp view-dependent glints on snow. It rides <opaque_fragment>,
+      // which is the one line every lit material in three has in common
+      // (`gl_FragColor = vec4( outgoingLight, ... )`) and which nothing else in
+      // this world patches — granite.mjs and kt-rocks.mjs splice
+      // <color_fragment>, L2 owns <fog_*> and <lights_lambert_pars_fragment>.
+      // Landing HERE and not later means a glint is still fogged by L2's bands
+      // and still colour-managed, which is what keeps a distant one from
+      // punching through the haze as a hard white dot.
+      //
+      // EVERYTHING IS IN VIEW SPACE and costs nothing to obtain:
+      // `geometryPosition`, `geometryNormal` and `geometryViewDir` are already
+      // in scope from <lights_fragment_begin>, and `directionalLights[0]` is
+      // the sun in view space. The ONLY world-space quantity is the hash cell,
+      // and it is reconstructed inside the innermost gate.
+      //
+      // THE FOUR GATES, cheapest first — this is the whole frame budget:
+      //   0. GAIN. A uniform branch, coherent across every draw, one compare.
+      //      SNOW_SPARKLE_GAIN = 0 costs nothing, which is what makes the
+      //      shipped default-off state actually free — and, because it short-
+      //      circuits before the additive term, makes it a BIT-EXACT no-op
+      //      against a build without this layer (work/l1_neutral.mjs proves it
+      //      by frame hash). That is the property harness/shader-perf.mjs needs:
+      //      it A/Bs a layer by writing its gain, not by rebuilding the page.
+      //   1. DEPTH. Past SNOW_SPARKLE_FAR a glint cell is sub-pixel and
+      //      sparkle degenerates into white noise, so it is faded out anyway.
+      //      One compare, and on a village pan it rejects most of the screen.
+      //   2. ALBEDO. Snow is 1.3-3.0 in summed linear rgb, rock 0.4, canopy
+      //      0.05. Four ops, and it rejects every tree, every rock face and
+      //      every dark prop. It also self-attenuates in the baked cast shadow,
+      //      because a shadowed vertex is a DARKER vertex here.
+      //   3. THE HALF-VECTOR BAND. A glint is a micro-facet whose normal
+      //      happens to bisect the sun and the eye. Every cell is given its own
+      //      facet tilt by the hash, so a fragment can only glint if dot(N, H)
+      //      is within SPREAD of the base edge — a thin band that sweeps across
+      //      a slope as you ride, which is exactly the twinkle.
+      //
+      // SPARSITY IS NOT A SECOND HASH: inside the band, only the cells whose
+      // own tilt lands within SNOW_SPARKLE_SHARP of this fragment's dot(N, H)
+      // light up, which is SHARP/SPREAD of them — 7 % at the defaults. That is
+      // one hash, not two, and it makes DENSITY and SHARP independent dials.
+      opaque_fragment: (src) => src + `
+#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )
+	// GATE 0 — THE GAIN ITSELF. This is a UNIFORM branch: it takes the same
+	// side for every fragment of every draw, so it is perfectly coherent and
+	// costs one compare, and it is the reason this layer can ship default-OFF
+	// for FREE. Without it, "SNOW_SPARKLE_GAIN = 0" would still pay the full
+	// per-fragment price of gates 1-3 and multiply the result by zero, and the
+	// shipped-off state would cost real milliseconds for nothing on screen.
+	if ( uSparkle.x > 0.0 ) {
+		float poiFade = ( uSparkleFade.z + geometryPosition.z ) * uSparkleFade.y;
+		if ( poiFade > 0.0 ) {
+			float poiSnow = ( diffuseColor.r + diffuseColor.g + diffuseColor.b ) - uSparkle2.y;
+			if ( poiSnow > 0.0 ) {
+				vec3 poiH = normalize( directionalLights[ 0 ].direction + geometryViewDir );
+				float poiNH = dot( geometryNormal, poiH ) - uSparkle.z;
+				if ( abs( poiNH ) < uSparkle.w ) {
+					vec3 poiW = ( cameraPosition + ( vec4( geometryPosition, 0.0 ) * viewMatrix ).xyz )
+						* uSparkle.y;
+					uvec3 poiQ = uvec3( ivec3( floor( poiW ) + 1048576.0 ) );
+					uint poiN = poiQ.x * 1597334677u ^ poiQ.y * 3812015801u ^ poiQ.z * 2654435761u;
+					poiN ^= poiN >> 15u; poiN *= 2246822519u; poiN ^= poiN >> 13u;
+					float poiHash = float( poiN & 0xffffffu ) * ( 1.0 / 16777216.0 );
+					float poiG = 1.0 - abs( poiNH - ( poiHash - 0.5 ) * 2.0 * uSparkle.w ) * uSparkle2.x;
+					if ( poiG > 0.0 ) {
+						// A GLINT IS A POINT, NOT A CELL. Without this the whole
+						// hash cell lights up and near sparkle reads as square
+						// confetti. The same hash word places a dot inside the
+						// cell (kept off the walls, so a dot is never cut in
+						// half by the cell boundary) and the fragment's distance
+						// to it shapes the glint. Three more byte fields out of
+						// a word already computed — no second hash.
+						vec3 poiD = fract( poiW ) - ( vec3( uvec3( poiN >> 6u, poiN >> 14u,
+							poiN >> 22u ) & 255u ) * ( 0.5 / 255.0 ) + 0.25 );
+						float poiR = 1.0 - dot( poiD, poiD ) * uSparkle2.w;
+						if ( poiR > 0.0 ) {
+							float poiBloom = 1.0 - uSparkle2.z + uSparkle2.z
+								* max( 0.0, dot( geometryViewDir, directionalLights[ 0 ].direction ) );
+							gl_FragColor.rgb += ( poiG * poiG * poiR * uSparkle.x * poiBloom
+								* min( poiSnow, 1.0 ) * min( poiFade, 1.0 ) ) * uSparkleCol.rgb;
+						}
+					}
+				}
+			}
+		}
+	}
+#endif`,
+    },
+  });
+}
 
 // ------------------------------------------------------- baked shade raster
 // 5 m cells over the whole dem-tight frame. 14-step march toward the sun.
@@ -111,6 +388,12 @@ function shBil(A, x, y) {
   return lerp(lerp(A[k], A[k + 1], tx), lerp(A[k + SH_NX], A[k + SH_NX + 1], tx), ty);
 }
 
+// DEPLOY PARITY — see the block in colorAt() that reads this. The shipped build
+// stubs SECTOR_ROCKS to [], so rockAt() is 0 everywhere in the deploy and the
+// aerial-measured rock tint never fires there. Greg prefers that read, so the
+// lab is pinned to it. Flip to true to get the measured tint back.
+const RASTER_ROCK_TINT = false;
+
 // ------------------------------------------------------------ ground colour
 // `res` is the grid step the caller is sampling on. The wind-scour tint runs on
 // an 11 m noise whose top octave is ~5 m; sampled on a 5 m lattice that aliases
@@ -136,6 +419,39 @@ export function colorAt(x, y, z, nx, ny, nz, res = 1.7) {
   else if (light > 0.62) c = mixc(C.snowLo, C.snowMid, smooth(0.62, 0.86, light));
   else c = mixc(C.snowDeep, C.snowLo, smooth(0.34, 0.62, light));
 
+  // ---------------------------------------------- specs/0005 L1: ASPECT TINT
+  // Three ramps, all on quantities this function already holds: the slope
+  // (`nz`), the shelter (`sky`) and the SUN-RELATIVE ASPECT — the horizontal
+  // alignment of the face with the sun bearing, which is the thing `lam` alone
+  // cannot say because a flat and a steep face can share a lambert term.
+  //
+  // `nat` keeps it off machine-made ground: a groomed piste has no wind crust
+  // and a plowed lot has no snow to crust. It is the same mask set the blocks
+  // below use, read one block earlier.
+  if (SNOW_ASPECT_ON) {
+    const tilt = 1 - nz;
+    const nat = (1 - m.groom * 0.85) * (1 - m.pave) * (1 - m.pack * 0.7) * (1 - m.cat * 0.7);
+    if (nat > 0.01) {
+      const crust = smooth(SNOW_CRUST_EDGE, SNOW_CRUST_FULL, tilt);
+      if (crust > 0.004) c = mixc(c, C.crust, crust * SNOW_CRUST_GAIN * nat);
+      const flat = 1 - smooth(SNOW_POWDER_TILT, SNOW_POWDER_TILT_OFF, tilt);
+      if (flat > 0.004) {
+        const shelter = 1 - smooth(SNOW_POWDER_SKY_FULL, SNOW_POWDER_SKY, sky);
+        if (shelter > 0.004) c = mixc(c, C.powder, flat * shelter * SNOW_POWDER_GAIN * nat);
+      }
+      const hl = Math.hypot(nx, ny);
+      if (hl > 1e-4) {
+        const asp = (nx * SUN_DIR[0] + ny * SUN_DIR[1]) / hl;   // +1 into the sun
+        const face = smooth(SNOW_ASPECT_TILT_EDGE, SNOW_ASPECT_TILT_FULL, tilt)
+                   * smooth(SNOW_ASPECT_EDGE, SNOW_ASPECT_FULL, Math.abs(asp)) * nat;
+        if (face > 0.004) {
+          c = asp < 0 ? mixc(c, C.aspCool, face * SNOW_ASPECT_COOL_GAIN)
+                      : mixc(c, C.aspWarm, face * SNOW_ASPECT_WARM_GAIN);
+        }
+      }
+    }
+  }
+
   const n1 = coarse ? 0.5 + 0.5 * fbm(x * 0.040, y * 0.040, 1, 2.2, 0.5, 13)
                     : 0.5 + 0.5 * fbm(x * 0.09, y * 0.09, 2, 2.2, 0.5, 13);
   const n2 = 0.5 + 0.5 * fbm(x * 0.013, y * 0.013, 3, 2.1, 0.5, 29);
@@ -144,12 +460,56 @@ export function colorAt(x, y, z, nx, ny, nz, res = 1.7) {
   const open = clamp(1 - m.groom - m.pack - m.pave - m.cat, 0, 1);
   if (open > 0.05) c = mixc(c, mixc(c, C.scour, 0.35), open * smooth(0.45, 0.9, n1) * 0.5);
 
-  // groomed: cleaner and brighter, with 5.2 m groomer-pass banding across the run
-  if (m.groom > 0.08) {
-    const band = 0.5 + 0.5 * Math.cos((m.v / 5.2) * Math.PI * 2);
-    let g = mixc(c, C.groom, 0.42);
-    g = [g[0] * (0.988 + 0.024 * band), g[1] * (0.988 + 0.024 * band), g[2] * (0.99 + 0.02 * band)];
-    c = mixc(c, g, smooth(0.05, 0.55, m.groom));
+  // ------------------------------------------------ specs/0005 L1: CORDUROY
+  // groomed: cleaner and brighter, plus directional groom-line shading.
+  //
+  // THE MASK IS `m.groom` MINUS `m.bump`, and that is a bug fix as much as a
+  // feature. ground.mjs raises MG for the `moguls` style as well as `groomed`
+  // (STYLE, and the `ktmogul` comment says so in as many words), so the base
+  // run's flat 5.2 m band was painting corduroy straight down Red Dog Face's
+  // bump field. MB is the mogul mask over exactly that ground, already shipped,
+  // and subtracting it is what makes "groomed runs only, off-piste clean" true.
+  //
+  // THE LINES ARE LIT, NOT PAINTED. `m.v` is the signed metres across the
+  // corridor, so a wave in `v` runs ALONG the piste — the direction a groomer
+  // drives and the direction its tiller leaves lines. The wave's own cross-slope
+  // is then tilted into the surface normal and re-lit against SUN_DIR, so the
+  // corduroy is strong where the run cuts across the light and nearly gone
+  // where it points into it. That is the difference between groom lines and a
+  // stripe pattern, and it is why the across-corridor direction is taken from
+  // the BV raster's own gradient rather than assumed.
+  //
+  // HELD TO THE FINE MESHES. `res` is the grid step the caller samples on; a
+  // 7.6 m period needs 4.5 samples a cycle to read as lines instead of as beat
+  // noise, which the 1.70 m piste and 1.13 m bump meshes give and the 3.40 m
+  // core does not. Above CORD_RES_OFF the term fades to nothing — the context
+  // runs and the base flats ride the core grid and simply keep the flat groom
+  // colour they always had.
+  if (m.groom > CORD_MASK_EDGE) {
+    const gm = smooth(CORD_MASK_EDGE, CORD_MASK_FULL, m.groom)
+             * (1 - clamp(m.bump * CORD_BUMP_KILL, 0, 1));
+    let g = mixc(c, C.groom, CORD_GROOM_MIX);
+    const cres = CORD_ON ? 1 - smooth(CORD_RES_FULL, CORD_RES_OFF, res) : 0;
+    if (cres > 0.01 && gm > 0.01) {
+      const k = Math.PI * 2 / CORD_PERIOD_M;
+      const ph = m.v * k;
+      // the unit across-corridor direction, from the shipped BV raster itself
+      const h = 1.7;
+      const gx = (masksAt(x + h, y).v - masksAt(x - h, y).v) / (2 * h);
+      const gy = (masksAt(x, y + h).v - masksAt(x, y - h).v) / (2 * h);
+      const gl = Math.hypot(gx, gy);
+      let dl = 0;
+      if (gl > 1e-3) {
+        const ds = -CORD_AMP_M * k * Math.sin(ph);        // ridge cross-slope
+        const tx = nx - ds * (gx / gl), ty = ny - ds * (gy / gl);
+        const tn = Math.hypot(tx, ty, nz) || 1;
+        const l1 = clamp((tx * SUN_DIR[0] + ty * SUN_DIR[1] + nz * SUN_DIR[2]) / tn, 0, 1);
+        dl = (l1 - lam) * CORD_SUN_GAIN;
+      }
+      const f = 1 + (dl + Math.cos(ph) * CORD_TONE_GAIN) * cres;
+      g = [g[0] * f, g[1] * f, g[2] * f];
+    }
+    c = mixc(c, g, gm);
   }
   // GS race venue on Red Dog Face: blue dye lines painted down the course
   // (views 27 and 28). The course is a sine about the corridor centreline,
@@ -189,7 +549,26 @@ export function colorAt(x, y, z, nx, ny, nz, res = 1.7) {
   // raises `bare` directly. It is a colour read only — the rock a rider actually
   // sees up close is real geometry in poulsen.mjs.
   if (m.pouWall > 0.05) bare = clamp(bare + m.pouWall * 0.55 * smooth(0.30, 0.70, 1 - nz), 0, 1);
-  const rk0 = rockAt(x, y);
+  // DEPLOY PARITY — THE RASTER ROCK TINT IS OFF IN THE LAB.
+  //
+  // The shipped build stubs `SECTOR_ROCKS` to [] (export manifest D13.2), so in
+  // the deploy `rockAt()` is 0 at every point on the map and this whole block
+  // is inert: no `bare` boost, no walk toward C.rock / C.volcanic, no lace. The
+  // ground under KT reads as clean snow there, and that is the version Greg has
+  // been asking to have back — "the ground isn't dirty looking gray, I prefer
+  // that". specs/0003 makes the deploy the reference, so the lab is pinned to
+  // the same read with a named switch rather than a deleted block: flip this to
+  // true and the aerial-measured tint returns exactly as it was.
+  //
+  // The slope-driven `bare` term above and the Poulsen wall mask are NOT gated —
+  // both are in the deploy too, and they are what still darkens genuinely
+  // vertical faces. What is gone is the raster painting dirt across ground the
+  // rider actually stands on.
+  //
+  // The right long-term answer is not a raster at all: specs/0005 L4 is
+  // slope-gated snow-on-granite in the shader, which puts rock where the
+  // geometry is steep instead of where a summer photograph was bare.
+  const rk0 = RASTER_ROCK_TINT ? rockAt(x, y) : 0;
   if (rk0 > 0.02) {
     const alp = rk0 * (1 - m.groom * 0.95) * (1 - m.pack) * (1 - m.pave)
               * (0.42 + 0.58 * smooth(0.30, 0.72, 1 - nz));   // still needs some pitch
@@ -613,6 +992,17 @@ function buildRim(THREE) {
 // A coarse polar shell from the dem-wide edge out to the skyline. Not a
 // collider: it is scenery. It carries the far Sierra ridges that close the
 // north wall of Olympic Valley in views 13, 19, 21, 22 and 26.
+//
+// FAR_HAZE_BAKE — how much distance haze is PAINTED INTO the apron's vertex
+// colours. It was 0.90, from a world whose only atmosphere was one smooth fog
+// ramp: the apron had to fade itself out, because nothing else would. Under
+// specs/0005 L2 the banded fog does that job in the shader, in discrete steps,
+// and a smooth wash baked underneath it is exactly what stops the outer ridges
+// reading as separate cutouts — the two haze terms compound and the skyline
+// goes to flat paper before the band edges can draw it. Dropped to 0.42, which
+// leaves the apron enough of its own recession to keep the ridge stack legible
+// where the outermost band tops out, and hands the rest to FOG_BAND_MIX.
+const FAR_HAZE_BAKE = 0.42;
 function buildFar(THREE, material) {
   // Re-centred on WORLD for increment 1. The apron used to orbit (-250, -275)
   // — red-dog/dem-wide's own centre — at r0 = 2,760 m, and the Gold Coast bench
@@ -653,7 +1043,7 @@ function buildFar(THREE, material) {
       // wash. Haze only really takes hold in the outer third.
       let c = mixc(lin(0x2f4438), lin(0x7d93ab), snowy * 0.80);
       c = mixc(c, lin(0xdde7f3), smooth(280, 540, z) * 0.82);
-      c = mixc(c, lin(0xcfdff0), smooth(0.06, 0.72, t) * 0.90);           // haze
+      c = mixc(c, lin(0xcfdff0), smooth(0.06, 0.72, t) * FAR_HAZE_BAKE);  // haze
       col.push(c[0], c[1], c[2]);
     }
   }

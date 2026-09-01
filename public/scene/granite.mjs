@@ -36,13 +36,214 @@
 // and live play. Object space is the same in both.
 
 import { buf, appendBuf, prism, makeRng, rr, ri, lin, mixc, scalec, jitc,
-         clamp, smooth, snowLace } from './lib/core.mjs';
+         clamp, smooth, snowLace,
+         registerLookLayer, f32, dial, dialSoft, dialColor } from './lib/core.mjs';
 import { PAL } from './kit.mjs';
 
 const G_BASE = lin(0x6f6a60);       // shaded granite
 const G_LIT = lin(0x9d9482);        // sunlit, sand-bleached
 const G_TAN = lin(0x8a7a60);
 const G_DARK = lin(0x4d4a44);
+
+// ==================================================== specs/0005 L4 — ROCK
+//
+// GREY SIERRA GRANITE, AND SNOW THAT SITS WHERE SNOW SITS. Two things, decided
+// against the rock lookbook:
+//
+//   THE GREY. Every rock surface in this world was authored warm — this file's
+//   G_TAN plus its iron-staining mix, and kt-rocks.mjs's ROCK_TAN, LICHEN and
+//   LICHEN_RUST on top of a brown-grey ROCK. Shot from the chair the Eagle's
+//   Nest spires come back the colour of dirt, which is the complaint this layer
+//   exists to answer. Palisades rock reads GREY: a cool, near-neutral granite
+//   whose interest is tonal, not chromatic.
+//
+//   THE SNOW, BY SLOPE (ref R7, Carson Peak). Snow collects on low-angle facets
+//   and is scoured off steep ones. That is `dot(faceNormal, up)` and nothing
+//   else — no noise mask, no raster, no second pass over the geometry — and on
+//   flat-shaded, faceted rock it is exactly the read the reference has: white
+//   lying on every ledge and plate top, bare stone on every riser and wall.
+//
+// ------------------------------------------------------- WHY IT IS A SHADER
+// The alternative was to rewrite the colour constants above and in kt-rocks.mjs
+// and re-bake. Three reasons not to:
+//   * `snowLace()` already writes snow into these same vertex colours at build
+//     time on a per-TRIANGLE normal, and it is a one-way mix — there is no
+//     "how much rock is under this" left to re-grade at 3.4 m of lattice.
+//   * a vertex-colour edit is a rebuild per tweak. Greg tunes this layer by
+//     name, live, on `__look`, at the pose he is standing in.
+//   * the Fingers' vertex colours are load-bearing for work/fin_wind_check.mjs
+//     and friends. This layer does not move a vertex or change a byte of the
+//     buffers; it is albedo arithmetic in the fragment path of the two ROCK
+//     MATERIALS and reaches nothing else in the world.
+//
+// WHAT IT DOES NOT DO. It does NOT re-enable the bare-rock raster tint. That
+// path (terrain.mjs `RASTER_ROCK_TINT`, kt-rocks.mjs `RASTER_OUTCROPS`) stays
+// off for deploy parity — the shipped build stubs SECTOR_ROCKS to [] so
+// `rockAt()` is 0 there, and Greg prefers that read. specs/0005 L4 says this
+// layer SUPERSEDES that tint, and superseding it means the rock look now lives
+// where the rock GEOMETRY is instead of where a summer photograph was bare.
+//
+// ------------------------------------------------------------- WHO GETS IT
+// The two rock materials, and only them:
+//   `graniteMaterial()` below   -> funitel-granite, funitel-granite-field
+//   `rockMaterial()` (kt-rocks) -> kt-eagles-nest (spires, towers, cornice,
+//                                  Fingers spine shells + noses),
+//                                  kt-rock-field (the flatiron slab bands)
+// kt-rocks.mjs imports the three GLSL strings below rather than registering a
+// second layer, so there is ONE registration, ONE set of dials and one uniform
+// block for both materials. Everything else that is rock-shaped in this world
+// (poulsen.mjs's cliff skin and talus, the Red Dog granite-outcrop field) is on
+// world.mjs's shared `SOLID` material, which also carries every tree, car and
+// building — restyling that would break ground rule 5, so it is out of scope
+// and stays as it is.
+//
+// COST. One float varying, and a fragment block behind a coherent uniform gate.
+// With both gains at 0 the block is one compare and the frame is bit-identical
+// to a build without the layer, which is the property harness/shader-perf.mjs
+// needs to A/B it by writing a dial.
+
+const ROCK_LOOK_ON = 1;
+// x ROCK_GRANITE_GAIN, y ROCK_LIFT, z ROCK_MASK_EDGE, w 0.5/ROCK_MASK_FEATHER
+const uRock = f32([0.92, 1.35, 0.44, 0]);
+// xyz ROCK_COLOR as a HUE-ONLY multiplier (luma-normalised), w unused
+const uRockCol = f32([0, 0, 0, 0]);
+// x ROCK_SNOW_GAIN, y ROCK_SNOW_SLOPE_EDGE, z 0.5/ROCK_SNOW_FEATHER,
+// w ROCK_SNOW_PATCHY
+const uRockSnow = f32([0.85, 0.62, 0, 0.55]);
+// xyz ROCK_SNOW_COLOR (linear), w unused
+const uRockSnowCol = f32([0, 0, 0, 0]);
+
+// how far the rock's colour cast walks to ROCK_COLOR. 0 = the layer's recolour
+// is off (and, with ROCK_SNOW_GAIN 0 too, the whole block is skipped).
+dial('ROCK_GRANITE_GAIN', uRock, 0);
+// a plain multiplier on the recoloured rock's luminance. KT-22's authored rock
+// is near-black volcanic and Sierra granite in daylight is not, so the grey has
+// to be lifted as well as neutralised. It multiplies, so the tonal structure the
+// blotch/bed/grain terms carry survives intact.
+dial('ROCK_LIFT', uRock, 1);
+// ROCK vs SNOW, on luminance. Every one of these meshes carries snow painted
+// into its own vertex colours by snowLace(), and the Fingers' entire spine shell
+// IS snow inside the rock mesh — so the layer has to know which fragments are
+// stone. Rock in this world tops out near 0.34 linear after its character terms;
+// the darkest thing that is snow (the Fingers' shaded nose faces) is 0.56.
+dial('ROCK_MASK_EDGE', uRock, 2);
+dialSoft('ROCK_MASK_FEATHER', uRock, 3, 0.10);
+// the granite itself. Written as sRGB hex, stored LUMA-NORMALISED, so this dial
+// is pure cast: changing it cannot change how bright the rock is.
+// 0xb0aba3 over 0xa9aeb5: swept at the Eagle's Nest (work/l4_sweep.mjs). A
+// neutral-cool grey came back reading as slate under this world's already-cool
+// shadow tint; Sierra granite is a HAIR warm of neutral and needs to be
+// authored that way to survive the light.
+dialColor('ROCK_COLOR', uRockCol, 0, 0xb0aba3, { norm: 'luma' });
+
+// how white the slope-gated snow goes at full coverage
+dial('ROCK_SNOW_GAIN', uRockSnow, 0);
+// dot(faceNormal, up) at which coverage is half. 0.62 is ~52 deg from
+// horizontal: plate tops and ledges (they lie with the dip, ~25 deg) take snow,
+// risers, walls and the spires' own flanks do not.
+dial('ROCK_SNOW_SLOPE_EDGE', uRockSnow, 1);
+// half-width of that edge, in the same dot units. 0.20 puts the ramp between
+// ~65 deg (bare) and ~35 deg (covered).
+dialSoft('ROCK_SNOW_FEATHER', uRockSnow, 2, 0.20);
+// coverage break-up off the material's own low-frequency blotch field, so a
+// long ledge is drifted rather than evenly painted. 0 = uniform coverage.
+dial('ROCK_SNOW_PATCHY', uRockSnow, 3);
+dialColor('ROCK_SNOW_COLOR', uRockSnowCol, 0, 0xeaf1fb);
+
+// ------------------------------------------------------------- the GLSL
+// Three fragments, spliced by each rock material into its OWN shader rather
+// than into a shared THREE.ShaderChunk. That is the whole reason this layer
+// costs nothing outside the rock: <color_fragment> is included by every lit
+// material in the world, and patching the chunk would put this block on the
+// trees, the lifts, the buildings and 1.88 M triangles of terrain to be gated
+// off per fragment. Both rock materials already own an onBeforeCompile.
+
+/** goes before the vertex shader body */
+export const ROCK_LOOK_PARS_VERT = 'varying float vRockUp;\n';
+
+/** goes just before `#include <project_vertex>`.
+ *
+ *  OBJECT SPACE, NOT WORLD. `objectNormal` is in this world's own ENU (z-up)
+ *  frame, and the bench player tips the whole scene into a y-up wrapper group —
+ *  so a world-space or view-space "up" would read differently in play than on
+ *  the standalone page, which is the same trap granite's `vGOP` avoids by being
+ *  object-space (see the FRAME NOTE at the top of this file).
+ *
+ *  IT IS THE FACE NORMAL, EXACTLY. Every buffer these two materials render is
+ *  NON-INDEXED and gets `computeVertexNormals()` in `toGeo()`, so all three
+ *  vertices of a triangle carry that triangle's own normal and the interpolant
+ *  is constant across the face — which is what makes a single float varying a
+ *  faithful `dot(n, up)` on flat-shaded rock. */
+export const ROCK_LOOK_VERT = 'vRockUp = objectNormal.z;\n';
+
+/** the uniform + varying declarations, prepended to the fragment shader */
+export const ROCK_LOOK_PARS_FRAG = `
+varying float vRockUp;
+uniform vec4 uRock;         // x ROCK_GRANITE_GAIN y ROCK_LIFT z MASK_EDGE w 0.5/MASK_FEATHER
+uniform vec4 uRockCol;      // rgb ROCK_COLOR, luma-normalised (hue only)
+uniform vec4 uRockSnow;     // x GAIN y SLOPE_EDGE z 0.5/FEATHER w PATCHY
+uniform vec4 uRockSnowCol;  // rgb ROCK_SNOW_COLOR
+`;
+
+/**
+ * The body. Spliced at the END of each material's own character block, so the
+ * grey lands on top of that material's blotch/bed/grain/lichen/staining and
+ * neutralises them instead of fighting them a line earlier.
+ *
+ * @param patch  an expression for a 0..1 low-frequency world-space field in
+ *               scope at the splice point — both materials call theirs
+ *               `blotch`. Passed in rather than assumed so the dependency is
+ *               written at both call sites.
+ */
+export const ROCK_LOOK_FRAG = (patch) => `
+         // -------------------------------- specs/0005 L4 — GREY GRANITE + SNOW
+         // GATE 0. A uniform branch: it takes the same side for every fragment
+         // of every draw, so it costs one coherent compare, and with both gains
+         // at 0 this layer is a BIT-EXACT no-op against a build without it.
+         // That is what lets harness/shader-perf.mjs price it by writing a dial
+         // instead of by rebuilding the page.
+         if ( uRock.x + uRockSnow.x > 0.0 ) {
+           float rLum = dot( diffuseColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+           float rMask = 1.0 - clamp( ( rLum - uRock.z ) * uRock.w + 0.5, 0.0, 1.0 );
+           if ( rMask > 0.0 ) {
+             if ( uRock.x > 0.0 ) {
+               // HUE ONLY: uRockCol is luma-normalised, so this replaces the
+               // colour CAST and keeps the luminance structure every character
+               // term above just wrote. ROCK_LIFT then walks the result toward
+               // daylight granite.
+               diffuseColor.rgb = mix( diffuseColor.rgb,
+                 ( rLum * uRock.y ) * uRockCol.rgb, rMask * uRock.x );
+             }
+             if ( uRockSnow.x > 0.0 ) {
+               // SLOPE-GATED SNOW. The house-style hard edge — a clamp against a
+               // precomputed reciprocal half-width, not a smoothstep (see
+               // lib/core.mjs dialSoft): these edges are meant to be crisp and
+               // the fragment path never divides.
+               float cov = clamp( ( vRockUp - uRockSnow.y ) * uRockSnow.z + 0.5, 0.0, 1.0 );
+               cov *= 1.0 - uRockSnow.w * ${patch};
+               diffuseColor.rgb = mix( diffuseColor.rgb, uRockSnowCol.rgb,
+                 cov * uRockSnow.x * rMask );
+             }
+           }
+         }`;
+
+if (ROCK_LOOK_ON) {
+  registerLookLayer({
+    id: 'L4-rock',
+    uniforms: {
+      uRock: { value: uRock },
+      uRockCol: { value: uRockCol },
+      uRockSnow: { value: uRockSnow },
+      uRockSnowCol: { value: uRockSnowCol },
+    },
+    // No `chunks`. This layer's GLSL is spliced into the two rock materials
+    // below and in kt-rocks.mjs, not into a shared THREE.ShaderChunk — see the
+    // note above ROCK_LOOK_PARS_VERT. The registration is still what puts the
+    // four uniforms into every ShaderLib entry (which is what makes them
+    // present on the two materials' clones) and what puts 'L4-rock' on
+    // `__look.layers()` for the perf tool to find.
+  });
+}
 
 // --------------------------------------------------------------- the material
 // One shared material for every granite mesh in the world — sand-harbor's
@@ -52,12 +253,13 @@ export function graniteMaterial(THREE) {
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   mat.customProgramCacheKey = () => 'pal-granite-1';
   mat.onBeforeCompile = (shader) => {
-    shader.vertexShader = 'varying vec3 vGOP;\n' + shader.vertexShader.replace(
+    shader.vertexShader = 'varying vec3 vGOP;\n' + ROCK_LOOK_PARS_VERT + shader.vertexShader.replace(
       '#include <project_vertex>',
       `vGOP = transformed;
+       ${ROCK_LOOK_VERT}
        #include <project_vertex>`,
     );
-    shader.fragmentShader = `
+    shader.fragmentShader = ROCK_LOOK_PARS_FRAG + `
       varying vec3 vGOP;
       float pghash(vec3 p){ p = fract(p * 0.3183099 + vec3(0.71,0.113,0.419)); p *= 17.0;
         return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
@@ -99,6 +301,7 @@ export function graniteMaterial(THREE) {
              smoothstep( 0.40, 0.06, blotch ) * 0.36 * rocky );
          // sun-bleached crowns, keyed on the joint field so it follows the sheets
          diffuseColor.rgb *= 1.0 + 0.10 * smoothstep( 0.62, 0.95, joint ) * rocky;
+${ROCK_LOOK_FRAG('blotch')}
        }`,
     );
   };

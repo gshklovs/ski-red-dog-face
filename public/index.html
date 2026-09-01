@@ -53,6 +53,18 @@
 
   // Everything is addressed off the directory this page was served from, so the
   // site works at the domain root AND from any subdirectory.
+  //
+  // THIS IS ALSO WHAT MAKES /kt22 WORK, and it needed no change to do it.
+  // vercel.json rewrites any non-asset path to this file, so a shared waypoint
+  // link arrives as location.pathname === '/kt22' — and `new URL('.')` resolves
+  // to the DIRECTORY, dropping the last segment, so ROOT is still '/'. (A
+  // subdirectory deploy is always fetched with a trailing slash — '/ski/' — and
+  // keeps ROOT '/ski/'; `"trailingSlash": false` in vercel.json is what stops a
+  // stray '/kt22/' from ever reaching here and being read as a directory.)
+  //
+  // The slug itself is not parsed here. js/play/spawn.js reads
+  // location.pathname's first segment and resolves it against the waypoints the
+  // world declares — one boot-time seam, shared with the lab's ?spawn=<id>.
   var ROOT = new URL('.', location.href).href;
 
   function fail(reason, detail) {

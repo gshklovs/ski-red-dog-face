@@ -26,9 +26,33 @@
 //      the pump's own payouts, so the fast line and the correct line are the
 //      same line.
 //
+// ...and three things the guided run learned afterwards:
+//
+//   4. A RESPAWN IS NOT PROGRESS. R puts you back at the last place you fast
+//      travelled to, which mid-tutorial is usually the top of the mountain and
+//      several hundred metres BACK along the route. The route cursor is
+//      forward-only by design (a lift ride must not drag it 900 m), so before
+//      this it simply froze — and every stage went on judging you from a point
+//      up to 670 m from your body, while the race clock and the stage's own
+//      240 s force-advance budget kept spending. `onRespawn` below re-acquires
+//      the cursor, restarts the run you were on and gives the stage its time
+//      back, so the dye, the gates and the stage you were in are all still
+//      there when you land. See `S.respawnN`.
+//
+//   5. YOU CAN LEAVE. One held key tears the whole tutorial down — props, dye,
+//      gates, instruments, prompts — and hands you the open mountain. See
+//      `skipTutorial`.
+//
+//   6. THE RACE IS A PLACE, not a stage, once the tutorial is done with it.
+//      RACE_COURSES declares each course as DATA (the runs it is drawn on, the
+//      gate rhythm, its own board key); each one paints an orange start circle
+//      on the snow and offers F, exactly the way lift.js offers a chair. The
+//      tutorial keeps its slalom embedded; everything else is opt-in.
+//
 // main.js wires it:
 //   const guide = await import('./guide.js');
-//   guide.init({ THREE, scene, ctrl, hud, collision, camera, ... });
+//   guide.init({ THREE, scene, ctrl, hud, collision, camera, ... });  // tutorial
+//   guide.initRace({ ...the same ctx })                               // portals only
 //   guide.update(dt, live)      // once per frame, from playerSystems()
 
 import { boardStore, ago } from './tricks.js';
@@ -130,7 +154,85 @@ export const GUIDE_CONFIG = {
   stageTimeoutS: 240,      // no stage may hold the machine longer than this
   fadeR: 190,              // m — guidance beyond this is invisible
   debug: false,
+
+  // ---- leaving early. HELD, not tapped: this key throws away the whole
+  // tutorial, and a feature you cannot undo must not be one keystroke deep.
+  skipKey: 'KeyX',
+  skipCap: 'X',
+  skipHoldMs: 900,
+
+  // ---- the open-world start circles (see RACE_COURSES). Sized and faded on
+  // lift.js's numbers on purpose: a player who has learned what an orange disc
+  // on the snow means at a chairlift has already learned what this one means.
+  portalRadiusM: 10,
+  portalFadeM: 70,
+  raceStrayM: 110,         // this far off the line, for raceStrayT...
+  raceStrayT: 4,           // ...seconds, and the run is over — you left the course
 };
+
+// ==================================================================== courses
+// A RACE COURSE IS DATA. Everything that makes one course different from
+// another — the runs it is drawn on, where the gates start, how far apart they
+// are, how wide the panels are, which board it writes to — is in this table, so
+// a third course is a third entry and not a third code path.
+//
+// `gate` overrides GUIDE_CONFIG's slalom numbers, which are the defaults; a key
+// left out is the slalom's own value.
+const GATE_KEYS = ['spacingM', 'offsetM', 'halfM', 'corridorM', 'skipM', 'leadM', 'endMinM', 'tailM', 'poleH', 'banH', 'startBackM'];
+const gateDefaults = () => ({
+  spacingM: GUIDE_CONFIG.gateSpacingM,
+  offsetM: GUIDE_CONFIG.gateOffsetM,
+  halfM: GUIDE_CONFIG.gateHalfWidthM,
+  corridorM: GUIDE_CONFIG.corridorM,
+  skipM: GUIDE_CONFIG.gateSkipM,
+  leadM: GUIDE_CONFIG.raceLeadInM,
+  endMinM: 60,            // the gates never start inside this much of the end
+  tailM: 6,               // ...and the finish line sits this far short of it
+  poleH: 1.9,
+  banH: 0.42,
+  startBackM: 22,         // the start circle, this far above the first gate
+});
+
+export const RACE_COURSES = [
+  {
+    // The tutorial's own slalom, and the numbers here reproduce it exactly: the
+    // stage does not own a second copy of the course, it races THIS one.
+    id: 'red-dog-slalom',
+    name: 'RED DOG SLALOM',
+    runs: RED_DOG.descent,
+    // where the gates are measured from — the fork the tutorial guides you past
+    anchor: { run: RED_DOG.forkRun, frac: 0.4, maxD: 60 },
+    boardKey: 'poi-lab.play.guide-race',
+    gate: {},                         // the slalom IS the default
+    tutorial: true,                   // ...and the tutorial embeds it
+  },
+  {
+    // EXHIBITION GS — opt-in only, never a tutorial stage.
+    //
+    // WHY JULIA'S GOLD and not Easy Street, which is the other run linking the
+    // Exhibition unload to the Exhibition base. Measured off the world's own
+    // polylines: Julia's Gold is 777 m of plan for 247 m of vertical (17.6°
+    // average) with 88° of total heading change and an 82 m trail width — a
+    // wide, steady, near-fall-line face. Easy Street covers the same 247 m in
+    // 1,848 m at 7.6° with 748° of turning: it is the green cat track, and a
+    // giant slalom set on a road is not a giant slalom. A race organiser walks
+    // up the Exhibition line and sets the face, so this sets the face.
+    //
+    // The rhythm is the point of the discipline. The slalom's 38 m spacing is a
+    // ~2.2 s turn at this game's speeds; 66 m is ~3.5 s — one long carve per
+    // gate instead of a pump cycle — over 12 gates and the full 247 m of
+    // vertical, with panels three metres wider to swallow the line you carry
+    // into them.
+    id: 'exhibition-gs',
+    name: 'EXHIBITION GS',
+    runs: ['julias-gold'],
+    boardKey: 'poi-lab.play.gs-race',
+    gate: {
+      spacingM: 66, offsetM: 13, halfM: 8.5, corridorM: 24, skipM: 45,
+      leadM: 30, endMinM: 40, tailM: 8, poleH: 2.3, banH: 0.5, startBackM: 26,
+    },
+  },
+];
 
 // ==================================================================== utils
 const TAU = Math.PI * 2;
@@ -159,9 +261,18 @@ const S = {
   root: null, dom: null,
   runs: new Map(),
   route: null, fork: null, race: null,
-  stage: null, stageI: -1, stageT: 0, log: [],
+  // `stages` starts as a real empty array, not undefined: initRace() never
+  // builds a stage machine and state() must still answer for that boot.
+  stage: null, stages: [], stageI: -1, stageT: 0, log: [],
   paidPumps: 0, landedTricks: 0,
   done: false,
+  // ---- the tutorial's own lifecycle
+  tutorial: false,          // did init() run, or only initRace()?
+  skipped: false,
+  respawnN: 0,              // ctrl.respawns as of the last frame we looked
+  respawnLog: [],
+  // ---- the courses and their start circles
+  courses: [], portals: [], raceCourse: null, portalRace: null,
 };
 
 const err = (e) => { S.errors.push(String((e && e.message) || e)); if (GUIDE_CONFIG.debug) console.warn('[guide]', e); };
@@ -499,11 +610,12 @@ function buildBanner(P, at, yawFacing, text, sub, width = 16) {
 
 // ---- the slalom gates. Two instanced pole meshes and two instanced banners:
 // thirty gates cost four draw calls.
-function buildGates(P, gates) {
+function buildGates(P, gates, g = null) {
   const T = S.THREE;
-  const poleGeo = new T.CylinderGeometry(0.055, 0.055, 1.9, 5);
-  poleGeo.translate(0, 0.95, 0);
-  const bGeo = new T.PlaneGeometry(1, 0.42);
+  const poleH = (g && g.poleH) || 1.9, banH = (g && g.banH) || 0.42;
+  const poleGeo = new T.CylinderGeometry(0.055, 0.055, poleH, 5);
+  poleGeo.translate(0, poleH / 2, 0);
+  const bGeo = new T.PlaneGeometry(1, banH);
   const made = [];
   for (const col of ['R', 'B']) {
     const list = gates.filter((g) => g.color === col);
@@ -531,7 +643,7 @@ function buildGates(P, gates) {
         m.compose(v, q, one);
         poles.setMatrixAt(i * 2 + k, m);
       }
-      v.set(g.x, g.y + 1.55, g.z);
+      v.set(g.x, g.y + poleH * 0.82, g.z);
       m.compose(v, q, new T.Vector3(g.half * 2, 1, 1));
       bans.setMatrixAt(i, m);
     });
@@ -543,6 +655,41 @@ function buildGates(P, gates) {
   }
   P.geos.push(poleGeo, bGeo);
   return made;
+}
+
+// ---- the start circle. A ground-conforming orange disc the size of the F
+// accept radius, built exactly the way lift.js builds its boarding decals —
+// same colour, same 0.07 m lift off the snow, same "every vertex settled onto
+// the real collider" fan — because it is making the same promise: stand here
+// and the game will offer you something.
+function buildStartRing(P, at, radius) {
+  const T = S.THREE;
+  const seg = 44;
+  const pos = [], idx = [];
+  const cy = S.groundAt(at.x, at.z);
+  const y0 = cy === null ? at.y : cy;
+  pos.push(at.x, y0 + 0.07, at.z);
+  for (let i = 0; i <= seg; i++) {
+    const a = (i / seg) * TAU;
+    const x = at.x + Math.cos(a) * radius, z = at.z + Math.sin(a) * radius;
+    const gy = S.groundAt(x, z);
+    pos.push(x, (gy === null ? y0 : gy) + 0.07, z);
+  }
+  for (let i = 1; i <= seg; i++) idx.push(0, i, i + 1);
+  const geo = new T.BufferGeometry();
+  geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  const mat = new T.MeshBasicMaterial({
+    color: 0xff4d00, transparent: true, opacity: 0.20,
+    depthWrite: false, side: T.DoubleSide,
+  });
+  const mesh = new T.Mesh(geo, mat);
+  mesh.name = 'gd:start-ring';
+  mesh.renderOrder = 3;
+  mesh.frustumCulled = false;
+  mesh.visible = false;
+  P.geos.push(geo); P.mats.push(mat);
+  return addProp(P, mesh);
 }
 
 // ====================================================================== HUD
@@ -592,6 +739,22 @@ body.gd-intro-up .phud,body.gd-intro-up .ppause{display:none!important}
 .gd__fin .big{font:800 40px/1.05 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
 .gd__fin .row{margin-top:8px;font-size:12px;color:#c9c3b6;letter-spacing:.04em}
 .gd__stage{position:absolute;left:12px;bottom:12px;font-size:10px;color:#8b857a;letter-spacing:.1em}
+/* THE WAY OUT. Bottom RIGHT, which is the one corner of this screen nothing
+   else claims — the speedometer owns top-left, the race readout top-centre, the
+   key legend and the stage crumb bottom-left, the prompt and the toast the
+   centre column. pointer-events:auto so a phone (which has no X key) can press
+   and hold it; on the desktop the pointer is locked and the key is the way. */
+.gd__skip{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:9px;pointer-events:auto;
+  background:rgba(23,22,20,.82);border:1px solid rgba(244,241,234,.18);padding:6px 11px;cursor:pointer;
+  font-size:11px;letter-spacing:.1em;color:#c9c3b6;opacity:.72;transition:opacity .2s ease;-webkit-user-select:none;user-select:none}
+/* the class rule sets display:flex, which OUTRANKS the user agent's own
+   [hidden]{display:none} — so a chip built hidden would render anyway, and put
+   its text on the screen of a boot that has no tutorial to skip */
+.gd__skip[hidden]{display:none}
+.gd__skip:hover,.gd__skip.is-holding{opacity:1}
+.gd__skip b{display:inline-block;min-width:20px;padding:2px 6px;background:#f4f1ea;color:#171614;font-weight:800;text-align:center;letter-spacing:0}
+.gd__skip .gd__bar{position:absolute;left:0;bottom:0;height:2px;width:0;background:#ff4d00;transition:width .06s linear}
+.gd__skip.is-holding{border-color:#ff4d00;color:#f4f1ea}
 `;
 
 function buildDom() {
@@ -610,9 +773,18 @@ function buildDom() {
   controls.hidden = true;
   cards.append(title, controls);
 
-  // ---- the one prompt line
+  // ---- the one prompt line.
+  //
+  // BUILT EMPTY. `.gd__toast` and `.gd__fin` are opacity:0 between banners
+  // rather than display:none — that is what lets them fade — and opacity:0 text
+  // is still text: it is in innerText, a screen reader reads it, and the gate's
+  // banned-string audit sees it. Seeding this key with 'W' and the finish
+  // heading with 'FINISH' put two words on the screen from the first frame of
+  // every boot, including a boot with no tutorial in it at all. Both are
+  // written by the code that has something to say, so neither needs a value
+  // before then.
   const toast = mk('div', 'gd__toast');
-  const tKey = mk('b', null, 'W');
+  const tKey = mk('b', null, '');
   const tTxt = mk('span', null, '');
   toast.append(tKey, tTxt);
 
@@ -627,8 +799,8 @@ function buildDom() {
   }
 
   const fin = mk('div', 'gd__fin');
-  const finH = mk('h3', null, 'FINISH');
-  const finBig = mk('div', 'big', '—');
+  const finH = mk('h3', null, '');
+  const finBig = mk('div', 'big', '');
   const finRow = mk('div', 'row', '');
   const finRow2 = mk('div', 'row', '');
   fin.append(finH, finBig, finRow, finRow2);
@@ -636,12 +808,21 @@ function buildDom() {
   const stageChip = mk('div', 'gd__stage', '');
   stageChip.hidden = !GUIDE_CONFIG.debug;
 
-  root.append(cards, toast, race, fin, stageChip);
+  // ---- the skip chip. Built only for a tutorial boot; the open-world race
+  // portals have nothing to skip.
+  const skip = mk('div', 'gd__skip');
+  const skipKey = mk('b', null, GUIDE_CONFIG.skipCap);
+  const skipTxt = mk('span', null, 'hold to skip tutorial');
+  const skipBar = mk('span', 'gd__bar');
+  skip.append(skipKey, skipTxt, skipBar);
+  skip.hidden = true;
+
+  root.append(cards, toast, race, fin, stageChip, skip);
   document.body.appendChild(root);
 
   return {
     root, style, cards, title, controls, toast, tKey, tTxt, race, cells,
-    fin, finH, finBig, finRow, finRow2, stageChip, mk,
+    fin, finH, finBig, finRow, finRow2, stageChip, skip, skipTxt, skipBar, mk,
   };
 }
 
@@ -824,7 +1005,7 @@ function makeStages() {
   st.push({
     id: 'slalom',
     enter(P) {
-      buildGates(P, R.gates);
+      buildGates(P, R.gates, R.course && R.course.g);
       buildDye(P, R.descent, R.raceS0 - 12, R.raceS1, { width: C.corridorM * 2, color: 'dye', step: 7 });
       buildBanner(P, R.descent.at(R.raceS1), R.descent.dir(R.raceS1).yaw, 'FINISH', S.W && S.W.venue ? S.W.venue.title : '');
       const at = R.descent.at(R.raceS0 - 14);
@@ -833,7 +1014,8 @@ function makeStages() {
       const gy = S.groundAt(sx, sz);
       buildSign(P, { x: sx, y: gy === null ? at.y : gy, z: sz }, d.yaw + Math.PI,
         { name: 'SLALOM START', sub: 'RACE COURSE', diff: 'blue' });
-      raceReset();
+      // the tutorial races the SAME course object the open-world portal offers
+      raceReset(R.course);
       S.dom.race.classList.add('is-on');
     },
     tick(dt) {
@@ -984,6 +1166,11 @@ function makeStages() {
       d.fin.classList.add('is-on');
       setTimeout(() => d.fin.classList.remove('is-on'), 6000);
       S.done = true;
+      // the mountain is yours, and so are the courses on it: the start circles
+      // light from here. The skip chip goes with the tutorial it was offering
+      // to skip — an affordance for a thing that has already finished is litter.
+      armPortals();
+      if (d.skip) { d.skip.removeEventListener('pointerdown', onSkipDown); d.skip.remove(); d.skip = null; }
     },
     tick() { },
     // the machine rests here. There is nothing after "you can ski this
@@ -1006,19 +1193,43 @@ function here(path, hint) {
 }
 
 // ================================================================= the race
-function raceReset() {
+// ONE race machine, on whatever course it was handed. `S.raceCourse` is the
+// course object (see buildCourse) — its own path, its own gates, its own gate
+// rhythm and its own leaderboard — so the tutorial's slalom and an opt-in GS
+// run through exactly this code and cannot drift apart.
+function raceReset(course = null) {
+  if (course) S.raceCourse = course;
+  const c = S.raceCourse;
+  // A GATE REMEMBERS WHICH SIDE OF ITSELF YOU WERE ON (`prev`), and that is the
+  // whole of the crossing test. Reset the race without clearing it and gate 0
+  // starts the next run holding the sign it had at the end of the last one, so
+  // the first crossing either never registers or registers on frame one. This
+  // is why a respawn mid-course used to be unrecoverable.
+  if (c) for (const g of c.gates) delete g.prev;
+  if (c) c.hint = c.s0;
   S.race = {
     on: true, started: false, finished: false,
     t: 0, time: null, score: 0, cleared: 0, missed: 0, streak: 0,
     next: 0, lastMiss: 0, best: null, rank: -1, pumps: 0,
+    course: c ? c.id : null, stray: 0,
   };
 }
 
-function raceTick(dt) {
-  const R = S.route, C = GUIDE_CONFIG, r = S.race;
-  if (!r || r.finished) return;
+// where the player is on the RACING line, with the course's own forward-only
+// cursor. Identical rule to the route hint, and re-acquired the same way.
+function courseHere(c) {
   const p = S.ctrl.position;
-  const gates = R.gates;
+  const n = c.path.nearest(p.x, p.z, c.hint);
+  if (Math.abs(n.s - c.hint) < 160) c.hint = n.s;
+  return n;
+}
+
+function raceTick(dt) {
+  const C = GUIDE_CONFIG, r = S.race, c = S.raceCourse;
+  if (!r || r.finished || !c) return;
+  const G = c.g;
+  const p = S.ctrl.position;
+  const gates = c.gates;
 
   // ---- gate judging. A gate is a plane; you are through it the frame the dot
   // product with its forward flips sign, and the verdict is how far off centre
@@ -1042,22 +1253,30 @@ function raceTick(dt) {
       continue;
     }
     // skipped entirely — they are past it and never crossed near it
-    const me = here(R.descent, R.sHint);
-    if (me.s > g.s + C.gateSkipM) { r.missed++; r.streak = 0; r.lastMiss = 2.5; r.next++; continue; }
+    const me = courseHere(c);
+    if (me.s > g.s + G.skipM) { r.missed++; r.streak = 0; r.lastMiss = 2.5; r.next++; continue; }
     break;
   }
   if (r.lastMiss > 0) r.lastMiss -= dt;
 
+  // ---- HOW LONG YOU HAVE BEEN NOWHERE NEAR THE LINE, and it is counted before
+  // the clock-start check rather than after it. The clock starts at the first
+  // gate, so a player who presses F and then simply skis off somewhere else has
+  // an un-started race — and a stray timer that only ran on started races would
+  // wait for them to cross a gate they are never going to reach, leaving the
+  // instruments up on the screen for the rest of the session.
+  const me = courseHere(c);
+  r.stray = me.d > C.raceStrayM ? r.stray + dt : 0;
+
   if (!r.started) {
     // the clock starts at the first gate line, not at the stage
-    if (gates.length && here(R.descent, R.sHint).s > gates[0].s) { r.started = true; r.t = 0; }
+    if (gates.length && me.s > gates[0].s) { r.started = true; r.t = 0; }
     return;
   }
   r.t += dt;
 
   // ---- corridor: the trickle that makes "on the line" worth points
-  const me = here(R.descent, R.sHint);
-  if (me.d < C.corridorM) r.score += C.scoreCorridorPerS * dt;
+  if (me.d < G.corridorM) r.score += C.scoreCorridorPerS * dt;
 
   // ---- the pump link. §1 pays for the rhythm the gates force, so the race
   // pays for it too: this is the whole reason the gate spacing is what it is.
@@ -1069,39 +1288,44 @@ function raceTick(dt) {
   }
 
   // ---- the finish line
-  if (me.s >= R.raceS1 - 2) finishRace();
+  if (me.s >= c.s1 - 2) finishRace();
   updateRaceHud();
 }
 
 function updateRaceHud() {
-  const d = S.dom, r = S.race;
+  const d = S.dom, r = S.race, c = S.raceCourse;
   if (!d || !r) return;
   d.cells.time.textContent = r.started ? fmtT(r.t) : '—';
   d.cells.score.textContent = num(r.score);
-  d.cells.gates.textContent = r.cleared + '/' + (S.route.gates || []).length;
+  d.cells.gates.textContent = r.cleared + '/' + ((c && c.gates) || []).length;
   d.cells.score.classList.toggle('is-hot', r.streak >= 4);
 }
 
 function finishRace() {
-  const r = S.race;
+  const r = S.race, c = S.raceCourse;
   if (r.finished) return;
   r.finished = true;
   r.time = +r.t.toFixed(2);
   r.score = Math.round(r.score);
   const rec = {
     score: r.score, time: r.time, gates: r.cleared, missed: r.missed,
-    pumps: r.pumps, poi: S.poi, run: S.run, course: (S.W && S.W.venue && S.W.venue.title) || S.poi,
+    pumps: r.pumps, poi: S.poi, run: S.run,
+    // WHICH COURSE, by its own id and name. Two courses share nothing but this
+    // record's shape, and each writes to its own board key — but a row that
+    // cannot say which hill it was set on is a row nobody can read back.
+    courseId: c ? c.id : null,
+    course: (c && c.name) || (S.W && S.W.venue && S.W.venue.title) || S.poi,
     ski: S.skiId ? S.skiId() : '', t: Date.now(),
   };
   try {
-    const out = S.board.save(rec);
+    const out = (c && c.board ? c.board : S.board).save(rec);
     r.rank = out.rank;
     r.best = out.rows[0] || null;
   } catch (e) { err(e); }
   const d = S.dom;
   d.finH.textContent = r.rank === 0 ? 'COURSE RECORD' : 'FINISH';
   d.finBig.textContent = fmtT(r.time);
-  d.finRow.textContent = 'race score ' + num(r.score) + ' · ' + r.cleared + '/' + S.route.gates.length + ' gates'
+  d.finRow.textContent = 'race score ' + num(r.score) + ' · ' + r.cleared + '/' + ((c && c.gates) || []).length + ' gates'
     + (r.missed ? ' · ' + r.missed + ' missed' : '');
   d.finRow2.textContent = r.best && r.rank !== 0
     ? 'best ' + fmtT(r.best.time) + ' · ' + num(r.best.score) + ' · ' + ago(r.best.t)
@@ -1131,29 +1355,88 @@ function matchWorld() {
 }
 
 // ============================================================ route builder
+// main.js has already tipped `world.runs` into the three frame (into fresh
+// arrays — the scene's own polylines are never written to), so these come out
+// ready to use. Only the config's own literals still need converting.
+const pick = (id) => {
+  const r = S.runs.get(id);
+  return r && Array.isArray(r.pts) && r.pts.length ? r.pts : null;
+};
+const joinRuns = (ids) => {
+  const out = [];
+  for (const id of ids) {
+    const p = pick(id);
+    if (!p) continue;
+    for (const q of p) {
+      const last = out[out.length - 1];
+      if (last && Math.hypot(last[0] - q[0], last[2] - q[2]) < 1.5) continue;
+      out.push(q);
+    }
+  }
+  return out;
+};
+
+// ---- ONE course builder, for the table above. Give it a definition and (if
+// somebody has already paid for it) the resampled path its runs make, and it
+// answers with the gates, the finish line, the start circle's spot and the
+// board it writes to. The tutorial's slalom goes through here too, with the
+// slalom's own GUIDE_CONFIG numbers as the defaults, so "the tutorial course"
+// and "the open-world course" are one object and cannot drift.
+function buildCourse(def, path = null) {
+  if (!def || !Array.isArray(def.runs) || !def.runs.every((id) => S.runs.has(id))) return null;
+  const P = path || (() => {
+    const pts = joinRuns(def.runs);
+    return pts.length >= 4 ? makePath(pts, { step: def.step || 6 }) : null;
+  })();
+  if (!P || !(P.L > 0)) return null;
+  const g = { ...gateDefaults(), ...(def.gate || {}) };
+
+  // ---- the anchor the gates are measured from. A course may hang its start on
+  // another run's head (the slalom starts a lead-in past the fork the tutorial
+  // guides you round); one that names none starts at the top of its own line.
+  let anchorS = 0, anchorName = null;
+  if (def.anchor && def.anchor.run) {
+    anchorS = P.L * (def.anchor.frac == null ? 0.4 : def.anchor.frac);
+    const branch = pick(def.anchor.run);
+    if (branch && branch.length) {
+      const n = P.nearest(branch[0][0], branch[0][2]);
+      if (n.d < (def.anchor.maxD || 60)) { anchorS = n.s; anchorName = (S.runs.get(def.anchor.run) || {}).name || null; }
+    }
+  }
+
+  const s0 = Math.min(P.L - g.endMinM, anchorS + g.leadM);
+  const s1 = Math.max(s0 + 80, P.L - g.tailM);
+  const gates = [];
+  let side = 1;
+  for (let s = s0; s <= s1 - 20; s += g.spacingM) {
+    const at = P.at(s), d = P.dir(s);
+    const rx = -d.z, rz = d.x;
+    const off = g.offsetM * side;
+    const x = at.x + rx * off, z = at.z + rz * off;
+    const gy = S.groundAt(x, z);
+    gates.push({
+      s, x, y: gy === null ? at.y : gy, z,
+      fx: d.x, fz: d.z, rx, rz, yaw: d.yaw,
+      half: g.halfM, color: side > 0 ? 'R' : 'B', side,
+    });
+    side = -side;
+  }
+  const startS = clamp(s0 - g.startBackM, 0, P.L);
+  const sp = P.at(startS), sd = P.dir(startS);
+  const sy = S.groundAt(sp.x, sp.z);
+  return {
+    id: def.id, name: def.name, def, g, path: P,
+    anchorS, anchorName, s0, s1, gates, hint: s0,
+    start: { x: sp.x, y: sy === null ? sp.y : sy, z: sp.z, s: startS, yaw: sd.yaw },
+    board: boardStore(def.boardKey),
+  };
+}
+
+const courseDef = (id) => RACE_COURSES.find((d) => d.id === id) || null;
+
 function buildRoute() {
   const C = GUIDE_CONFIG, W = S.W;
   if (!W) return null;
-  // main.js has already tipped `world.runs` into the three frame (into fresh
-  // arrays — the scene's own polylines are never written to), so these come out
-  // ready to use. Only the config's own literals still need converting.
-  const pick = (id) => {
-    const r = S.runs.get(id);
-    return r && Array.isArray(r.pts) && r.pts.length ? r.pts : null;
-  };
-  const joinRuns = (ids) => {
-    const out = [];
-    for (const id of ids) {
-      const p = pick(id);
-      if (!p) continue;
-      for (const q of p) {
-        const last = out[out.length - 1];
-        if (last && Math.hypot(last[0] - q[0], last[2] - q[2]) < 1.5) continue;
-        out.push(q);
-      }
-    }
-    return out;
-  };
 
   const dPts = joinRuns(W.descent);
   if (dPts.length < 4) return null;
@@ -1163,36 +1446,20 @@ function buildRoute() {
   const p0 = S.ctrl.position;
   const descentStart = descent.nearest(p0.x, p0.z).s;
 
-  // ---- the fork: where the branch run leaves the descent
-  let forkS = descent.L * 0.4, forkName = null;
-  const branch = pick(W.forkRun);
-  if (branch && branch.length) {
-    const head = branch[0];
-    const n = descent.nearest(head[0], head[2]);
-    if (n.d < 60) { forkS = n.s; forkName = (S.runs.get(W.forkRun) || {}).name || null; }
-  }
+  // ---- the race, and the fork it is measured from. Both come out of the ONE
+  // course builder: `red-dog-slalom` is drawn on this same descent, anchored on
+  // the same branch run, with the same GUIDE_CONFIG numbers — so the stage below
+  // and the open-world start circle are literally the same gates.
+  const course = buildCourse(courseDef('red-dog-slalom'), descent);
+  const forkS = course ? course.anchorS : descent.L * 0.4;
+  const forkName = course ? course.anchorName : null;
 
   const curves = findCurves(descent, C);
   const curvesBeforeFork = curves.filter((c) => c.s > descentStart + C.teachDistM * 0.6 && c.s < forkS - 5);
 
-  // ---- the race. From just past the fork to the very bottom of the descent.
-  const raceS0 = Math.min(descent.L - 60, forkS + C.raceLeadInM);
-  const raceS1 = Math.max(raceS0 + 80, descent.L - 6);
-  const gates = [];
-  let side = 1;
-  for (let s = raceS0, i = 0; s <= raceS1 - 20; s += C.gateSpacingM, i++) {
-    const at = descent.at(s), d = descent.dir(s);
-    const rx = -d.z, rz = d.x;
-    const off = C.gateOffsetM * side;
-    const x = at.x + rx * off, z = at.z + rz * off;
-    const gy = S.groundAt(x, z);
-    gates.push({
-      s, x, y: gy === null ? at.y : gy, z,
-      fx: d.x, fz: d.z, rx, rz, yaw: d.yaw,
-      half: C.gateHalfWidthM, color: side > 0 ? 'R' : 'B', side,
-    });
-    side = -side;
-  }
+  const raceS0 = course ? course.s0 : Math.min(descent.L - 60, forkS + C.raceLeadInM);
+  const raceS1 = course ? course.s1 : Math.max(raceS0 + 80, descent.L - 6);
+  const gates = course ? course.gates : [];
 
   // ---- the lift home
   let liftBase = null, liftName = null;
@@ -1248,49 +1515,58 @@ function buildRoute() {
 
   return {
     descent, descentStart, forkS, forkName, curves, curvesBeforeFork,
-    raceS0, raceS1, gates, liftBase, liftName, chairline,
+    raceS0, raceS1, gates, course, liftBase, liftName, chairline,
     pouFork, pouApproach, sideLip, mainLip, outrun, outrunS0,
     sHint: descentStart,
   };
 }
 
 // ==================================================================== public
+// Everything both entry points need: the host's handles, the run table, the
+// scene group and the overlay. init() goes on to build the tutorial; initRace()
+// stops here and arms the start circles.
+function absorb(ctx) {
+  S.THREE = ctx.THREE; S.scene = ctx.scene; S.camera = ctx.camera;
+  S.ctrl = ctx.ctrl; S.hud = ctx.hud; S.collision = ctx.collision;
+  S.groundAt = ctx.groundAt; S.enter = ctx.enter;
+  S.unitScale = ctx.unitScale || 1;
+  S.poi = ctx.poi || ''; S.run = ctx.run || '';
+  S.trickState = ctx.trickState || (() => null);
+  S.skiState = ctx.skiState || (() => null);
+  S.skiId = ctx.skiId || (() => '');
+  // live tuning: anything on window.__GUIDE_CONFIG wins over the defaults.
+  // It is how the course is tuned without a rebuild, and how a headless run
+  // holds the boot cards still long enough to photograph them.
+  try { if (window.__GUIDE_CONFIG) Object.assign(GUIDE_CONFIG, window.__GUIDE_CONFIG); } catch { /* */ }
+  S.lifts = ctx.lifts || [];
+  S.liftRadius = ctx.liftRadius || 9;
+  S.rides = ctx.rides || (() => 0);
+  if (ctx.debug) GUIDE_CONFIG.debug = true;
+
+  // world frame -> three frame, exactly the conversion main.js does for the
+  // spawn and the lifts. Only GUIDE_CONFIG's own literals go through it:
+  // `ctx.runs` arrives already converted, in fresh arrays.
+  S.convLit = ctx.upAxis === 'z' ? (a) => [a[0], a[2], -a[1]] : (a) => [a[0], a[1], a[2]];
+
+  for (const r of (ctx.runs || [])) if (r && r.id && Array.isArray(r.pts)) S.runs.set(r.id, r);
+  S.W = matchWorld();
+
+  S.board = boardStore(GUIDE_CONFIG.raceBoardKey);
+  S.root = new S.THREE.Group();
+  S.root.name = 'guide';
+  S.scene.add(S.root);
+  S.mats = kit();
+  S.dom = buildDom();
+  raceReset();
+  S.race.on = false;
+  S.respawnN = respawnCount();
+}
+
 export async function init(ctx) {
   try {
     if (S.ok) return api;
-    S.THREE = ctx.THREE; S.scene = ctx.scene; S.camera = ctx.camera;
-    S.ctrl = ctx.ctrl; S.hud = ctx.hud; S.collision = ctx.collision;
-    S.groundAt = ctx.groundAt; S.enter = ctx.enter;
-    S.unitScale = ctx.unitScale || 1;
-    S.poi = ctx.poi || ''; S.run = ctx.run || '';
-    S.trickState = ctx.trickState || (() => null);
-    S.skiState = ctx.skiState || (() => null);
-    S.skiId = ctx.skiId || (() => '');
-    // live tuning: anything on window.__GUIDE_CONFIG wins over the defaults.
-    // It is how the course is tuned without a rebuild, and how a headless run
-    // holds the boot cards still long enough to photograph them.
-    try { if (window.__GUIDE_CONFIG) Object.assign(GUIDE_CONFIG, window.__GUIDE_CONFIG); } catch { /* */ }
-    S.lifts = ctx.lifts || [];
-    S.liftRadius = ctx.liftRadius || 9;
-    S.rides = ctx.rides || (() => 0);
-    if (ctx.debug) GUIDE_CONFIG.debug = true;
-
-    // world frame -> three frame, exactly the conversion main.js does for the
-    // spawn and the lifts. Only GUIDE_CONFIG's own literals go through it:
-    // `ctx.runs` arrives already converted, in fresh arrays.
-    S.convLit = ctx.upAxis === 'z' ? (a) => [a[0], a[2], -a[1]] : (a) => [a[0], a[1], a[2]];
-
-    for (const r of (ctx.runs || [])) if (r && r.id && Array.isArray(r.pts)) S.runs.set(r.id, r);
-    S.W = matchWorld();
-
-    S.board = boardStore(GUIDE_CONFIG.raceBoardKey);
-    S.root = new S.THREE.Group();
-    S.root.name = 'guide';
-    S.scene.add(S.root);
-    S.mats = kit();
-    S.dom = buildDom();
-    raceReset();
-    S.race.on = false;
+    absorb(ctx);
+    S.tutorial = true;
 
     // The side takeoff, read live off the scene when it exposes one. This is
     // AWAITED rather than fired and forgotten: the route is derived from these
@@ -1349,6 +1625,16 @@ export async function init(ctx) {
     S.route = buildRoute();
     S.stages = S.route ? makeStages() : [];
     S.ok = true;
+    // ---- THE WAY OUT, and it is armed before the first frame. A player who
+    // does not want the tutorial must be able to see that on the screen they
+    // are looking at, not after the first stage has had its say.
+    if (S.stages.length) armSkip();
+    // ...and the courses, dormant. The start circles do not paint while the
+    // tutorial is running: the tutorial IS a guided race, and offering a second
+    // one on top of it is two races at once. `armPortals` is called when the
+    // machine reaches `complete`, and by skipTutorial().
+    buildPortals();
+    attachKeys();
     if (S.stages.length) {
       advanceTo(0);
       // SETTLE THE CHEVRONS BEFORE THE FIRST FRAME. buildArrows() lays the
@@ -1365,6 +1651,41 @@ export async function init(ctx) {
       // light a prompt before the player has dropped in. Arrows only.
       try { if (props && props.arrows) fadeArrows(props.arrows, 1); } catch (e) { err(e); }
     }
+    return api;
+  } catch (e) { err(e); return api; }
+}
+
+// ---- THE OTHER ENTRY POINT: the courses without the tutorial.
+//
+// WHY THIS LIVES IN guide.js AND NOT IN A MODULE OF ITS OWN. A race course here
+// is a resampled run polyline, a gate rhythm laid down it, a ground-conforming
+// dye corridor, a finish banner and the scoring machine that judges all four —
+// every line of which this file already had to write for the slalom. A separate
+// race module would be a second copy of that geometry, and two copies of the
+// course maths is exactly how the tutorial's slalom and the open-world slalom
+// become subtly different courses that nobody notices until a leaderboard is
+// comparing two hills. So: ONE module, TWO entry points. main.js calls init()
+// behind the guide flag and initRace() otherwise; the cost is that a default
+// bench boot now fetches this file, and what it buys is that there is only ever
+// one definition of what the Red Dog slalom IS.
+//
+// It builds no meshes and no text until the player skis into a start circle.
+export async function initRace(ctx) {
+  try {
+    if (S.ok) return api;
+    absorb(ctx);
+    S.tutorial = false;
+    S.ok = true;
+    // no tutorial, so no skip affordance and no boot cards — removed rather
+    // than hidden, for the reason the card layer is removed in init()
+    if (S.dom) {
+      if (S.dom.cards) { S.dom.cards.remove(); S.dom.cards = null; }
+      if (S.dom.skip) { S.dom.skip.remove(); S.dom.skip = null; }
+      if (S.dom.stageChip) { S.dom.stageChip.remove(); S.dom.stageChip = null; }
+    }
+    buildPortals();
+    armPortals();
+    attachKeys();
     return api;
   } catch (e) { err(e); return api; }
 }
@@ -1387,6 +1708,357 @@ function advanceTo(i) {
   } catch (e) { err(e); }
 }
 
+// ================================================================== respawn
+// R IS NOT PROGRESS AND IT IS NOT A LIFT RIDE, and until this existed the guide
+// could tell those three apart only by how far you moved.
+//
+// The route cursor is forward-only on purpose: a chairlift teleports you 900 m
+// up the hill and a cursor that chased it would drag the whole stage machine
+// with it. But R puts you back at the last place you fast-travelled to, which
+// mid-tutorial is the spawn — several hundred metres BACKWARDS — and the same
+// guard that ignores the lift ignored that too. Measured on the build before
+// this change: press R during the slalom and the cursor stuck at s = 683 while
+// the body stood at s = 14, so every stage's geometry test was reading a point
+// 670 m away; it took fifteen seconds of skiing to move at all and then locked
+// onto the wrong fold of Snow King Road (536 → 335 → 483). Meanwhile the race
+// clock ran through the whole re-climb (19.6 s at the keypress, 169.6 s by the
+// time the player was back at the gates) and the stage spent 150 s of its 240 s
+// force-advance budget standing still — and a force-advance is `advanceTo`,
+// which is `clearProps`, which is the blue line gone mid-tutorial.
+//
+// So the counter is watched directly. `ctrl.respawns` is the controller's own,
+// bumped by respawn() and by nothing else, so this cannot be fooled by a
+// teleport and does not need a hook in main.js.
+const respawnCount = () => { try { return S.ctrl.respawns | 0; } catch { return 0; } };
+
+function onRespawn() {
+  const p = S.ctrl.position;
+  // 1. RE-ACQUIRE THE CURSOR, globally. This is the one moment the forward-only
+  //    rule has to be suspended, and the only search in the module that runs
+  //    without a hint.
+  if (S.route) S.route.sHint = S.route.descent.nearest(p.x, p.z).s;
+  // 2. GIVE THE STAGE ITS TIME BACK. The timeout exists so nothing can wedge the
+  //    machine; a player pressing R is not wedged, and charging them 90 s of
+  //    re-climb against a 240 s budget is how the dye gets deleted underneath
+  //    somebody who was only trying to have another go.
+  S.stageT = 0;
+  // 3. THE RUN YOU WERE ON IS OVER, so start it again rather than carrying a
+  //    clock that has been counting a chairlift. raceReset clears each gate's
+  //    remembered side, which is what makes the second run judgeable at all.
+  if (S.race && S.race.on && !S.race.finished && S.raceCourse) raceReset();
+  // 4. ...and say the current stage's line again, so the screen is not silent
+  //    at the moment the player is most lost.
+  promptT = 0; promptKey = ''; promptTxt = '';
+  S.respawnLog.push({ t: +S.t.toFixed(2), stage: S.stage ? S.stage.id : null, at: { x: +p.x.toFixed(1), z: +p.z.toFixed(1) } });
+  if (S.respawnLog.length > 20) S.respawnLog.shift();
+}
+
+// ===================================================================== skip
+// Greg: "tutorial has a skip button (and tells you when you start) so you can
+// just skip the tutorial and it erases the tutorial dye and race and UI and
+// takes you straight into open world."
+//
+// HELD, NOT TAPPED. This throws away the whole tutorial and there is no way
+// back to it inside the session, so it is deliberately not one keystroke deep —
+// GUIDE_CONFIG.skipHoldMs of a held key, with the chip filling as you hold it
+// so the gesture explains itself while you are performing it. The chip is also
+// a real button (pointer-events:auto) because a phone has no X key; on the
+// desktop the pointer is locked and the key is the way in.
+//
+// THE HOLD IS DRIVEN BY A TIMER, NOT BY requestAnimationFrame, and that is not
+// a detail. rAF is a RENDER callback: it fires when the page paints, and this
+// page paints as fast as the machine can draw a mountain — measured at 1 fps
+// under a software rasteriser. An rAF-driven hold means the gesture completes
+// on the first frame after the window elapses, so on a slow machine a perfectly
+// good 1.2 s hold can miss entirely and on a fast one it is exact. A setInterval
+// is not tied to the frame rate, so the key does the same thing on every
+// machine; the bar still only *looks* smooth as fast as the page paints, which
+// is the right thing to lose.
+let skipHoldFrom = 0, skipTimer = 0;
+
+function armSkip() {
+  if (!S.dom || !S.dom.skip) return;
+  S.dom.skip.hidden = false;
+  S.dom.skip.addEventListener('pointerdown', onSkipDown);
+  addEventListener('pointerup', onSkipUp);
+  addEventListener('pointercancel', onSkipUp);
+}
+
+const skipBusy = () => {
+  try { if (S.hud && S.hud.isPaused && S.hud.isPaused()) return true; } catch { /* */ }
+  const P = window.__player;
+  try { if (P && P.inventoryOpen && P.inventoryOpen()) return true; } catch { /* */ }
+  try { if (P && P.gearMenuOpen && P.gearMenuOpen()) return true; } catch { /* */ }
+  const t = document.activeElement;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return true;
+  return false;
+};
+
+function skipStart() {
+  if (S.skipped || !S.tutorial || skipHoldFrom) return;
+  if (skipBusy()) return;
+  skipHoldFrom = performance.now();
+  if (S.dom && S.dom.skip) S.dom.skip.classList.add('is-holding');
+  skipTimer = setInterval(() => {
+    if (!skipHoldFrom) { skipCancel(); return; }
+    const k = clamp01((performance.now() - skipHoldFrom) / GUIDE_CONFIG.skipHoldMs);
+    if (S.dom && S.dom.skipBar) S.dom.skipBar.style.width = (k * 100).toFixed(1) + '%';
+    if (k >= 1) { skipCancel(); skipTutorial(); }
+  }, 50);
+}
+
+function skipCancel() {
+  skipHoldFrom = 0;
+  if (skipTimer) { clearInterval(skipTimer); skipTimer = 0; }
+  if (S.dom && S.dom.skip && S.dom.skipBar) { S.dom.skip.classList.remove('is-holding'); S.dom.skipBar.style.width = '0'; }
+}
+
+const onSkipDown = (e) => { e.preventDefault(); e.stopPropagation(); skipStart(); };
+const onSkipUp = () => skipCancel();
+
+// THE TEARDOWN IS TOTAL, and "total" is checked rather than promised: after
+// this returns, the guide owns no mesh in the scene, no timer, no key handler
+// belonging to the tutorial, and contributes ZERO characters to the screen.
+export function skipTutorial() {
+  if (S.skipped || !S.tutorial) return false;
+  S.skipped = true;
+  try {
+    skipCancel();
+    // 1. the stage machine, and with it every prop any stage ever built.
+    //    advanceTo(-1) runs the current stage's exit() and clearProps() and
+    //    then lands on no stage at all, which is what makes update() inert.
+    advanceTo(-1);
+    S.stages = [];
+    S.stage = null; S.stageI = -1;
+    // 2. the race, and its instruments
+    if (S.race) { S.race.on = false; S.race.finished = true; }
+    S.raceCourse = null;
+    if (S.dom) {
+      S.dom.race.classList.remove('is-on');
+      S.dom.fin.classList.remove('is-on');
+      // every readout back to its empty state — an instrument that keeps its
+      // last value is a string on the screen waiting for a CSS accident
+      for (const k of Object.keys(S.dom.cells)) S.dom.cells[k].textContent = '—';
+      // finH included: it is built holding the word FINISH, so an emptied finish
+      // card that keeps its heading is still one tutorial string on the screen
+      S.dom.finH.textContent = '';
+      S.dom.finBig.textContent = ''; S.dom.finRow.textContent = ''; S.dom.finRow2.textContent = '';
+    }
+    // 3. the prompt line, and the log of it. promptTick would otherwise fade a
+    //    line in that was asserted on the last frame before the skip.
+    promptT = 0; promptKey = ''; promptTxt = ''; promptWarn = false;
+    if (S.dom) {
+      S.dom.toast.classList.remove('is-on');
+      S.dom.tKey.textContent = ''; S.dom.tTxt.textContent = '';
+    }
+    // 4. the chip itself, and the stage crumb. REMOVED, not hidden: a node that
+    //    exists only to be ignored is the same bug one refactor later.
+    if (S.dom && S.dom.skip) {
+      S.dom.skip.removeEventListener('pointerdown', onSkipDown);
+      S.dom.skip.remove();
+      S.dom.skip = null;
+    }
+    if (S.dom && S.dom.stageChip) { S.dom.stageChip.remove(); S.dom.stageChip = null; }
+    removeEventListener('pointerup', onSkipUp);
+    removeEventListener('pointercancel', onSkipUp);
+    document.body.classList.remove('gd-intro-up');
+    // 5. ...and the open mountain, which is the thing actually being asked for.
+    armPortals();
+    try { if (S.hud && S.hud.flash) S.hud.flash('tutorial skipped'); } catch { /* */ }
+  } catch (e) { err(e); }
+  return true;
+}
+
+// ================================================================== portals
+// The opt-in races. Modelled on lift.js because the interaction IS lift.js's:
+// an orange disc painted on the real snow at a place worth standing, a
+// contextual F offer on the same `.phud__prompt` line the chair uses, and a
+// generous accept radius that is the same everywhere.
+function buildPortals() {
+  try {
+    if (!S.THREE || !S.root) return;
+    for (const def of RACE_COURSES) {
+      // the tutorial already built its own; do not resample a 2.3 km polyline
+      // and re-settle 380 ground samples to arrive at the same numbers
+      let course = S.route && S.route.course && S.route.course.id === def.id ? S.route.course : null;
+      if (!course) course = buildCourse(def);
+      if (!course) continue;
+      S.courses.push(course);
+      const P = newProps();
+      const ring = buildStartRing(P, course.start, GUIDE_CONFIG.portalRadiusM);
+      S.portals.push({ course, props: P, ring, armed: false, inside: false, offered: false });
+    }
+  } catch (e) { err(e); }
+}
+
+function armPortals() {
+  for (const p of S.portals) p.armed = true;
+}
+
+// the one the player is standing in, if any
+function portalUnder() {
+  const p = S.ctrl.position;
+  let best = null, bd = Infinity;
+  for (const q of S.portals) {
+    if (!q.armed) continue;
+    const d = Math.hypot(p.x - q.course.start.x, p.z - q.course.start.z);
+    if (d > GUIDE_CONFIG.portalRadiusM || d >= bd) continue;
+    // ...and not from the chairlift passing overhead, the same guard lift.js
+    // makes with BOARD_HEIGHT_M
+    if (Math.abs(p.y - q.course.start.y) > 9) continue;
+    bd = d; best = q;
+  }
+  return best;
+}
+
+// THE PROMPT LINE IS SHARED. lift.js owns `.phud__prompt` and only writes it
+// when its own nearest-lift answer CHANGES, so the race offer can hold the line
+// whenever no chair is offering one — and if a chair ever does, the chair wins
+// and this re-asserts the moment it lets go. Two features quietly fighting over
+// one element would be worse than either of them.
+// `lift.js` writes 'ride RED DOG' — the declaration's own casing, untouched —
+// so this writes 'race RED DOG SLALOM' and the two offers read as one system.
+const RACE_PROMPT = (c) => 'race ' + c.name;
+// what WE last put on the shared line. Without it the handoff deadlocks: ski
+// from one start circle to another and the second offer sees the first one's
+// text still up, decides the line is not free, and declines forever — leaving
+// the wrong course's name under the crosshair. Knowing our own writing is what
+// makes "yield to the chairlift" different from "yield to ourselves".
+let promptOwned = null;
+function readPrompt() {
+  try { return S.hud && S.hud.promptText ? S.hud.promptText() : null; } catch { return null; }
+}
+function offerPrompt(course) {
+  if (!S.hud || !S.hud.setPrompt) return;
+  const want = RACE_PROMPT(course);
+  const cur = readPrompt();
+  if (cur === null || cur === want || cur === promptOwned) {
+    S.hud.setPrompt({ key: 'F', text: want });
+    promptOwned = want;
+  }
+}
+function clearPrompt() {
+  if (!S.hud || !S.hud.setPrompt) return;
+  const cur = readPrompt();
+  // only ever take down our own line — a chairlift offer that arrived while we
+  // were standing here is not ours to cancel
+  if (promptOwned && (cur === null || cur === promptOwned)) S.hud.setPrompt(null);
+  promptOwned = null;
+}
+
+function portalTick(dt) {
+  // ---- the discs. Faded on distance exactly like a boarding decal, and gone
+  // entirely under H: a filmed frame with an orange target in it is precisely
+  // what the clean frame exists to remove.
+  const filming = document.body.classList.contains('clean-frame');
+  const p = S.ctrl.position;
+  for (const q of S.portals) {
+    const live = q.armed && !S.portalRace && !filming;
+    const d = Math.hypot(p.x - q.course.start.x, p.z - q.course.start.z);
+    const k = live ? clamp01((GUIDE_CONFIG.portalFadeM - d) / 12) : 0;
+    q.ring.material.opacity = 0.20 * k;
+    q.ring.visible = k > 0.02;
+  }
+
+  // ---- a run in progress
+  if (S.portalRace) {
+    raceTick(dt);
+    const r = S.race;
+    if (r && r.finished) {
+      // hold the finish card, then hand the mountain back
+      if (!S.portalEndAt) S.portalEndAt = S.t + 6.5;
+      if (S.t >= S.portalEndAt) endPortalRace('finished');
+      return;
+    }
+    // ...or they simply skied off somewhere else
+    if (r && r.stray > GUIDE_CONFIG.raceStrayT) { endPortalRace('left the course'); return; }
+    return;
+  }
+
+  // ---- the offer
+  const q = portalUnder();
+  if (q) {
+    offerPrompt(q.course);
+    S.offered = q;
+  } else if (S.offered) {
+    clearPrompt();
+    S.offered = null;
+  }
+}
+
+function startPortalRace(q) {
+  if (!q || S.portalRace) return null;
+  try {
+    const c = q.course;
+    const P = newProps();
+    buildGates(P, c.gates, c.g);
+    buildDye(P, c.path, c.s0 - 12, c.s1, { width: c.g.corridorM * 2, color: 'dye', step: 7 });
+    buildBanner(P, c.path.at(c.s1), c.path.dir(c.s1).yaw, 'FINISH', c.name);
+    S.portalRace = { portal: q, props: P };
+    S.portalEndAt = 0;
+    raceReset(c);
+    updateRaceHud();
+    if (S.dom) { S.dom.race.classList.add('is-on'); S.dom.fin.classList.remove('is-on'); }
+    clearPrompt();
+    S.offered = null;
+    // the one line it says, and it says the way out in the same breath
+    prompt('F', 'through the gates · F quits', { hold: 5 });
+    return c.id;
+  } catch (e) { err(e); return null; }
+}
+
+function endPortalRace(why) {
+  const R = S.portalRace;
+  if (!R) return false;
+  try {
+    clearProps(R.props);
+    S.portalRace = null;
+    S.portalEndAt = 0;
+    if (S.race) { S.race.on = false; }
+    S.raceCourse = null;
+    promptT = 0; promptKey = ''; promptTxt = '';
+    if (S.dom) {
+      S.dom.race.classList.remove('is-on');
+      S.dom.fin.classList.remove('is-on');
+      // EMPTIED, not merely faded. `.gd__fin` is opacity:0 between races, and
+      // opacity:0 text is still text — it is in innerText, it is read by a
+      // screen reader, and it is what the gate's advert audit looks at. A race
+      // that is over leaves no readout behind.
+      S.dom.finH.textContent = ''; S.dom.finBig.textContent = '';
+      S.dom.finRow.textContent = ''; S.dom.finRow2.textContent = '';
+      for (const k of Object.keys(S.dom.cells)) S.dom.cells[k].textContent = '—';
+      S.dom.toast.classList.remove('is-on'); S.dom.tKey.textContent = ''; S.dom.tTxt.textContent = '';
+    }
+    S.lastRaceEnd = why;
+  } catch (e) { err(e); }
+  return true;
+}
+
+// ===================================================================== keys
+// One listener, in the capture phase, and it swallows NOTHING: main.js's own F
+// handler still runs (lifts.use() is a no-op away from a terminal) and the skip
+// key is bound to nothing else in the player. A tutorial that ate keystrokes
+// would be a regression in every build that ships it.
+function onKeyDown(e) {
+  try {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    if (skipBusy()) return;
+    if (e.code === GUIDE_CONFIG.skipKey) { skipStart(); return; }
+    if (e.code === 'KeyF') {
+      if (S.portalRace) { endPortalRace('quit'); return; }
+      const q = portalUnder();
+      if (q) startPortalRace(q);
+    }
+  } catch (err_) { err(err_); }
+}
+function onKeyUp(e) {
+  if (e.code === GUIDE_CONFIG.skipKey) skipCancel();
+}
+function attachKeys() {
+  addEventListener('keydown', onKeyDown, true);
+  addEventListener('keyup', onKeyUp, true);
+}
+
 export function update(dt, live) {
   if (!S.ok) return;
   try {
@@ -1394,13 +2066,23 @@ export function update(dt, live) {
     dt = Math.min(0.05, Math.max(0.0005, dt || 0.016));
     S.t += dt;
     promptTick(dt);
+    // ---- R. Watched before anything reads a position this frame, so no stage
+    // and no race ever judges the one frame where the body has moved and the
+    // guide has not been told.
+    const rn = respawnCount();
+    if (rn !== S.respawnN) { S.respawnN = rn; onRespawn(); }
     // the hint that keeps the nearest-point search local, advanced every frame
     if (S.route) {
       const n = S.route.descent.nearest(S.ctrl.position.x, S.ctrl.position.z, S.route.sHint);
       // only follow the hint forward — a lift ride teleports 900 m and the hint
-      // must not chase it
+      // must not chase it. A respawn is the exception and onRespawn() has
+      // already re-acquired above.
       if (Math.abs(n.s - S.route.sHint) < 160) S.route.sHint = n.s;
     }
+    // ---- the open-world courses. Ticked before the stage machine so a portal
+    // race owns the race instruments unambiguously, and ticked even when there
+    // is no tutorial at all — this is the whole of initRace()'s frame.
+    if (S.portals.length) portalTick(dt);
     // arrow bob + distance fade, so guidance never occludes the run
     if (props && props.arrows) fadeArrows(props.arrows, dt);
     if (!S.stage) return;
@@ -1450,6 +2132,25 @@ export function state() {
     stages: S.stages.map((q) => q.id),
     log: S.log.slice(),
     done: S.done,
+    tutorial: S.tutorial, skipped: S.skipped,
+    // R, and what the guide did about it — the evidence that the cursor was
+    // re-acquired rather than left pointing half a kilometre down the hill
+    respawns: S.respawnN, respawnLog: S.respawnLog.slice(),
+    skipChip: !!(S.dom && S.dom.skip && !S.dom.skip.hidden),
+    // the open-world courses, as they are right now
+    portals: S.portals.map((q) => ({
+      id: q.course.id, name: q.course.name, armed: q.armed,
+      at: { x: +q.course.start.x.toFixed(1), y: +q.course.start.y.toFixed(1), z: +q.course.start.z.toFixed(1) },
+      r: GUIDE_CONFIG.portalRadiusM,
+      d: +Math.hypot(S.ctrl.position.x - q.course.start.x, S.ctrl.position.z - q.course.start.z).toFixed(1),
+      visible: !!q.ring.visible, opacity: +q.ring.material.opacity.toFixed(3),
+      gates: q.course.gates.length, lengthM: +q.course.path.L.toFixed(1),
+      s0: +q.course.s0.toFixed(1), s1: +q.course.s1.toFixed(1),
+      spacingM: q.course.g.spacingM, halfM: q.course.g.halfM,
+      runs: q.course.def.runs.slice(),
+    })),
+    racing: S.portalRace ? S.portalRace.portal.course.id : null,
+    lastRaceEnd: S.lastRaceEnd || null,
     intro: S.intro ? S.intro.stage() : null,
     cards: S.cards || null,
     prompt: promptT > 0 ? { key: promptKey, text: promptTxt, warn: promptWarn } : null,
@@ -1563,9 +2264,60 @@ export const api = {
     return S.stage ? S.stage.id : null;
   },
   skipIntro() { if (S.intro) S.intro.skip(); return true; },
+  // ---- the skip, exactly as a player performs it and as a shortcut
+  skip: () => skipTutorial(),
+  skipKey: () => ({ code: GUIDE_CONFIG.skipKey, cap: GUIDE_CONFIG.skipCap, holdMs: GUIDE_CONFIG.skipHoldMs }),
+  skipHold: (ms) => new Promise((res) => {         // press and hold, for real
+    skipStart();
+    setTimeout(() => { const done = S.skipped; skipCancel(); res(done); }, ms == null ? GUIDE_CONFIG.skipHoldMs + 120 : ms);
+  }),
+  // ---- the open-world courses
+  courses: () => S.courses.map((c) => ({
+    id: c.id, name: c.name, runs: c.def.runs.slice(),
+    gates: c.gates.length, s0: +c.s0.toFixed(1), s1: +c.s1.toFixed(1),
+    lengthM: +c.path.L.toFixed(1), racedM: +(c.s1 - c.s0).toFixed(1),
+    spacingM: c.g.spacingM, offsetM: c.g.offsetM, halfM: c.g.halfM, corridorM: c.g.corridorM,
+    start: { x: +c.start.x.toFixed(2), y: +c.start.y.toFixed(2), z: +c.start.z.toFixed(2) },
+    board: c.board.key,
+  })),
+  armPortals: () => { armPortals(); return S.portals.length; },
+  // stand on a start circle, the way a player skis onto one
+  goToStart(id) {
+    const q = S.portals.find((r) => r.course.id === id);
+    if (!q) return null;
+    const c = q.course;
+    S.ctrl.teleport(new S.THREE.Vector3(c.start.x, c.start.y + 1.6, c.start.z), c.start.yaw);
+    return { id, at: { ...c.start } };
+  },
+  // press F where you are standing
+  useF() {
+    if (S.portalRace) return endPortalRace('quit') ? 'quit' : null;
+    const q = portalUnder();
+    return q ? startPortalRace(q) : null;
+  },
+  raceOn: () => (S.portalRace ? S.portalRace.portal.course.id : null),
+  abortRace: () => endPortalRace('aborted'),
+  // where the LIVE race wants you next — the next gate, or the line itself once
+  // the gates are behind you. Same job as aim() does for the tutorial, and the
+  // same reason: a headless harness cannot ski a course it cannot see.
+  raceAim() {
+    const c = S.raceCourse, r = S.race;
+    if (!c || !r) return null;
+    const p = S.ctrl.position;
+    const to = (x, z, kind, extra) => ({ kind, x, z, yaw: yawOf(x - p.x, z - p.z), d: +Math.hypot(x - p.x, z - p.z).toFixed(1), ...extra });
+    const g = c.gates[r.next];
+    if (g) return to(g.x, g.z, 'gate', { i: r.next, of: c.gates.length });
+    const n = c.path.nearest(p.x, p.z, c.hint);
+    const q = c.path.at(Math.min(c.path.L, n.s + 25));
+    return to(q.x, q.z, 'finish', { off: +n.d.toFixed(1), s: +n.s.toFixed(1), s1: +c.s1.toFixed(1) });
+  },
   // the race, for tests and for a retry
   resetRace() { raceReset(); return S.race; },
-  clearBoard() { try { S.board.clear(); } catch { /* */ } return true; },
+  clearBoard() {
+    try { S.board.clear(); } catch { /* */ }
+    for (const c of S.courses) { try { c.board.clear(); } catch { /* */ } }
+    return true;
+  },
   // the derived course, as numbers — the thing to read when tuning
   course: () => (S.route ? {
     gates: S.route.gates.map((g) => ({ s: +g.s.toFixed(1), x: +g.x.toFixed(1), z: +g.z.toFixed(1), side: g.side, color: g.color, half: g.half })),

@@ -37,6 +37,8 @@ export const SKI_TUNING = {
   gripAtMax: 0.30,       // fraction of grip left at maxSpeed (drifty up top)
   carveRecover: 0.55,    // share of scrubbed lateral speed handed back forward
   steer: 2.0,            // rad/s from A/D at a standstill
+  pivotRate: 2.9,        // rad/s from the ARROWS on the snow — a throw, not a carve.
+                         // Must sit above `stivotRate` or the detector never fires.
   steerAtMax: 0.34,      // fraction of steer left at maxSpeed
   airSteer: 1.1,         // rad/s from A/D while airborne
   spinTorque: 6.4,       // rad/s from ← → while airborne — a 360 in ~1 s of air
@@ -131,6 +133,106 @@ export const SKI_TUNING = {
   plowSplay: 0.22,       // rad — per-ski yaw in the pizza (presentation)
   plowRoll: 0.18,        // rad — inside edges in the pizza (presentation)
   hockeyRoll: 0.55,      // rad — hard uphill edges in a hockey stop (presentation)
+
+  // ---- MOMENTUM CARRY AND THE LIP. Three effects, and every one of them is
+  // inert at 0 — `carryMax: 0, lipK: 0, lipCompK: 0` gives back, bit for bit,
+  // the file above this block.
+  //
+  //   1. CARRY (`carry*`). Redirecting speed uphill costs what it costs — the
+  //      fall line still points behind you and still decelerates you — but a
+  //      fast skier pays LESS of it than a slow one. It only ever scales the
+  //      half of the fall-line term that OPPOSES travel, so the downhill half
+  //      is untouched and terminal speed is unchanged BY CONSTRUCTION, not by
+  //      calibration.
+  //
+  //   2. THE LIP (`lip*`). The controller zeroes vel.y on every grounded frame,
+  //      so a ski leaving a RISING lip has always left it flat: the direction
+  //      the ramp was sending you was thrown away at the edge, and every
+  //      takeoff in this world was a horizontal one. `lipK` hands that
+  //      direction back, and `lipCompK` hands back the COMPRESSION on top of
+  //      it — how much more upward the surface is sending you now than it was a
+  //      third of a second ago, which is exactly what the transition out of a
+  //      gully wall or the back of a big roller does to you.
+  //
+  //   3. THE POP (`pop*`). A jump edge inside a window around the lip — shortly
+  //      before it, at it, or inside a coyote window just after you have left —
+  //      adds a bonus along the launch direction. The bonus is a fraction OF the
+  //      lip's own vertical, so a pop with no lip under it is arithmetically
+  //      untouched: no lip, no bonus, and a flat-ground jump is the jump it
+  //      always was.
+  carryMax: 0.35,        // share of the uphill fall-line decel a fast skier stops paying
+  carryV0: 10,           // m/s — at and below this the carry is exactly zero
+  carrySpan: 16,         // m/s — span from carryV0 to the full carry
+  // CALIBRATED, and the ceiling is the number to reach for first. Apex goes as
+  // vy², so at game gravity (16 m/s²) `lipMax` alone reads as lipMax²/32 metres
+  // of extra height — 6.5 is 1.3 m, and the 9.0 this started at was 2.5 m on
+  // every roller on the mountain, which is a different game rather than a feel
+  // change. `lipMin` is the other guard and it matters as much: below it the
+  // launch is not scaled down, it is skipped, so small terrain rolls leave the
+  // ground exactly as flat as they always did. Measured over a 4536-line sweep
+  // of the world at 25 m/s, 97% of takeoffs charge nothing at all.
+  lipK: 0.45,            // share of the ramp's own vertical rate carried off the lip
+  lipCompK: 0.25,        // ...and of the compression that built up into it
+  lipMax: 6.5,           // m/s — ceiling on the ramp-given vertical (1.3 m of apex)
+  lipMin: 1.6,           // m/s — under this the lip gave nothing, and nothing is added
+  lipFloorT: 0.35,       // s — how fast the compression reference creeps back up
+  lipSmoothT: 0.05,      // s — low-pass on the surface rate (a triangulated mesh has edges)
+  lipHoldT: 0.20,        // s — the charge is held at its recent PEAK for this long
+  popWindow: 0.16,       // s — a pop this long BEFORE the lip still counts
+  popCoyote: 0.14,       // s — ...and this long after leaving it (coyote time)
+  popLipK: 0.35,         // × the lip's vertical, as the well-timed pop's bonus
+  popLipMax: 2.2,        // m/s — ceiling on that bonus
+  // ---- POP OUT OF A COMPRESSION (Greg, playtest 2): "I don't get the
+  // expected upward lift when I jump with it". Correct, and by construction:
+  // `lipCompK` only pays where the RAMP TERM IS POSITIVE, because paying it on
+  // descending ground was the free-height bug. So a deliberate pop out of a
+  // deep compression on flat or fall-line snow got plain jumpVel — the loaded
+  // skis gave nothing, which is the opposite of what loading a ski is for.
+  //
+  // This is that payout, and the thing that makes it safe is the thing that
+  // makes it right: IT REQUIRES THE JUMP INPUT. The anomaly was free height
+  // with no input; this is a pump, and a pump is a thing you do. It is also
+  // mutually exclusive with `lipCompK` — where the lip already pays the
+  // compression, this pays nothing — so compression is never banked twice.
+  popCompK: 0.18,        // × the compression the ski is carrying, as pop lift
+  popCompMax: 3.0,       // m/s — ceiling on it
+
+  //   4. THE DROP-AWAY (`drop*`). The OTHER half of a knuckle, and the opposite
+  //      mechanism to the lip: the lip ADDS vertical, this one REMOVES GLUE.
+  //
+  //      The controller keeps you stuck to ground that is falling away by
+  //      snapping you back down to it — `max(snapDown, speed·dt·snapMul)` — and
+  //      because that snap grows with speed, the faster you go the harder the
+  //      backside of a roller holds you: at 25 m/s a knuckle can drop 0.83 m in
+  //      a single frame (a 63° break) and you are still on the snow. That is
+  //      "glued down the backside", and it is why bombing a rolling pitch never
+  //      sends you anywhere.
+  //
+  //      So the snap LETS GO, by an amount speed and load decide: a ski carrying
+  //      real speed and a real compression comes off a knuckle, a mellow slow one
+  //      stays stuck exactly as it always did. Nothing is added to the velocity —
+  //      you simply keep the flat momentum you already had, which is the whole of
+  //      what Greg asked for. `dropRelease: 0` is the old snap, unconditionally.
+  //
+  //      These are DELIBERATELY separate knobs from the lip set: knuckle-sends
+  //      and lip-launches are two different complaints and have to be dialled
+  //      apart.
+  //      WHAT LETS GO IS THE MARGIN, not the snap. The snap is not only knuckle
+  //      glue: because vel.y is zeroed on every grounded frame, it is also the
+  //      only thing re-attaching you to ordinary downhill at all, and a 40 deg
+  //      chute at 25 m/s genuinely needs 0.35 m of it per frame just to be
+  //      skiable. So the floor is not a constant here — it is what the surface
+  //      you are ON is already demanding — and only the SLACK above that is up
+  //      for release. A steep chute keeps everything it needs; a roller on a
+  //      mellow pitch keeps almost nothing, and that difference is the feature.
+  dropRelease: 0.80,     // share of the SLACK above the surface's own demand that lets go
+  dropV0: 13,            // m/s — at and below this the snap is exactly today's
+  dropSpan: 12,          // m/s — span from dropV0 to the full release
+  dropCompRef: 8.0,      // m/s of compression that counts as fully loaded
+  dropLoadMin: 0.45,     // share of the release an UNLOADED ski still gets at speed
+  dropMargin: 1.25,      // × what the reference surface demands, as the hold-down floor
+  dropRefT: 0.30,        // s — how slowly that reference follows the ground STEEPENING
+  dropFloor: 0.18,       // m — absolute floor under all of it (anti-chatter on flats)
 };
 
 // Lengths/speeds/accelerations scale with the scene's unit; rates (1/s) and
@@ -144,6 +246,10 @@ export function scaleSkiTuning(u, over = {}) {
     // thresholds speeds, and the sidecut radius a length. Rates (1/s), ratios
     // and radians are unitless and stay put.
     'pumpMax', 'pumpLoadK', 'pumpVr0', 'pumpVrSpan', 'pumpCharge', 'pumpRadius',
+    // carry/lip: the thresholds and the ceilings are speeds; the K's are shares
+    // and the windows are times, so neither scales.
+    'carryV0', 'carrySpan', 'lipMax', 'lipMin', 'popLipMax',
+    'dropV0', 'dropSpan', 'dropCompRef', 'dropFloor', 'popCompMax',
     'stivotVr']) S[k] *= u;
   for (const k of ['dragQuad', 'airDrag', 'rollPerLateral']) S[k] /= u;
   return S;
@@ -187,6 +293,34 @@ let _stivT = -1, _hookT = 0, _hookK = 1, _slip = 0, _stopMode = 0;   // _stopMod
 // ---- what the two ski rigs are actually doing, resolved here so the renderer
 // never has to know whether it is looking at a carve, a pizza or a hockey stop
 let _splay = 0, _edgeL = 0, _edgeR = 0;
+// ---- the lip. `_vyS` is the vertical velocity the SURFACE is imparting (the
+// contact constraint v·n = 0 solved for the vertical), low-passed; `_vyFloor`
+// is the compression reference it is measured against; `_lipVy` is what the
+// last grounded frame would hand a takeoff, and the two `Paid` flags make the
+// launch and the pop bonus one-shot per air. `_popT` is the last jump edge, on
+// `_chatT`'s clock — the one monotonic sim time this module already keeps.
+let _vyS = 0, _vyFloor = 0, _lipVy = 0, _lipHold = 0;
+let _lipPaid = true, _popPaid = true, _popT = -1e9, _popVy = 0, _wasGnd = false;
+// ...and the two halves of the charge kept apart, PRE-clamp and signed, purely
+// so the lab meter can say WHY there is or is not a launch. `_lipRamp` is what
+// the surface itself is worth and goes negative on descending ground; `_lipComp`
+// is what the compression is worth and never does. Their clamped sum is the
+// charge. `_launchLog` is the one-shot record of the last takeoff.
+let _lipRamp = 0, _lipComp = 0, _launchLog = null;
+// ---- the drop-away. `_dVyS` is how fast the SURFACE is changing our vertical
+// velocity (m/s per second, negative when the ground is falling away); compared
+// against gravity it is the honest 'is this steeper than a ballistic path'
+// test, and it is what distinguishes a knuckle release from an ordinary
+// roll-off in the meter. `_dropK` is how much of the snap is currently let go,
+// and `_dropFull`/`_dropCut` are the two snap distances the meter prints.
+let _dVyS = 0, _dropK = 0, _dropFull = 0, _dropCut = 0, _lastSp = 0, _lastDt = 1 / 60, _grav = 16;
+// the surface the HOLD is sized against. It follows the ground getting mellower
+// instantly and the ground getting steeper only over `dropRefT`, which is the
+// whole trick: sized against the live surface instead, a knuckle buys its own
+// glue — the steeper it breaks the more snap it justifies — and the release can
+// never fire. Lagged, the slack that appears when the ground suddenly steepens
+// is exactly what gets let go.
+let _vyRef = 0;
 
 const SIN25 = Math.sin(25 * Math.PI / 180);
 
@@ -203,6 +337,10 @@ export function resetSki() {
   _last = { q: 0, eta: 0, retention: 0, timing: 0, sweep: 0, turnT: 0, headroom: 0, flat: 0, payout: 0, ok: false };
   _stivT = -1; _hookT = 0; _hookK = 1; _slip = 0; _stopMode = 0;
   _splay = 0; _edgeL = 0; _edgeR = 0;
+  _vyS = 0; _vyFloor = 0; _lipVy = 0; _lipHold = 0;
+  _lipPaid = true; _popPaid = true; _popT = -1e9; _popVy = 0; _wasGnd = false;
+  _lipRamp = 0; _lipComp = 0; _launchLog = null;
+  _dVyS = 0; _dropK = 0; _dropFull = 0; _dropCut = 0; _lastSp = 0; _vyRef = 0;
 }
 
 export function skiState() {
@@ -216,6 +354,19 @@ export function skiState() {
     // ---- the stop/stivot machine
     stivot: _stivT >= 0 ? _stivT : 0, stivoting: _stivT >= 0,
     hook: _hookT > 0, slip: _slip, stop: _stopMode,
+    // ---- the lip, for the tests: what the surface is doing to the vertical,
+    // what the compression has built to, and what a takeoff would be handed
+    // right now. "the lip feels weak" is three different numbers.
+    surfVy: _vyS, vyFloor: _vyFloor, comp: Math.max(0, _vyS - _vyFloor),
+    lipRamp: _lipRamp, lipComp: _lipComp, lipVy: _lipVy,
+    lipPaid: _lipPaid, popPaid: _popPaid, airT: _airT,
+    // seconds since the last jump edge, on the same clock the pop window uses.
+    // The meter compares it against popWindow/popCoyote itself — this module
+    // does not decide what a HUD calls "at the lip".
+    sincePop: _chatT - _popT,
+    // ---- the drop-away: the surface's own vertical acceleration against
+    // gravity, how much of the snap is being let go, and the two distances.
+    dVyS: _dVyS, gravity: _grav, dropK: _dropK, snapFull: _dropFull, snapCut: _dropCut,
   };
 }
 
@@ -257,6 +408,12 @@ export function skiStep(ctx) {
   // ---- chatter. Only on the snow — in the air there is nothing to shimmy
   // against — and only above this ski's threshold.
   _chatT += dt;
+  // ...and `_chatT` doubles as the module's monotonic sim clock, which is all
+  // the pop window needs. The jump edge is stamped here, BEFORE the controller
+  // acts on it, so a pop the ramp then swallowed (press SPACE hard into a
+  // compression and the rising ground re-grounds you inside the same frame) is
+  // still on the record when the real lip arrives a tenth of a second later.
+  if (keys.jump) _popT = _chatT;
   const ch = _chatter = (ctx.grounded && S.chatterSpeed < Infinity && sp0 > S.chatterSpeed)
     ? Math.min(1, (sp0 - S.chatterSpeed) / (S.chatterSpan || 6))
     : 0;
@@ -273,7 +430,24 @@ export function skiStep(ctx) {
   if (keys.spinRight) spin -= 1;
   if (ctx.grounded) {
     const rate = S.steer * (1 - (1 - S.steerAtMax) * fast);
-    yaw += (turn + spin) * rate * dt;
+    // A/D CARVE. The arrows PIVOT (Greg: "arrow keys while on ground should be
+    // stivot not carve"). They used to be a second pair of carve keys, which is
+    // a thing A/D already were, and — more to the point — the carve steer can
+    // never throw the skis hard enough to trigger anything: at 20 m/s it is
+    // 1.09 rad/s against a `stivotRate` entry threshold of 1.6, so no key on the
+    // board could ever start a stivot and only the mouse could. `pivotRate` is
+    // above that threshold on purpose: holding an arrow THROWS the skis across
+    // the direction of travel, the slip angle and the lateral speed build, and
+    // §2.2's detector picks it up as the pivot-slip it already knows how to run.
+    //
+    // The seam is deliberately this one line. `keys.spinLeft/spinRight` keep
+    // their names and their bindings, main.js's KEYMAP is untouched, the air
+    // branch below is byte-identical, and touch.js only ever sets these two
+    // while AIRBORNE — so mobile cannot reach this and nothing else has to move.
+    // `pivotRate: 0` falls back to the carve rate, which IS the old line —
+    // `(turn + spin) * rate` — so this knob is inert at zero like every other
+    // one in the table and the change is provable against the old build.
+    yaw += turn * rate * dt + spin * (S.pivotRate > 0 ? S.pivotRate : rate) * dt;
     // the shimmy: two incommensurate sines so it never settles into a rhythm
     if (ch > 0 && S.chatterYaw > 0) {
       yaw += (Math.sin(_chatT * 31.7) + Math.sin(_chatT * 19.3)) * 0.5 * S.chatterYaw * ch * dt;
@@ -287,6 +461,8 @@ export function skiStep(ctx) {
 
   if (ctx.grounded) {
     _airT = 0;
+    // still on the snow one frame after a launch = the ground ate it
+    if (_launchLog && _launchLog.pending) { _launchLog.eaten = true; _launchLog.pending = false; }
     const n = ctx.normal;
 
     // ---- 1. fall line
@@ -294,10 +470,26 @@ export function skiStep(ctx) {
     if (n) {
       nh = Math.hypot(n.x, n.z);                      // = sinθ for a unit normal
       if (nh > 1e-4) {
-        const a = ctx.gravity * Math.min(1, nh) * S.slopeAccel * dt;
-        vel.x += (n.x / nh) * a;
-        vel.z += (n.z / nh) * a;
+        let a = ctx.gravity * Math.min(1, nh) * S.slopeAccel * dt;
         dfx = n.x / nh; dfz = n.z / nh;               // ...and that IS the fall-line direction
+        // ---- MOMENTUM CARRY. The fall line is the only thing that ever costs
+        // you speed for going up, and at 25 m/s it costs the same as it does at
+        // 10 — which is why redirecting real speed onto rising ground scrubs so
+        // much of it. Take a speed-scaled bite out of the term, and ONLY where
+        // it opposes travel: `along` is +1 pointed straight down the fall line
+        // and −1 straight up it, and the carry is gated on `along < 0`. So the
+        // downhill half of this line is arithmetically identical to what it has
+        // always been, and terminal speed cannot move.
+        if (S.carryMax > 0 && sp0 > 1e-3) {
+          const along = (dfx * vel.x + dfz * vel.z) / sp0;
+          if (along < 0) {
+            const k = S.carryMax * (-along)
+              * clamp01((sp0 - S.carryV0) / (S.carrySpan || 1));
+            a *= 1 - k;
+          }
+        }
+        vel.x += dfx * a;
+        vel.z += dfz * a;
       }
     }
 
@@ -513,10 +705,76 @@ export function skiStep(ctx) {
 
     vel.x = fx * vf + rx * vr;
     vel.z = fz * vf + rz * vr;
+
+    // ---- THE LIP. What the SURFACE is doing to our vertical velocity, from the
+    // contact constraint v·n = 0 solved for the vertical component. Positive on
+    // a rising face — a gully wall, the front of a roller, the exit of a
+    // compression — and negative running downhill. The controller pins vel.y to
+    // 0 for every frame you are on the snow, so this is the only record the ski
+    // keeps of the direction the ground was actually sending it.
+    const ny = n ? Math.max(0.25, n.y) : 1;
+    const vyRaw = n ? -(vel.x * n.x + vel.z * n.z) / ny : 0;
+    const vyWas = _vyS;
+    if (!_wasGnd) { _vyS = vyRaw; _vyFloor = vyRaw; _vyRef = vyRaw; _dVyS = 0; }   // touchdown starts the clock
+    else {
+      _vyS += (vyRaw - _vyS) * Math.min(1, dt / (S.lipSmoothT || 0.05));
+      // how hard the SURFACE is pulling our vertical velocity around. Below
+      // −gravity the ground is dropping away faster than a thrown object and
+      // there is physically nothing left to stand on — which is exactly the
+      // moment the ground snap has always overruled and pinned us back down.
+      const dv = dt > 1e-6 ? (_vyS - vyWas) / dt : 0;
+      _dVyS += (dv - _dVyS) * Math.min(1, dt / (S.lipSmoothT || 0.05));
+    }
+    _grav = ctx.gravity;
+    if (_vyS > _vyRef) _vyRef = _vyS;
+    else _vyRef += (_vyS - _vyRef) * Math.min(1, dt / (S.dropRefT || 0.3));
+    // The compression reference is a running MINIMUM that creeps back up, and
+    // the rise above it is the compression: how much more upward the ground is
+    // sending you now than it was `lipFloorT` ago. A running minimum rather than
+    // an integral of the positive increments ON PURPOSE — an integral rectifies
+    // mesh noise into a charge that only ever grows, and this cannot: noise the
+    // floor can follow contributes nothing.
+    if (_vyS < _vyFloor) _vyFloor = _vyS;
+    else _vyFloor += (_vyS - _vyFloor) * Math.min(1, dt / (S.lipFloorT || 0.35));
+    // ...and seeding the floor at touchdown is what stops a landing from being a
+    // trampoline: land on a rising face and the ramp rate is large immediately,
+    // but there was no compression under it, so there is nothing to pay out.
+    // THE RAMP TERM IS SIGNED, and that is the whole difference between this
+    // launching you off things that go up and launching you off everything.
+    // Clamping it at zero — which is how this shipped first — left the
+    // compression term completely unopposed on a DESCENDING surface, and a
+    // census of 255 fall-line downhill runs found that 100% of the charges it
+    // produced were on ground that was sending the rider DOWN: at (-125, 285)
+    // the surface was pushing −11.3 m/s and the ski was handed +4.96 m/s of
+    // upward launch for it, no pop required. Greg played it and reported
+    // "jumping higher than usual on downhills", which is exactly that.
+    // Signed, a falling surface has to be OUT-COMPRESSED before it pays, and
+    // the gully-wall and roller cases — where the surface really is rising —
+    // are untouched because both terms are positive there.
+    _lipRamp = _vyS * S.lipK;
+    _lipComp = Math.max(0, _vyS - _vyFloor) * S.lipCompK;
+    // ...and the charge is then HELD at its recent peak, decaying to nothing
+    // over `lipHoldT`. Without the hold the value read at the takeoff frame is a
+    // one-frame lottery: the ramp rate collapses across the crest, so a pop
+    // landing on the frame before the edge and a pop landing on the edge itself
+    // came out 2:1 apart, and a COYOTE pop — which reads the charge that was
+    // banked a beat earlier — beat both of them. The peak is the honest number:
+    // it is what the ramp did to you, not what the last triangle did.
+    const lipNow = Math.min(S.lipMax, Math.max(0, _lipRamp + _lipComp));
+    _lipHold = _wasGnd
+      ? Math.max(lipNow, _lipHold - (S.lipMax / (S.lipHoldT || 0.2)) * dt)
+      : lipNow;
+    _lipVy = _lipHold >= S.lipMin ? _lipHold : 0;
+    _lipPaid = false; _popPaid = false;
+    _wasGnd = true;
   } else {
     // airborne: momentum is yours, minus a little air. A bank charged on the
     // snow is not something you can carry through a jump.
     _airT += dt;
+    _wasGnd = false;
+    if (_launchLog && _launchLog.pending) _launchLog.pending = false;   // it took
+    _popVy = 0;                  // a pop that flew is spent; only a swallowed one
+                                 // is still owed anything (see skiLaunch)
     if (_stivT >= 0) _stivT = -1;
     _stopMode = 0;
     if (_airT > S.pumpAirT) { _pumpQ = 0; _pumpRelT = 0; _pumpRelLeft = 0; }
@@ -527,6 +785,8 @@ export function skiStep(ctx) {
   }
 
   const sp = Math.hypot(vel.x, vel.z);
+  _lastSp = Math.min(sp, S.maxSpeed);      // what the drop-away release scales with
+  _lastDt = dt;
   if (sp > S.maxSpeed) {
     const k = S.maxSpeed / sp;
     vel.x *= k; vel.z *= k;
@@ -599,6 +859,173 @@ export function rollSkiRigs(rigs, k = 1) {
     if (y !== 0 || g.rotation.y !== 0) g.rotation.y = y;
   }
   return _rollOut * k;
+}
+
+// LEAVING the ground, which is the other half of skiLand and used to be nobody's
+// job on skis at all. The controller calls this at the two — and only two —
+// moments a ski can leave the snow:
+//
+//   G.launch(vel, S)          rolled off a lip without jumping
+//   G.launch(vel, S, jumpVel) the jump edge fired — on the snow at the lip, or
+//                             in the coyote window just after it (skiCoyote).
+//                             The controller has ALREADY added that jumpVel to
+//                             vel.y; it is passed so this file knows what a pop
+//                             is worth on the gear being ridden, which it has
+//                             no other way to learn.
+//
+// It is the ONLY place this module writes vel.y, and the two one-shot flags mean
+// a single air can collect the ramp launch once and the pop bonus once, however
+// many times the controller asks.
+//
+// With `lipK: 0` and `lipCompK: 0`, `_lipVy` is 0 and every branch below is a
+// no-op — a ski tuned that way leaves the ground exactly as flat as it always
+// did, and so does a ski leaving flat ground or the edge of a cliff, where the
+// ramp gave nothing to hand back.
+// WHAT A POP IS WORTH RIGHT NOW, in one place. skiLaunch applies exactly what
+// this returns and the lab meter prints exactly what this returns, so the
+// prediction on screen cannot drift away from the physics: there is no second
+// copy of the arithmetic to drift.
+//
+// The two compression payouts are MUTUALLY EXCLUSIVE. Where the lip is charged
+// (`_lipVy > 0`) the compression has already been banked into that charge by
+// `lipCompK`, and the pop adds its percentage bonus on top. Where it is not —
+// flat ground, a fall line, anywhere the ramp term came out negative — the pop
+// converts the compression directly instead. One or the other, never both, so
+// no compression is ever paid for twice.
+//
+// `gate` is the diagnosis when the answer is small: it names the thing that ate
+// it rather than leaving the player to guess.
+function popPay(S) {
+  const comp = Math.max(0, _vyS - _vyFloor);
+  if (_lipVy > 0) {
+    return { lip: _lipVy, comp: 0, bonus: Math.min(S.popLipMax, _lipVy * S.popLipK),
+             gate: 'lip charged' };
+  }
+  const sum = _lipRamp + _lipComp;
+  const gate = comp <= 1e-6 ? 'no compression'
+    : (sum <= 0 ? 'ramp negative' : (sum < S.lipMin ? 'under lipMin' : 'no charge'));
+  return { lip: 0, comp: Math.min(S.popCompMax, comp * (S.popCompK || 0)), bonus: 0, gate };
+}
+
+// The lab meter's forward look: what SPACE would add to vel.y this instant,
+// including the gear's own jump, and what is limiting it. `jumpVel` is the
+// controller's number — this module has no way to know it otherwise.
+export function skiPopPreview(S, jumpVel = 0) {
+  const p = popPay(S);
+  const add = p.lip + p.comp + p.bonus;
+  return { ...p, add, total: jumpVel + add, jumpVel,
+           compRaw: Math.max(0, _vyS - _vyFloor),
+           airborne: !_wasGnd, coyote: skiCoyote(S) };
+}
+
+export function skiLaunch(vel, S, popVy) {
+  // the lab meter's record of this takeoff, itemised. Written on the way through
+  // rather than reconstructed after, because "the lip felt like nothing" is four
+  // different answers — no charge, charge but no pop, pop outside the window, or
+  // a charge the cap ate — and only the itemisation tells them apart.
+  // A takeoff is a DROP-AWAY when the release was doing something AND the ground
+  // was falling away faster than free fall — the second half is the definition,
+  // not a guess: below −gravity there is nothing left to stand on and only the
+  // snap was holding us there.
+  const drop = _dropK > 0 && _dVyS < -_grav;
+  _launchLog = { vy0: vel.y, lip: 0, ramp: _lipRamp, comp: _lipComp, charge: _lipVy,
+                 drop, dropK: _dropK, dVyS: _dVyS, grav: _grav,
+                 snapFull: _dropFull, snapCut: _dropCut,
+                 pop: 0, restored: 0, total: 0, src: drop ? 'drop-away' : 'none',
+                 // "did it actually take?" — a pop into a rising ramp is added to
+                 // vel.y and taken straight back out by the ground snap, and a
+                 // meter that cannot say so is a meter that lies about the one
+                 // case the player is complaining about. skiStep answers it on
+                 // the next frame, whichever branch it lands in.
+                 eaten: false, pending: true, taken: false };
+  if (!_lipPaid) {
+    _lipPaid = true;
+    if (_lipVy > 0) { vel.y += _lipVy; _launchLog.lip = _lipVy; }
+  }
+  if (popVy > 0) _popVy = popVy;          // what a pop is worth on this gear
+  const pay = popPay(S);
+  const done = () => { _launchLog.total = vel.y - _launchLog.vy0;
+    _launchLog.src = _launchLog.lip > 0 ? 'lip' : (drop ? 'drop-away' : 'none'); };
+  // Nothing under the skis and nothing owed: a pop over flat, uncompressed
+  // ground is arithmetically the jump it always was, and it leaves here without
+  // touching vel.y or closing the window.
+  if (_popPaid || (pay.lip <= 0 && pay.comp <= 0 && pay.bonus <= 0)) { done(); return; }
+  // The pop window has three parts. `popVy > 0` is the pop firing right now —
+  // on the snow at the lip, or in the coyote window via skiCoyote(). The other
+  // is `_chatT - _popT`: a pop shortly BEFORE the lip.
+  const late = _chatT - _popT;
+  if (!(popVy > 0) && !(late <= (S.popWindow || 0))) { done(); return; }
+  _popPaid = true;
+  // ...and that third case needs its jump handed back, because the ramp ATE it.
+  // Press SPACE into a compression and the controller adds the jump to vel.y and
+  // the ground snap takes it straight back out on the same frame, still on the
+  // rising face — so the best-timed pop on the mountain was the one that did the
+  // least, and a lazy coyote pop a tenth of a second later beat it 2:1. Hand it
+  // back at the lip it was aimed at. Once: `_popPaid` closes the window.
+  // (`_popVy` is cleared the moment you are actually airborne — see the air
+  // branch of skiStep — so a pop that DID take flight can never be paid twice,
+  // and only one the ground swallowed is still on the books to restore.)
+  if (!(popVy > 0) && _popVy > 0) { vel.y += _popVy; _launchLog.restored = _popVy; _popVy = 0; }
+  vel.y += pay.bonus + pay.comp;
+  _launchLog.pop = pay.bonus + pay.comp;
+  _launchLog.popComp = pay.comp;
+  _launchLog.gate = pay.gate;
+  _launchLog.total = vel.y - _launchLog.vy0;
+  const how = popVy > 0 ? '' : (_launchLog.restored > 0 ? ' (restored)' : ' (pre)');
+  _launchLog.src = (pay.lip > 0 ? 'lip + pop' : 'pump + pop') + how;
+}
+
+// One-shot drain for the lab meter: the last takeoff, itemised, or null. Read by
+// hud.js under DEBUG_HUD and by the headless probes; nothing in the shipping
+// build ever calls it.
+export function takeSkiLaunch() {
+  if (!_launchLog || _launchLog.taken) return null;
+  _launchLog.taken = true;
+  return { ..._launchLog };
+}
+
+// THE DROP-AWAY RELEASE. The controller works out how far it is willing to snap
+// us back down to ground that is falling away, and then hands that distance here
+// to be argued with. Returning `snap` unchanged is the old behaviour, and that
+// is what a slow ski gets, every time.
+//
+// Two factors, and both have to mean something before anything lets go:
+//   SPEED — under `dropV0` this returns `snap` on the first line and the whole
+//     rule is off. Mellow terrain at walking pace is untouched by construction,
+//     not by tuning.
+//   LOAD — a ski that has just been compressed comes off a knuckle more easily
+//     than a light one, which is both what Greg asked for and what actually
+//     happens: the legs are already extending. `dropLoadMin` is what an
+//     uncompressed ski still gets, so speed alone does something.
+//
+// Nothing here writes velocity. The skier leaves the ground with the flat
+// momentum they already had — that IS the effect, and it is why this rule needs
+// no launch term and cannot interact with the lip's.
+export function skiSnapRelease(S, snap) {
+  _dropFull = snap;
+  _dropK = 0;
+  if (!(S.dropRelease > 0)) { _dropCut = snap; return snap; }
+  const spd = clamp01((_lastSp - S.dropV0) / (S.dropSpan || 1));
+  if (spd <= 0) { _dropCut = snap; return snap; }
+  const load = S.dropLoadMin + (1 - S.dropLoadMin)
+    * clamp01(Math.max(0, _vyS - _vyFloor) / (S.dropCompRef || 1));
+  _dropK = S.dropRelease * spd * load;
+  // What the surface under us is already asking for: it falls `-vyS` metres of
+  // vertical per second, so it needs that much snap per frame just to be skied.
+  // Keeping it (plus a margin) is what stops this from ejecting people off steep
+  // chutes, and releasing the SLACK above it is what sends them off knuckles.
+  const hold = Math.max(S.dropFloor, Math.max(0, -_vyRef) * _lastDt * S.dropMargin);
+  _dropCut = hold + Math.max(0, snap - hold) * (1 - _dropK);
+  return _dropCut;
+}
+
+// "A pop this late still counts." The controller asks this before honouring a
+// jump edge while AIRBORNE, which no ski could ever do before; nothing else may
+// call it. Both gates are load-bearing: `_lipVy > 0` means there was a lip to be
+// late for (a pop over flat ground or off a cliff edge is refused, exactly as it
+// always was), and `_popPaid` means one air buys one bonus.
+export function skiCoyote(S) {
+  return !_popPaid && _lipVy > 0 && _airT > 0 && _airT <= (S.popCoyote || 0);
 }
 
 // Landing on a pitch should send you on your way, not stop you dead: a slice of

@@ -78,7 +78,7 @@ const S = {
   air: false, airT: 0, spinAcc: 0, flipAcc: 0, firstAt: 0,
   family: null, tilt: 0, rate: 1, lead: null,
   // ---- landing snap
-  snapLeft: 0, snapRad: 0,
+  snapLeft: 0, snapRad: 0, snapTilt: 0,
   // ---- combo
   combo: null,
   banked: 0,
@@ -322,6 +322,13 @@ function judge(info) {
     // landed. Snap the body square to the window over snapT — the stumble is
     // what SKETCHY costs you, not the score alone.
     S.snapRad = -err * D2R;
+    // ...ON THE AXIS THE ROTATION WAS THROWN ON. `err` is the residual of
+    // `hypot(spinAcc, flipAcc)`, which for a pure flip is entirely flipAcc — and
+    // this used to be spent entirely on YAW regardless, so an under-rotated
+    // front flip turned the rider up to 48 deg sideways on landing (90 deg on a
+    // double) for a rotation that never touched the heading. Greg: "some of my
+    // front flip landings turn me kind of sideways for no reason."
+    S.snapTilt = fam.tilt;
     S.snapLeft = T.snapT;
 
     const c = startCombo();
@@ -415,7 +422,15 @@ export function update(dt, live) {
     if (S.snapLeft > 0) {
       const k = Math.min(1, dt / S.snapLeft);
       const step = S.snapRad * k;
-      c.setYaw(c.yaw + step);
+      // Decomposed exactly the way the accumulators were composed a few lines
+      // up — `spinAcc += ... cos(tilt)`, `flipAcc += ... sin(tilt)` — so the
+      // residual is paid back onto the same two axes it was earned on. A spin
+      // (tilt 0) is bit-for-bit the yaw-only snap this has always been; a flip
+      // (tilt PI/2) puts nothing at all into the heading; a cork or a rodeo
+      // splits it the way it split the rotation.
+      const tl = S.snapTilt || 0;
+      c.setYaw(c.yaw + step * Math.cos(tl));
+      if (c.setPitch) c.setPitch(c.pitch + step * Math.sin(tl));
       S.snapRad -= step;
       S.snapLeft -= dt;
       if (S.snapLeft <= 0) { S.snapRad = 0; S.snapLeft = 0; }

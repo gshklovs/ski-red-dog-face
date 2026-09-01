@@ -42,6 +42,70 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
   }
   if (DEBUG_HUD) root.append(read);
 
+  // ---- LIP / COMPRESSION METER. Lab only, and lab only in the strongest
+  // sense: the nodes are not merely hidden outside DEBUG_HUD, they are never
+  // constructed, `lipMeter` below is a no-op without them, and every style it
+  // needs is set on the element rather than in play.css — so the shareable
+  // build carries no markup, no rule and no branch for it.
+  //
+  // It exists because "compressions aren't leading to natural launches" and
+  // "I'm jumping higher than usual on downhills" are the same sentence said
+  // twice, and neither can be answered by watching the screen. What it shows is
+  // the physics' own arithmetic, unrounded and unflattered: the surface rate the
+  // ski is reading, the reference it is being compared against, what each half
+  // of the charge is worth INCLUDING the negative half, and what a takeoff would
+  // actually be paid this instant.
+  let lipEls = null;
+  if (DEBUG_HUD) {
+    const box = el('div', 'phud__lip pchip');
+    box.style.cssText = 'position:absolute;left:12px;top:190px;min-width:236px;'
+      + 'font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;padding:8px 10px;'
+      + 'pointer-events:none;white-space:pre;';
+    const t = el('div', 'phud__title');
+    t.append(el('span', 'dot'), el('b', null, 'LIP · COMPRESSION'));
+    box.append(t);
+    const line = (k) => {
+      const r = el('div');
+      r.style.cssText = 'display:flex;justify-content:space-between;gap:10px';
+      const kk = el('span', null, k); kk.style.opacity = '.55';
+      const vv = el('span', null, '—');
+      r.append(kk, vv); box.append(r);
+      return vv;
+    };
+    const rows2 = {};
+    for (const k of ['surface vy', 'reference', 'compression']) rows2[k] = line(k);
+    const sep = el('div');
+    sep.style.cssText = 'height:1px;margin:5px 0;opacity:.25;background:currentColor';
+    box.append(sep);
+    for (const k of ['ramp x K', 'comp x K', 'charge']) rows2[k] = line(k);
+    // the charge bar, against lipMax. Two-tone so the split is visible at a
+    // glance: the ramp's share and the compression's share of what is banked.
+    const bar = el('div');
+    bar.style.cssText = 'position:relative;height:6px;margin:4px 0 6px;'
+      + 'border:1px solid currentColor;opacity:.9';
+    const barR = el('i');
+    barR.style.cssText = 'position:absolute;left:0;top:0;bottom:0;width:0;background:currentColor;opacity:.95';
+    const barC = el('i');
+    barC.style.cssText = 'position:absolute;top:0;bottom:0;width:0;background:currentColor;opacity:.45';
+    const barMin = el('i');   // where lipMin sits — under it nothing launches
+    barMin.style.cssText = 'position:absolute;top:-2px;bottom:-2px;width:1px;background:currentColor';
+    bar.append(barR, barC, barMin);
+    box.append(bar);
+    const sep2 = el('div');
+    sep2.style.cssText = 'height:1px;margin:5px 0;opacity:.25;background:currentColor';
+    box.append(sep2);
+    for (const k of ['surface accel', 'snap release', 'pop window', 'pop now', 'state']) rows2[k] = line(k);
+    // the takeoff readout: latched for a beat, itemised, and it says outright
+    // when the ground swallowed the launch it just paid out
+    const shot = el('div');
+    shot.style.cssText = 'margin-top:6px;padding-top:5px;border-top:1px solid currentColor;'
+      + 'opacity:.85;white-space:pre-wrap';
+    shot.textContent = 'takeoff —';
+    box.append(shot);
+    root.append(box);
+    lipEls = { box, rows: rows2, barR, barC, barMin, shot, shotT: 0 };
+  }
+
   // ---- fps
   const fps = el('div', 'phud__fps pchip');
   fps.append(el('span', 'k', 'fps '), el('span', 'v', '—'));
@@ -157,6 +221,18 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
   keyEls.lift.classList.add('is-hidden');       // shown only if the world has lifts
   keyEls.boost.classList.add('is-hidden');      // shown only in the rocket gear
   root.append(legend);
+  // Greg, 2026-09-01 — "on the mobile screen I don't want to see the chips."
+  // Every cap on this strip names a KEY (WASD, SPACE, ← →, C, R, ESC) and a
+  // phone has none of them, so on a coarse pointer the strip is six lies taking
+  // up the bottom of a 390 px screen. The phone learns its controls from the
+  // intro's touch diagram and drives from touch.js's stick instead.
+  //
+  // An INLINE display, not the `is-hidden` class the rest of this file uses:
+  // paintInstruments() toggles `is-hidden` on `legend` every time the pause
+  // panel opens or closes, so a class set here would be wiped by the first
+  // un-pause. Desktop is untouched — the chips, their order and their live
+  // `is-on` states are all exactly as they were.
+  if (matchMedia('(pointer: coarse)').matches) legend.style.display = 'none';
   // (the old CSS ski rails lived here — superseded by the real 3D skis in main.js)
 
   // ---- lift prompt: the one contextual line on the screen. Sits just under
@@ -544,6 +620,100 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
       for (const k of Object.keys(devRows)) if (f[k] != null) devRows[k].textContent = f[k];
       if (f.params != null) devParams.textContent = f.params;
       if (f.url != null) devFull = f.url;
+    },
+    // ---- LIP / COMPRESSION METER (lab only). main.js calls this every frame
+    // while the skis are on, with the ski's live state, its tuning and the
+    // one-shot takeoff record. Outside DEBUG_HUD `lipEls` is null and this
+    // returns immediately, so the call site needs no branch of its own.
+    //
+    // Nothing here rounds in the physics' favour. `ramp x K` is printed with its
+    // sign because the sign IS the diagnosis: on a descending surface it is
+    // negative, and a charge that only exists because that negative was being
+    // clamped away is the bug this meter was built to make visible.
+    lipMeter(f) {
+      if (!lipEls) return;
+      const on = !!f && !!f.on;
+      lipEls.box.hidden = !on;
+      if (!on) return;
+      const s = f.s, T = f.T, R = lipEls.rows;
+      const n = (v, d = 2) => (v >= 0 ? '+' : '') + Number(v || 0).toFixed(d);
+      R['surface vy'].textContent = n(s.surfVy) + ' m/s ' + (s.surfVy > 0.05 ? 'UP' : (s.surfVy < -0.05 ? 'down' : 'flat'));
+      R.reference.textContent = n(s.vyFloor) + ' m/s';
+      R.compression.textContent = n(s.comp) + ' m/s';
+      R['ramp x K'].textContent = n(s.lipRamp);
+      R['comp x K'].textContent = n(s.lipComp);
+      const sum = (s.lipRamp || 0) + (s.lipComp || 0);
+      // "0.00 of 6.50, and here is why" — a charge held under lipMin and a charge
+      // the surface never earned are different failures and the reason is named.
+      R.charge.textContent = (s.lipVy > 0 ? Number(s.lipVy).toFixed(2) : '0.00')
+        + ' / ' + Number(T.lipMax).toFixed(2)
+        + (s.lipVy > 0 ? '' : (sum > 0 ? '  < lipMin' : (s.lipRamp < 0 ? '  ramp negative' : '')));
+      const w = (v) => Math.max(0, Math.min(100, 100 * v / (T.lipMax || 1)));
+      const rw = w(Math.max(0, s.lipRamp));
+      lipEls.barR.style.width = rw.toFixed(1) + '%';
+      lipEls.barC.style.left = rw.toFixed(1) + '%';
+      lipEls.barC.style.width = w(s.lipComp).toFixed(1) + '%';
+      lipEls.barMin.style.left = w(T.lipMin).toFixed(1) + '%';
+      // the pop window, as the player experiences it: how long a pop is still
+      // worth something, or how long until one would be
+      const sp = s.sincePop == null ? 1e9 : s.sincePop;
+      let pw;
+      if (!f.grounded && s.airT > 0) {
+        pw = s.popPaid ? 'spent'
+          : (s.lipVy > 0 && s.airT <= T.popCoyote
+            ? 'COYOTE ' + (T.popCoyote - s.airT).toFixed(2) + 's left'
+            : 'closed');
+      } else if (s.lipVy > 0) {
+        pw = sp <= T.popWindow ? 'ARMED (popped ' + sp.toFixed(2) + 's ago)' : 'at lip · pop now';
+      } else pw = 'no charge';
+      // the drop-away half: how hard the ground is pulling the vertical around
+      // (past free fall there is nothing left to stand on) and how much of the
+      // snap is letting go because of it
+      const dv = s.dVyS || 0, gv = s.gravity || 16;
+      R['surface accel'].textContent = n(dv, 1) + ' / -' + gv.toFixed(0)
+        + (dv < -gv ? '  PAST FREE FALL' : '');
+      R['snap release'].textContent = s.dropK > 0
+        ? (100 * s.dropK).toFixed(0) + '%  ' + Number(s.snapFull).toFixed(2)
+          + ' -> ' + Number(s.snapCut).toFixed(2) + ' m'
+        : 'glued  ' + Number(s.snapFull || 0).toFixed(2) + ' m';
+      R['pop window'].textContent = pw;
+      // WHAT A JUMP WOULD ACTUALLY PAY, this instant. Greg's ask, and the
+      // reason it comes from ski.js rather than being recomputed here: the
+      // number below is the return value of the same popPay() the real jump
+      // spends, so a prediction that disagrees with the landing is impossible.
+      const pv = f.pop;
+      R['pop now'].textContent = pv
+        ? Number(pv.total).toFixed(2) + ' m/s'
+          + (pv.add > 0.005 ? '  (+' + pv.add.toFixed(2) + ')' : '')
+          + (pv.add <= 0.005 && pv.compRaw > 0.5 ? '  ' + pv.gate.toUpperCase() : '')
+        : '—';
+      R.state.textContent = (f.grounded ? 'on snow' : 'air ' + Number(s.airT).toFixed(2) + 's')
+        + (s.lipVy > 0 ? ' · charged' : '');
+      // the takeoff readout, latched ~2 s
+      if (f.launch) {
+        const L = f.launch;
+        // WHICH RULE FIRED is the first thing on the line, because that is the
+        // whole point of the tag: DROP-AWAY and LIP feel alike in the air and are
+        // completely different bugs when one of them misbehaves.
+        lipEls.shot.textContent = 'takeoff '
+          + (L.total > 0.01 ? '+' + L.total.toFixed(2) + ' m/s' : 'flat')
+          + '  [' + L.src.toUpperCase() + ']'
+          + (L.drop
+            ? '\n  DROP-AWAY  snap ' + Number(L.snapFull).toFixed(2) + ' -> '
+              + Number(L.snapCut).toFixed(2) + ' m (' + (100 * L.dropK).toFixed(0) + '% let go)'
+              + '\n  surface ' + n(L.dVyS, 1) + ' vs -' + L.grav.toFixed(0) + ', past free fall'
+            : '')
+          + (L.total > 0.01
+            ? '\n  ramp ' + n(L.ramp) + '  comp ' + n(L.comp) + '  -> charge ' + L.charge.toFixed(2)
+              + (L.pop > 0 ? '\n  pop bonus +' + L.pop.toFixed(2) : '')
+              + (L.restored > 0 ? '  (jump restored +' + L.restored.toFixed(2) + ')' : '')
+            : (L.drop ? '' : '\n  no charge (ramp ' + n(L.ramp) + ' comp ' + n(L.comp) + ')'))
+          + (L.eaten ? '\n  SWALLOWED, still on the snow next frame' : '');
+        lipEls.shotT = 2.0;
+      } else if (lipEls.shotT > 0) {
+        lipEls.shotT -= (f.dt || 0.016);
+        if (lipEls.shotT <= 0) lipEls.shot.textContent = 'takeoff —';
+      }
     },
     // ---- chairlifts (lift.js). setLiftKey decides whether F is even mentioned;
     // setPrompt({ key, text }) / setPrompt(null) is the contextual offer.

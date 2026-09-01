@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/((?!js/|css/|scene/|vendor/|index\\.html$).*)", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(vendor|scene)/(.*)",
@@ -15,6 +19,10 @@
     },
     {
       "source": "/",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/((?!js/|css/|scene/|vendor/).*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     }
   ]

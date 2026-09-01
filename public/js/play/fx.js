@@ -8,21 +8,22 @@
 // Everything feature-detects and no-ops when a piece is missing, so the same
 // module rides along on contract worlds, glb worlds and page-takeover worlds
 // (sand-harbor) without assumptions. All snow work only happens on skis; the
-// glider gets the wind streaks (keyed to airspeed) and a ground-skim spray.
+// speed lines ride any gear that goes fast (and read the glider's airspeed
+// rather than its ground speed), and the glider also gets a ground-skim spray.
 //
 // The imports are read-only state snapshots — airspeed, the ground-effect
 // fraction, the edge/stop/stivot machine and the pump payout are all physics
 // facts this layer has no way to re-derive.
 //
 // Budget: one THREE.Points pool (4096 particles, CPU-integrated — ~0.1 ms),
-// one LineSegments (52 wind streaks), one CanvasTexture, one DOM vignette.
+// one 2D canvas overlay for the speed lines (~16 fill() calls, zero draw calls
+// on the mountain's renderer), one CanvasTexture, one DOM vignette.
 // No post pass, no shadow maps, no per-particle raycasts.
 
 import { gliderState } from './glider.js';
 import { skiState, takeSkiBurst } from './ski.js';
 
 const POOL = 4096;          // particle pool size
-const STREAKS = 52;         // wind streak lines
 const SPRAY_CONE = 35 * Math.PI / 180;   // half-angle of the spray() throw cone
 const SPRAY_FRAME = 400;    // hard per-frame ceiling on spray(), so one hockey
                             // stop cannot eat the whole shared pool in a frame
@@ -40,8 +41,6 @@ const R = {
   accWake: 0, accRoost: 0, accSpray: 0,   // fractional emission accumulators
   dt: 0.016,                // last frame's dt, so spray() can turn a rate into a count
   sprayLeft: SPRAY_FRAME,   // what is left of this frame's spray budget
-  // wind streaks
-  wind: null, wGeo: null, wMat: null, wx: null, wy: null, wz: null,
   // frame-to-frame state
   prevGrounded: false, prevVy: 0,
   errors: 0,
@@ -49,6 +48,7 @@ const R = {
 
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
 const rand = (a, b) => a + Math.random() * (b - a);
+const smooth = (v, a, b) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 // ------------------------------------------------------------------ sprite
 function makeSprite(THREE) {
@@ -264,73 +264,453 @@ export function spray(origin, dir, rate, size) {
   } catch { R.errors++; }
 }
 
-// -------------------------------------------------------------- wind streaks
-function buildStreaks(THREE, scene) {
-  // screen-space annulus (angle + radius) at a depth — keeps the centre of the
-  // frame clear and the streaks hugging the edges at any distance
-  R.wa = new Float32Array(STREAKS);   // angle around screen centre
-  R.wr = new Float32Array(STREAKS);   // normalized radius (1 ~ screen edge)
-  R.wz = new Float32Array(STREAKS);   // camera-space depth (unit-agnostic, m)
-  for (let i = 0; i < STREAKS; i++) {
-    R.wa[i] = Math.random() * Math.PI * 2;
-    R.wr[i] = rand(0.6, 1.15);
-    R.wz[i] = -rand(2.5, 13);
-  }
-  const pos = new Float32Array(STREAKS * 6);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  if (THREE.DynamicDrawUsage !== undefined) geo.attributes.position.setUsage(THREE.DynamicDrawUsage);
-  const mat = new THREE.LineBasicMaterial({
-    color: 0xf2f7ff,
-    transparent: true,
-    opacity: 0,
-    blending: THREE.AdditiveBlending,
-    depthTest: false,
-    depthWrite: false,
-  });
-  const lines = new THREE.LineSegments(geo, mat);
-  lines.name = 'fx:wind';
-  lines.frustumCulled = false;
-  lines.renderOrder = 95;
-  lines.visible = false;
-  scene.add(lines);
-  R.wind = lines; R.wGeo = geo; R.wMat = mat;
+// ============================================================ speed lines
+// ANIME SPEED LINES (集中線 — "concentrated lines"). What was here before was a
+// world-space THREE.LineSegments of 52 streaks arranged in a camera-space
+// annulus: it switched on at 15 m/s, faded its ONE shared opacity up to a
+// ceiling, and then sat there. Every streak was immortal, every streak was the
+// same length and the same weight, and the ring they lived on was pinned to the
+// centre of the frame no matter which way you were actually travelling. It read
+// as a decal on the lens rather than as speed.
+//
+// This replaces it with a 2D canvas overlay, for the same reason the speedo is
+// one: the effect is screen-space by definition, so paying WebGL for it buys
+// nothing. It costs the mountain ZERO draw calls and the renderer knows nothing
+// about it. The whole field is drawn in ~16 fill() calls a frame (below).
+//
+// WHAT MAKES IT LOOK ALIVE, in the order the eye notices:
+//   1. NOTHING IS PERMANENT. Every line has a lifetime of 70-300 ms and then it
+//      is gone; the field is continuously respawned at a rate that holds the
+//      population near its target. That constant churn is the flicker that
+//      separates an anime action frame from a lens overlay, and it is why the
+//      pool is spawn/die rather than a fixed ring of streaks.
+//   2. THE FOCUS LEADS. The lines converge on where you are GOING, not on the
+//      middle of the screen — the velocity vector is projected into screen space
+//      and the convergence point rides toward it (SL.FOCUS_LEAD), smoothed so it
+//      swings rather than snaps. Look left while bombing a fall line and the
+//      whole field rakes to the right, which is the read the frame should give.
+//   3. LENGTH ANSWERS ACCELERATION. Lines stretch while you are gaining speed
+//      (SL.ACCEL_STRETCH) and relax while you are scrubbing it. Steady 30 m/s
+//      and a 30 m/s that is still climbing do not look the same.
+//   4. AIR IS NOT GROUND. Off the snow the field goes CLEANER: fewer lines
+//      (SL.AIR_CLEAN), longer and longer-lived (SL.AIR_LONG). On the ground it
+//      is dense and busy. You can feel a landing in the field alone.
+//   5. IT PUNCTUATES. Landing a drop, lighting the rocket and stomping a trick
+//      each throw a burst — a spike in count, length and brightness that decays
+//      over SL.BURST_TAU.
+//
+// THE STYLE IS INK, NOT BLUR. Each line is a tapered quad (a spike, near-zero
+// at the inner end, SL.WIDTH at the outer) with butt ends and no gradient and no
+// shadow — the crisp cut a brush or a screentone knife leaves. Rather more than
+// half are white and the rest (SL.INK_FRAC) are a deep cool slate, because this
+// is a MOUNTAIN: white lines on white snow are not subtle, they are invisible,
+// and the ink ones are what carry the bottom of the frame the way black lines
+// carry white paper. There is no motion blur anywhere in here.
+//
+// IT COSTS ALMOST NOTHING. Geometry is precomputed into one flat Float32Array
+// per frame and the lines are then bucketed by alpha (8 levels x 2 inks), so the
+// whole field goes down in at most 16 fill() calls with the fillStyle strings
+// built once at module load. Per-line trig is done at SPAWN and cached, so the
+// per-frame inner loop is pure arithmetic. Measured, not asserted: the last 240
+// frames of step+draw are in a ring, and __speedlines.cost() reads out its p95.
+//
+// AND IT OBEYS THE SAME SILENCES EVERYTHING ELSE DOES: H (clean frame), pause,
+// the locker, the gear menu, the boot cards and dev fly mode all take it off the
+// screen — and because it is a <canvas> that draws no text it can never put a
+// string in front of the build gate's banned-string lists.
+
+const SL = {
+  // ---- WHEN THEY EXIST. Aligned to the speedometer's tiers, which is the
+  // escalation the player has already been taught by the corner of the screen.
+  ON_AT: 8,            // m/s — below this there is nothing at all
+  MAX_AT: 40,          // m/s — 'rocket'. Everything above 40 looks like 40, the
+                       // same ceiling rule the gauge uses: unhinged needs a top.
+  // The tiers in between are not thresholds, they are where the single linear
+  // intensity t = (speed - ON_AT) / (MAX_AT - ON_AT) happens to land:
+  //   15 m/s -> t 0.22  subtle streaks
+  //   28 m/s -> t 0.63  committed anime lines
+  //   40 m/s -> t 1.00  screen-edge rush
+  ON_AT_AIR: 6,        // the glider hangs off airspeed and feels wind sooner
+  ON_AT_BOOST: 6,      // under thrust the lines are the only cue you are moving
+
+  // ---- HOW MANY
+  MAX_LINES: 165,      // live lines at t = 1
+  DENSITY_POW: 1.15,   // > 1 keeps the low tiers genuinely sparse
+
+  // ---- HOW LONG THEY LAST (seconds). This is the flicker.
+  LIFE_MIN: 0.07,
+  LIFE_MAX: 0.30,
+
+  // ---- GEOMETRY, in fractions of the screen's half-extent
+  INNER_AT_ON: 0.66,   // inner ends start this far out at ON_AT (centre stays clear)
+  INNER_AT_MAX: 0.22,  // ...and this far out at MAX_AT (they close in on you)
+  LEN_MIN: 0.14,       // line length at ON_AT
+  LEN_MAX: 0.72,       // ...at MAX_AT
+  REACH: 1.34,         // how far past the corners radius 1.0 sits
+  WIDTH: 5.0,          // outer-end width in CSS px at t = 1
+  WIDTH_REF: 760,      // ...measured on a screen this small; phones scale down
+  TAPER: 0.10,         // inner-end width as a fraction of the outer end
+  DRIFT: 0.55,         // outward crawl over a life, as a multiple of own length
+
+  // ---- BRIGHTNESS
+  ALPHA_MIN: 0.16,     // a line's mean alpha at ON_AT
+  ALPHA_MAX: 0.72,     // ...at MAX_AT
+  INK_FRAC: 0.45,      // share drawn in slate rather than white, at t = 1
+  INK_FLOOR: 0.35,     // ...as a fraction of INK_FRAC at ON_AT.
+  // THE INK IS NOT A GARNISH, IT IS HALF THE EFFECT, and the first cut got that
+  // wrong. This is a mountain: the bottom two thirds of almost every frame is
+  // WHITE SNOW, and white lines on white snow are not subtle, they are absent —
+  // the first pass looked right against the sky and disappeared below the
+  // horizon. Manga solves this by drawing the lines in ink on white paper, so
+  // roughly half of them here are a deep cool slate. Against the sky the white
+  // ones carry the field; against the snow the ink ones do; wherever the frame
+  // is mixed both are visible and the field reads as drawn rather than lit.
+
+  // ---- ALIVENESS
+  ACCEL_STRETCH: 0.55, // extra length at +8 m/s^2; negative accel shortens
+  FOCUS_LEAD: 0.34,    // convergence point rides this far toward travel (of half-min)
+  FOCUS_TAU: 0.18,     // seconds — focus smoothing, so it swings not snaps
+  AIR_CLEAN: 0.62,     // line-count multiplier off the ground
+  AIR_LONG: 1.35,      // ...and length multiplier
+  AIR_LIFE: 1.50,      // ...and lifetime multiplier
+
+  // ---- PUNCTUATION
+  BURST_LAND: 0.90,    // landing, scaled by impact speed
+  BURST_BOOST: 1.00,   // rocket ignition
+  BURST_TRICK: 0.80,   // a landed trick
+  BURST_TAU: 0.30,     // seconds — burst decay
+  BURST_LINES: 90,     // extra lines at burst = 1
+
+  // ---- THE 40 M/S RUSH: edges only, never the middle of the frame
+  RUSH_FROM: 34,
+  RUSH_ALPHA: 0.15,
+};
+
+const SL_CAP = 240;            // pool ceiling (MAX_LINES + BURST_LINES + slack)
+const SL_BUCKETS = 8;          // alpha quantisation levels per ink
+const SL_ALPHA_CEIL = 0.80;
+const SL_DPR_CAP = 1.5;        // a full-screen overlay does not need 3x on a phone
+const SL_SPAWN_FRAME = 48;     // hard per-frame spawn ceiling, for post-stall frames
+
+// The 16 fill styles, built ONCE. Nothing in the loop concatenates a string.
+const SL_FILL = [];
+for (let b = 0; b < SL_BUCKETS; b++) {
+  const a = (b + 1) / SL_BUCKETS * SL_ALPHA_CEIL;
+  SL_FILL.push(`rgba(255,255,255,${a.toFixed(3)})`);
+}
+for (let b = 0; b < SL_BUCKETS; b++) {
+  const a = (b + 1) / SL_BUCKETS * SL_ALPHA_CEIL;
+  SL_FILL.push(`rgba(46,60,84,${a.toFixed(3)})`);   // ink, not a grey — see INK_FRAC
 }
 
-const _v0 = { x: 0, y: 0, z: 0 };    // scratch for streak endpoints
-// `from` is the speed the streaks switch on at. Skiing that is fast (15 m/s);
-// hanging off a wing at 16 m/s of airspeed the wind IS the experience, so the
-// glider hands in a lower threshold and gets streaks across its whole envelope.
-function updateStreaks(dt, speed, from = 15) {
-  const { camera, u } = R;
-  const on = speed > from * u && camera;
-  R.wind.visible = on;
-  if (!on) return;
-  const k = clamp((speed - from * u) / (12 * u), 0, 1);
-  R.wMat.opacity = 0.12 + 0.33 * k;
-  const m = camera.matrixWorld.elements;
-  const pos = R.wGeo.attributes.position.array;
-  const zspd = (speed / u) * 1.15;                 // streaks fly past in cam space
-  const lenK = 0.16 * clamp(speed / (26 * u), 0.3, 1);
-  for (let i = 0; i < STREAKS; i++) {
-    R.wz[i] += zspd * dt;
-    if (R.wz[i] > -2.2) R.wz[i] -= 11;
-    const z = R.wz[i] * u;
-    const az = Math.abs(R.wz[i]);
-    // annulus point at this depth (fov ~72: y half-extent ≈ 0.73|z|)
-    const x = Math.cos(R.wa[i]) * R.wr[i] * 0.95 * az * u;
-    const y = Math.sin(R.wa[i]) * R.wr[i] * 0.60 * az * u;
-    const len = lenK * az * u;                     // angular length stays modest
-    // camera local -> world (matrixWorld * p), twice per streak
-    for (let e = 0; e < 2; e++) {
-      const zz = z + (e ? len : 0);
-      const o = i * 6 + e * 3;
-      pos[o]     = m[0] * x + m[4] * y + m[8]  * zz + m[12];
-      pos[o + 1] = m[1] * x + m[5] * y + m[9]  * zz + m[13];
-      pos[o + 2] = m[2] * x + m[6] * y + m[10] * zz + m[14];
+const S = {
+  cv: null, cx: null, w: 0, h: 0, dpr: 0, shown: false,
+  // pool (struct-of-arrays; no per-line objects, so no GC churn at 650 spawns/s)
+  ca: new Float32Array(SL_CAP), sa: new Float32Array(SL_CAP),   // cos/sin of the ray
+  r0: new Float32Array(SL_CAP), ln: new Float32Array(SL_CAP),
+  wd: new Float32Array(SL_CAP), a0: new Float32Array(SL_CAP),
+  lf: new Float32Array(SL_CAP), tt: new Float32Array(SL_CAP),
+  ik: new Uint8Array(SL_CAP),
+  cursor: 0, live: 0, acc: 0,
+  // per-frame draw geometry: 4 points x 2 coords, plus a bucket id (255 = skip)
+  gx: new Float32Array(SL_CAP * 8), gb: new Uint8Array(SL_CAP),
+  // signals
+  focusX: 0, focusY: 0, prevS: NaN, accel: 0,
+  burst: 0, prevBoost: false, prevLanded: -1, trickPoll: 0,
+  t: 0, rush: 0,
+  // cached rush gradient — rebuilt only when the focus or the strength moves
+  grad: null, gk: -1, gxq: 1e9, gyq: 1e9,
+  // cost ring, so the budget claim is measured rather than asserted
+  cost: new Float32Array(240), ci: 0, cn: 0,
+};
+
+function slBuild() {
+  const cv = document.createElement('canvas');
+  cv.className = 'pfx-lines';
+  cv.setAttribute('aria-hidden', 'true');
+  // Inline, because play.css opens with `body.play canvas { position: fixed;
+  // left: 0; top: 0 }` at (0,1,2) — a bare class loses that cascade, and the
+  // same specificity trap means the `hidden` ATTRIBUTE would lose to it too.
+  // So visibility is an inline `display`, which nothing can outrank.
+  cv.style.cssText =
+    'position:fixed;left:0;top:0;width:100%;height:100%;' +
+    'pointer-events:none;z-index:16;background:none;display:none;';
+  // z 16 sits above the vignette (15) and below the instrument HUD (20): the
+  // lines are weather on the world, not an overlay on somebody's panel.
+  const anchor = R.hud && R.hud.root && R.hud.root.parentNode === document.body ? R.hud.root : null;
+  if (anchor) document.body.insertBefore(cv, anchor);
+  else document.body.appendChild(cv);
+  S.cv = cv;
+  S.cx = cv.getContext('2d', { alpha: true });
+  slSize();
+  addEventListener('resize', slSize, { passive: true });
+}
+
+function slSize() {
+  if (!S.cv) return;
+  const d = Math.min(window.devicePixelRatio || 1, SL_DPR_CAP);
+  const w = window.innerWidth || 1280, h = window.innerHeight || 720;
+  if (w === S.w && h === S.h && d === S.dpr) return;
+  S.w = w; S.h = h; S.dpr = d;
+  S.cv.width = Math.max(1, Math.round(w * d));
+  S.cv.height = Math.max(1, Math.round(h * d));
+  S.cx.setTransform(d, 0, 0, d, 0, 0);   // set on resize, never per frame
+  S.grad = null; S.gk = -1;
+}
+
+// Every reason the field must not be on the screen, in one place — the shape
+// speedo.js and idle.js already established. H is in here because clean-frame's
+// structural rule is `> *:not(canvas)` and this element IS a canvas, so the
+// stylesheet deliberately walks past it; the suppression has to be real.
+function slSuppressed(paused) {
+  const b = document.body.classList;
+  if (b.contains('clean-frame')) return true;   // H — the frame is being filmed
+  if (b.contains('intro-up')) return true;
+  if (b.contains('gd-intro-up')) return true;
+  if (b.contains('is-dev')) return true;        // dev fly mode is not play
+  if (paused) return true;
+  const P = window.__player;
+  if (P) {
+    try { if (P.inventoryOpen()) return true; } catch { /* no locker */ }
+    try { if (P.gearMenuOpen()) return true; } catch { /* no gear menu */ }
+  }
+  return false;
+}
+
+function slHide() {
+  if (S.shown) {
+    S.shown = false;
+    S.cv.style.display = 'none';
+    // drop the field rather than freezing it: coming back from the pause panel
+    // to a stale 200-line frame would flash a photograph of the moment you left
+    S.live = 0; S.acc = 0; S.burst = 0;
+    S.accel = 0; S.prevS = NaN;      // see slStep: no acceleration across a gap
+    for (let i = 0; i < SL_CAP; i++) S.lf[i] = 0;
+    S.cx.clearRect(0, 0, S.w, S.h);
+  }
+}
+
+// The convergence point. `vx/vy/vz` is world velocity; the camera's own basis
+// turns it into a screen direction, so the field answers where you are LOOKING
+// as well as where you are going.
+function slFocus(dt) {
+  const cam = R.camera;
+  let tx = 0, ty = 0;
+  const c = R.ctrl;
+  if (cam && c && c.velocity) {
+    const m = cam.matrixWorld.elements;
+    const vx = c.velocity.x, vy = c.velocity.y, vz = c.velocity.z;
+    const vm = Math.hypot(vx, vy, vz);
+    if (vm > 1e-4) {
+      const nx = vx / vm, ny = vy / vm, nz = vz / vm;
+      // camera basis: cols 0/1/2 are right/up/back, so forward is -col2
+      const cr = m[0] * nx + m[1] * ny + m[2] * nz;
+      const cu = m[4] * nx + m[5] * ny + m[6] * nz;
+      const cf = -(m[8] * nx + m[9] * ny + m[10] * nz);
+      const lead = SL.FOCUS_LEAD * Math.min(S.w, S.h) * 0.5;
+      if (cf > 0.15) {
+        // a real perspective projection of the travel direction, then clamped
+        const f = (S.h * 0.5) / Math.tan((cam.fov || 72) * Math.PI / 360);
+        tx = (cr / cf) * f; ty = -(cu / cf) * f;
+        const d = Math.hypot(tx, ty);
+        if (d > lead) { tx = tx / d * lead; ty = ty / d * lead; }
+      } else {
+        // travelling sideways or backwards relative to the look: the vanishing
+        // point is off-screen, so peg the focus at the edge it went out of
+        const d = Math.hypot(cr, cu) || 1;
+        tx = (cr / d) * lead; ty = (-cu / d) * lead;
+      }
     }
   }
-  R.wGeo.attributes.position.needsUpdate = true;
+  const k = 1 - Math.exp(-dt / SL.FOCUS_TAU);
+  S.focusX += (tx - S.focusX) * k;
+  S.focusY += (ty - S.focusY) * k;
+}
+
+function slSpawn(inner, len, wide, alpha, life, inkP) {
+  // rolling first-fit; the pool is sized so this practically never walks far
+  let i = S.cursor, tries = SL_CAP;
+  while (tries-- > 0 && S.lf[i] > 0) i = (i + 1) % SL_CAP;
+  if (S.lf[i] > 0) return false;
+  S.cursor = (i + 1) % SL_CAP;
+  const a = Math.random() * Math.PI * 2;
+  S.ca[i] = Math.cos(a); S.sa[i] = Math.sin(a);     // trig paid ONCE, at spawn
+  S.r0[i] = inner * rand(0.92, 1.30);
+  S.ln[i] = len * rand(0.45, 1.35);
+  S.wd[i] = wide * rand(0.55, 1.55);
+  S.a0[i] = alpha * rand(0.55, 1.25);
+  const L = life * rand(0.72, 1.28);
+  S.lf[i] = L; S.tt[i] = L;
+  S.ik[i] = Math.random() < inkP ? 1 : 0;
+  return true;
+}
+
+// One step: age the field, spawn what the speed asks for, and lay the frame's
+// geometry down into S.gx/S.gb. Draws nothing — slDraw does that.
+function slStep(dt, sMs, inAir) {
+  // ---- intensity, and the acceleration that stretches the lines
+  const boosting = S.boosting;
+  const onAt = boosting ? SL.ON_AT_BOOST : (inAir && R.ctrl && R.ctrl.mode === 'glider') ? SL.ON_AT_AIR : SL.ON_AT;
+  const t = clamp((sMs - onAt) / (SL.MAX_AT - onAt), 0, 1);
+  S.t = t;
+  // NaN is the "just came back from a suppressed frame" sentinel: the speed
+  // delta across a pause is not an acceleration and must not stretch anything.
+  const raw = Number.isFinite(S.prevS) ? (sMs - S.prevS) / dt : 0;
+  S.prevS = sMs;
+  S.accel += (raw - S.accel) * (1 - Math.exp(-dt / 0.15));
+
+  S.burst *= Math.exp(-dt / SL.BURST_TAU);
+  if (S.burst < 0.004) S.burst = 0;
+  // a burst is a punctuation mark on speed, not a substitute for it — landing a
+  // two-foot drop at walking pace must not paint an action frame
+  const burst = S.burst * clamp(sMs / SL.ON_AT, 0, 1);
+
+  if (t <= 0 && burst === 0 && S.live === 0) { S.rush = 0; return false; }
+
+  // ---- what the field should look like right now
+  const dens = Math.pow(t, SL.DENSITY_POW);
+  let want = SL.MAX_LINES * dens + SL.BURST_LINES * burst;
+  if (inAir) want *= SL.AIR_CLEAN;
+  // never ask for a full pool: slSpawn's first-fit scan is O(pool) only when
+  // there is nothing free, and leaving headroom keeps it O(1) in practice
+  if (want > SL_CAP * 0.85) want = SL_CAP * 0.85;
+
+  const inner = (SL.INNER_AT_ON + (SL.INNER_AT_MAX - SL.INNER_AT_ON) * t) * (1 - 0.25 * burst);
+  let len = SL.LEN_MIN + (SL.LEN_MAX - SL.LEN_MIN) * Math.pow(t, 0.85);
+  len *= 1 + SL.ACCEL_STRETCH * clamp(S.accel / 8, -0.4, 1.6);
+  len *= 1 + 0.45 * burst;
+  if (inAir) len *= SL.AIR_LONG;
+  const wide = SL.WIDTH * (0.55 + 0.45 * t) * clamp(Math.min(S.w, S.h) / SL.WIDTH_REF, 0.7, 1.4);
+  const alpha = SL.ALPHA_MIN + (SL.ALPHA_MAX - SL.ALPHA_MIN) * Math.pow(t, 0.8) + 0.20 * burst;
+  const life = ((SL.LIFE_MIN + SL.LIFE_MAX) * 0.5) * (inAir ? SL.AIR_LIFE : 1);
+  const inkP = SL.INK_FRAC * (SL.INK_FLOOR + (1 - SL.INK_FLOOR) * t);
+
+  // ---- spawn. Rate is population / mean lifetime, so the count settles on
+  // `want` without anyone tracking it: lines leave on their own clock.
+  if (want > 0.5) {
+    S.acc += (want / life) * dt;
+    let n = S.acc | 0;
+    S.acc -= n;
+    if (n > SL_SPAWN_FRAME) n = SL_SPAWN_FRAME;
+    while (n-- > 0) {
+      if (!slSpawn(inner, len, wide, alpha, life, inkP)) break;
+    }
+  }
+
+  // ---- age + lay down geometry
+  slFocus(dt);
+  const fx = S.w * 0.5 + S.focusX, fy = S.h * 0.5 + S.focusY;
+  const HX = S.w * 0.5 * SL.REACH, HY = S.h * 0.5 * SL.REACH;
+  const step = SL_ALPHA_CEIL / SL_BUCKETS;
+  let live = 0;
+  for (let i = 0; i < SL_CAP; i++) {
+    let L = S.lf[i];
+    if (L <= 0) { S.gb[i] = 255; continue; }
+    L -= dt; S.lf[i] = L;
+    if (L <= 0) { S.gb[i] = 255; continue; }
+    live++;
+    const ttl = S.tt[i];
+    const frac = L / ttl;                       // 1 -> 0
+    const age = ttl - L;
+    // a hard pop in and a soft fall out: the field crackles rather than pulses
+    const env = Math.min(1, age * 14) * Math.pow(frac, 0.6);
+    const a = S.a0[i] * env;
+    if (a < step * 0.5) { S.gb[i] = 255; continue; }
+    let b = (a / step) | 0;
+    if (b >= SL_BUCKETS) b = SL_BUCKETS - 1;
+    S.gb[i] = b + (S.ik[i] ? SL_BUCKETS : 0);
+
+    const ln = S.ln[i];
+    const rIn = S.r0[i] + ln * SL.DRIFT * (1 - frac);   // crawls outward as it dies
+    const rOut = rIn + ln;
+    const ca = S.ca[i], sa = S.sa[i];
+    const ax = fx + ca * rIn * HX, ay = fy + sa * rIn * HY;
+    const bx = fx + ca * rOut * HX, by = fy + sa * rOut * HY;
+    let dx = bx - ax, dy = by - ay;
+    const dm = Math.hypot(dx, dy) || 1;
+    // the perpendicular, in PIXELS — an ellipse-space normal would put a visible
+    // width difference between the horizontal and the vertical lines
+    const nx = -dy / dm, ny = dx / dm;
+    const wo = S.wd[i] * 0.5, wi = wo * SL.TAPER;
+    const o = i * 8;
+    S.gx[o]     = ax + nx * wi; S.gx[o + 1] = ay + ny * wi;
+    S.gx[o + 2] = bx + nx * wo; S.gx[o + 3] = by + ny * wo;
+    S.gx[o + 4] = bx - nx * wo; S.gx[o + 5] = by - ny * wo;
+    S.gx[o + 6] = ax - nx * wi; S.gx[o + 7] = ay - ny * wi;
+  }
+  S.live = live;
+  S.rush = smooth(sMs, SL.RUSH_FROM, SL.MAX_AT + 2);
+  return live > 0 || S.rush > 0.02;
+}
+
+function slDraw() {
+  const g = S.cx;
+  g.clearRect(0, 0, S.w, S.h);
+
+  // the 40 m/s rush: one cached radial gradient hugging the edges, and never
+  // anything in the middle of the frame — at 53 m/s in trees you need the trees
+  if (S.rush > 0.02) {
+    const fx = S.w * 0.5 + S.focusX, fy = S.h * 0.5 + S.focusY;
+    const qk = Math.round(S.rush * 20), qx = Math.round(fx / 12), qy = Math.round(fy / 12);
+    if (!S.grad || qk !== S.gk || qx !== S.gxq || qy !== S.gyq) {
+      S.gk = qk; S.gxq = qx; S.gyq = qy;
+      const rad = Math.hypot(S.w, S.h) * 0.62;
+      const gr = g.createRadialGradient(fx, fy, rad * 0.42, fx, fy, rad);
+      const a = SL.RUSH_ALPHA * S.rush;
+      gr.addColorStop(0, 'rgba(255,255,255,0)');
+      gr.addColorStop(0.72, `rgba(246,251,255,${(a * 0.45).toFixed(3)})`);
+      gr.addColorStop(1, `rgba(255,255,255,${a.toFixed(3)})`);
+      S.grad = gr;
+    }
+    g.fillStyle = S.grad;
+    g.fillRect(0, 0, S.w, S.h);
+  }
+
+  // the field itself: one path and one fill per (alpha bucket x ink), so 120+
+  // tapered spikes cost at most 16 fill() calls and zero string work
+  const gx = S.gx, gb = S.gb;
+  for (let b = 0; b < SL_BUCKETS * 2; b++) {
+    let opened = false;
+    for (let i = 0; i < SL_CAP; i++) {
+      if (gb[i] !== b) continue;
+      if (!opened) { g.beginPath(); opened = true; }
+      const o = i * 8;
+      g.moveTo(gx[o], gx[o + 1]);
+      g.lineTo(gx[o + 2], gx[o + 3]);
+      g.lineTo(gx[o + 4], gx[o + 5]);
+      g.lineTo(gx[o + 6], gx[o + 7]);
+      g.closePath();
+    }
+    if (opened) { g.fillStyle = SL_FILL[b]; g.fill(); }
+  }
+}
+
+// The whole overlay, once a frame. `sMs` is metres per second — the caller has
+// already chosen between ground speed and the wing's airspeed.
+function slUpdate(dt, sMs, inAir, paused) {
+  if (!S.cv) return;
+  if (slSuppressed(paused)) { slHide(); return; }
+  const t0 = performance.now();
+  const any = slStep(dt, sMs, inAir);
+  if (!any) { slHide(); return; }
+  if (!S.shown) { S.shown = true; S.cv.style.display = 'block'; }
+  slDraw();
+  const ms = performance.now() - t0;
+  S.cost[S.ci] = ms;
+  S.ci = (S.ci + 1) % S.cost.length;
+  if (S.cn < S.cost.length) S.cn++;
+}
+
+// the public punctuation hook — landings, ignitions and stomped tricks
+function slBurst(amount) {
+  const a = clamp(amount, 0, 1.4);
+  if (a > S.burst) S.burst = a;
+}
+
+function costPct(p) {
+  if (!S.cn) return 0;
+  const a = Array.prototype.slice.call(S.cost.subarray(0, S.cn)).sort((x, y) => x - y);
+  return +a[Math.min(a.length - 1, Math.floor(a.length * p))].toFixed(4);
 }
 
 // ---------------------------------------------------------------- emitters
@@ -532,7 +912,7 @@ export function init(ctx) {
     R.u = (R.ctrl && R.ctrl.T && R.ctrl.T.eyeHeight) ? R.ctrl.T.eyeHeight / 1.70 : 1;
     polish(R.THREE, R.scene, R.camera, R.renderer, R.hud);
     buildPool(R.THREE, R.scene);
-    buildStreaks(R.THREE, R.scene);
+    slBuild();
     R.ok = true;
   } catch { R.errors++; }
 }
@@ -544,7 +924,13 @@ export function update(dt) {
     R.dt = dt;
     R.sprayLeft = SPRAY_FRAME;          // spray() budget, refilled once a frame
     const c = R.ctrl, u = R.u;
-    const paused = R.hud && R.hud.isPaused && R.hud.isPaused();
+    const paused = !!(R.hud && R.hud.isPaused && R.hud.isPaused());
+
+    // The landing edge, read BEFORE the emitters move R.prevGrounded on: the
+    // snow burst and the speed-line burst are the same event and must not be
+    // able to disagree about which frame it happened on.
+    const landed = !!(c && c.grounded && !R.prevGrounded);
+    const landVy = Math.max(0, -R.prevVy) / u;
 
     // emit (not while paused; each emitter gates on its own gear)
     if (c && !paused) { emitSki(dt); emitGlide(dt); }
@@ -585,21 +971,73 @@ export function update(dt) {
       R.pMat.uniforms.uScale.value = h / (2 * Math.tan((R.camera.fov || 72) * Math.PI / 360));
     }
 
-    // wind reads off AIRSPEED on the glider — diving into a headwind of your own
-    // making is the whole point, and horizontal speed alone misses a vertical dive.
-    // While the rocket is lit the wing is stood down and its airspeed readout is
-    // a frozen lie, so the streaks go back to the body's own speed — and start
-    // earlier, because at boost speeds they are the only cue that you are moving.
+    // ---- speed lines. The wind reads off AIRSPEED on the glider — diving into
+    // a headwind of your own making is the whole point, and horizontal speed
+    // alone misses a vertical dive. While the rocket is lit the wing is stood
+    // down and its airspeed readout is a frozen lie, so the field goes back to
+    // the body's own speed — and starts earlier, because at boost speeds the
+    // lines are the only cue that you are moving.
     const b = window.__playBoost;
     const boosting = !!(b && b.burning && b.burning());
-    if (c && c.mode === 'glider' && !c.grounded && !boosting) updateStreaks(dt, gliderState().airspeed, 9);
-    else updateStreaks(dt, c ? c.speed() : 0, boosting ? 10 : 15);
+    const inAir = !!(c && !c.grounded);
+    S.boosting = boosting;
+    let sMs = 0;
+    if (c) {
+      sMs = (c.mode === 'glider' && inAir && !boosting) ? (gliderState().airspeed || 0) / u : c.speed() / u;
+    }
+
+    // ---- the three punctuation events. Each is an EDGE, never a level, so a
+    // held state cannot pin the field open.
+    if (!paused) {
+      if (landed) S.trickPoll = 4;
+      if (landed && landVy > 2.0) slBurst(SL.BURST_LAND * clamp(landVy / 9, 0.35, 1.25));
+      if (boosting && !S.prevBoost) slBurst(SL.BURST_BOOST);
+      // trickState() builds an object and a board slice, so it is NOT read every
+      // frame — a trick can only score on touchdown, so the counter is polled for
+      // the few frames around a landing and ignored the rest of the time.
+      if (S.trickPoll > 0) {
+        S.trickPoll--;
+        try {
+          const ts = window.__player && window.__player.trickState();
+          if (ts) {
+            if (S.prevLanded >= 0 && ts.landed > S.prevLanded) slBurst(SL.BURST_TRICK);
+            S.prevLanded = ts.landed;
+          }
+        } catch { /* a world with no trick machine */ }
+      }
+    }
+    S.prevBoost = boosting;
+
+    slUpdate(dt, sMs, inAir, paused);
   } catch { R.errors++; }
 }
 
 export function stats() {
   return { ok: R.ok, alive: R.alive, errors: R.errors, unit: R.u };
 }
+
+// The test handle, in the shape speedo.js and clean.js already use: a canvas
+// cannot be interrogated any other way, and the gate has to be able to tell "the
+// field is dormant at 6 m/s" apart from "the field is broken".
+window.__speedlines = {
+  el: () => S.cv,
+  visible: () => !!S.shown,
+  lines: () => S.live,
+  intensity: () => +S.t.toFixed(3),
+  // the FIELD's tiers, not the gauge's — a name a screenshot can be filed under.
+  // They sit on the same speeds the speedo escalates at (15 / 20-28 / 28+ / 40).
+  tier: () => (S.t <= 0 ? 'off' : S.t < 0.25 ? 'subtle' : S.t < 0.62 ? 'streaks' : S.t < 0.9 ? 'anime' : 'rush'),
+  burst: () => +S.burst.toFixed(3),
+  accel: () => +S.accel.toFixed(2),
+  focus: () => ({ x: Math.round(S.focusX), y: Math.round(S.focusY) }),
+  rush: () => +S.rush.toFixed(3),
+  suppressed: () => slSuppressed(!!(R.hud && R.hud.isPaused && R.hud.isPaused())),
+  fire: (a) => { slBurst(a === undefined ? 1 : a); return S.burst; },
+  tuning: SL,
+  // measured, not asserted: the ring holds the last 240 frames of step+draw
+  cost: () => ({ n: S.cn, p50: costPct(0.50), p95: costPct(0.95), max: costPct(0.999) }),
+  costReset: () => { S.ci = 0; S.cn = 0; return true; },
+};
 
 window.__playFX = { init, update, stats, spray };
 export default init;

@@ -27,7 +27,7 @@
 // it. Only the ROCKET gear ever calls it; on skis, the bike, the glider and
 // boots this file is what it always was.
 
-import { skiStep, skiLand, scaleSkiTuning, resetSki } from './ski.js';
+import { skiStep, skiLand, skiLaunch, skiCoyote, skiSnapRelease, scaleSkiTuning, resetSki } from './ski.js';
 import { bikeStep, bikeLand, bikeLaunch, bikeReset, scaleBikeTuning } from './bike.js';
 import { gliderStep, gliderLand, gliderJudgeWipe, gliderReset, scaleGliderTuning } from './glider.js';
 import { rocketStep, rocketLand, rocketJudgeWipe, rocketReset, scaleRocketTuning } from './rocket.js';
@@ -64,6 +64,9 @@ export function createController(THREE, collision, spawn, tuning = {}) {
       S: scaleSkiTuning(1, tuning.ski || {}),
       step: skiStep, land: skiLand,
       jumpVel: (S) => T.jump * (S.popMul || 1),   // ski models bring their own pop
+      launch: skiLaunch,         // lips hand back the vertical the ground snap ate
+      coyote: skiCoyote,         // ...and a pop just after one is still a pop
+      snapRelease: skiSnapRelease,   // ...and the snap itself lets go off a knuckle
       wipe: true,                // off-axis landings tumble (bike.js scrubs in bikeLand)
       reset: resetSki,           // the pump bank and the stivot state are not
                                  // yours across a respawn, a gear change or a teleport
@@ -375,8 +378,31 @@ export function createController(THREE, collision, spawn, tuning = {}) {
       if (step.trick) { lastTrick = { ...step.trick }; events.trick = { ...step.trick }; }
     }
 
-    // holdJump gears (bike) own the jump: their step writes vel.y on release
-    if (grounded && keys.jump && !G.holdJump) { vel.y = G.jumpVel(S); grounded = false; }
+    // holdJump gears (bike) own the jump: their step writes vel.y on release.
+    //
+    // `coyote` is the one hook that lets a jump edge fire while AIRBORNE, and
+    // only skis have one: a pop a beat late off a lip is still that pop. It
+    // cannot fire for any other gear, because no other gear declares it.
+    //
+    // vel.y is pinned to 0 on every grounded frame, so `vel.y +=` is bit-for-bit
+    // the assignment it replaces for an ordinary jump. It only does anything on
+    // the coyote path — and it must ADD to the true vel.y, sign and all. The
+    // first cut wrote `Math.max(0, vel.y) + jumpVel`, which DISCARDED the fall
+    // speed: pop a beat after rolling off a downhill knuckle and the −2 m/s you
+    // had already picked up was deleted, so a late pop was worth MORE than an
+    // on-time one and every downhill roll became a bigger jump than before.
+    // Adding decays the coyote payout on its own, with no window arithmetic: at
+    // the lip you get the whole jump, a tenth of a second late you get the jump
+    // minus what gravity has taken, and off a real lip — where vel.y is already
+    // positive — nothing changes at all.
+    //
+    // ...and `launch` is then given the chance to add the lip to it, exactly as
+    // it is on the roll-off path below. The gear's launch is one-shot per air.
+    if (keys.jump && !G.holdJump && (grounded || (G.coyote && G.coyote(S)))) {
+      vel.y += G.jumpVel(S);
+      if (G.launch) G.launch(vel, S, G.jumpVel(S));
+      grounded = false;
+    }
 
     // spin meter: every source of yaw counts — A/D, the arrows, the mouse
     // (mouse look lands between frames, which is why this diffs against the
@@ -406,7 +432,14 @@ export function createController(THREE, collision, spawn, tuning = {}) {
     const impact = -vel.y;
     pos.y += vel.y * dt;
 
-    const snap = Math.max(T.snapDown, Math.hypot(vel.x, vel.z) * dt * S.snapMul);
+    // THE DOWNHILL SNAP, and the one hook that is allowed to argue with it.
+    // This distance is why a fast rider is glued to the backside of everything:
+    // it GROWS with speed, so the quicker you cross a knuckle the further the
+    // controller will yank you back down onto it. A gear may hand back a shorter
+    // one — only skis do, and only above a speed of their own choosing — and a
+    // gear that declares no `snapRelease` keeps this number exactly as computed.
+    let snap = Math.max(T.snapDown, Math.hypot(vel.x, vel.z) * dt * S.snapMul);
+    if (G.snapRelease) snap = G.snapRelease(S, snap);
     const gy = collision.groundAt(pos.x, pos.z, pos.y + T.stepUp);
     if (gy !== null && pos.y <= gy + 1e-3) {
       pos.y = gy; vel.y = 0; grounded = true;
@@ -536,6 +569,11 @@ export function createController(THREE, collision, spawn, tuning = {}) {
     groundNormal() { return collision.groundNormal(); },
     setHome(p, y, pi) { home.position.copy(p); home.yaw = y; home.pitch = pi || 0; },
     setYaw(y) { yaw = y; },
+    // tricks.js only: the PITCH half of the landing snap. A flip's rotation
+    // residual belongs on the flip axis, and this is the only way that module
+    // has to spend it there instead of dumping it into the heading. Clamped
+    // exactly as look() clamps, so a big residual cannot flip the camera over.
+    setPitch(p) { pitch = clamp(p, -Math.PI / 2 + 0.02, Math.PI / 2 - 0.02); return pitch; },
     teleport(p, y) {
       pos.copy(p); vel.set(0, 0, 0);
       if (y !== undefined) yaw = y;
