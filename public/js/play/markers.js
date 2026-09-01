@@ -57,6 +57,8 @@
 //
 // The camera belongs to main.js — this module never writes to it.
 
+import { DEBUG_HUD } from './flags.js';
+
 const CARD_W = 512, CARD_H = 192;      // atlas cell, px
 const ATLAS_W = 2048, ATLAS_H = 1024;  // 4 × 5 = 20 cells
 const COLS = ATLAS_W / CARD_W, ROWS = ATLAS_H / CARD_H | 0;
@@ -619,7 +621,20 @@ function mountDom() {
   lbl.append(document.createTextNode('fast travel · '), nmA);
   aim.append(key, lbl);
   const fl = document.createElement('div'); fl.className = 'pmk-flash';
-  document.body.append(fl);   // D44 — the aim card is built, wired, never attached.
+  // specs/0003 — `debugHud`. The "T · fast travel · <sign>" card under the
+  // crosshair. It is CONTEXTUAL — opacity:0 until you aim at a sign — which is
+  // why it never showed up in a screenshot and why it is worth being precise
+  // about: the front side of the mountain is covered in signs, so in practice it
+  // lights up constantly, and a card that names the key, the feature AND the
+  // destination is not keeping a secret (D44). The FEATURE is untouched in both
+  // builds: KeyT still teleports, aimedAt() still answers, and the arrival flash
+  // is still appended. Only the advertisement is lab-only.
+  //
+  // DETACHED, not deleted — setAim() writes classes and textContent to S.aimEl
+  // on every frame you are looking at a sign, and _test.aimEl() reads it back. A
+  // detached node takes all of that silently.
+  if (DEBUG_HUD) document.body.append(aim);
+  document.body.append(fl);
   S.aimEl = aim; S.aimKeyEl = key; S.aimNameEl = nmA; S.flashEl = fl;
 }
 

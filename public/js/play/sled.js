@@ -31,6 +31,8 @@
 //
 // Boots physics live in controller.js and never come through here.
 
+import { BRAND, pick } from './flags.js';
+
 export const SLED_TUNING = {
   // ---- contract with the controller's ride path
   maxSpeed: 31,          // m/s — hard backstop; the drag below normally caps you
@@ -268,7 +270,7 @@ export const SLED_REF = { len: 165, width: 42 };    // geometry of lab-toboggan,
 
 export const SLED_MODELS = [
   {
-    id: 'lab-toboggan', name: 'House Toboggan', brand: 'RED DOG',
+    id: 'lab-toboggan', name: pick('Lab Toboggan', 'House Toboggan'), brand: BRAND,
     disc: 'toboggan', group: 'lab', len: 165, width: 42,
     blurb: 'Ash slats, steel-shod runners, one hemp rope and no brakes worth the name. Faster than skis the moment it is pointed downhill and completely helpless the moment it is not.',
     look: {
@@ -421,7 +423,7 @@ const PAINTERS = {
     x.save();
     x.translate(W / 2, H - 79);
     x.rotate(-Math.PI / 2);
-    drawTracked(x, 'RED DOG', 0, 0, 17, 4.5, L.ink);
+    drawTracked(x, BRAND, 0, 0, 17, 4.5, L.ink);   // painted on the deck, so it is on screen in third person
     x.restore();
     // a hairline of the same orange up at the nose, so the curl reads as painted
     x.fillStyle = L.accent;

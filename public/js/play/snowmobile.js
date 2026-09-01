@@ -64,6 +64,8 @@
 //
 // Boots physics live in controller.js and never come through here.
 
+import { BRAND, pick } from './flags.js';
+
 export const SNOWMOBILE_TUNING = {
   // ---- contract with the controller's ride path
   maxSpeed: 30,          // m/s — hard backstop. Only ever reached downhill;
@@ -398,7 +400,7 @@ export function snowmobileLand(vel, impact, normal, S) {
 
 export const SNOWMOBILE_MODELS = [
   {
-    id: 'lab-sno-1', name: 'Patrol Sno-1', brand: 'RED DOG',
+    id: 'lab-sno-1', name: pick('Lab Sno-1', 'Patrol Sno-1'), brand: BRAND,
     disc: 'trail sled', group: 'lab',
     blurb: 'Six hundred cc of house-built trail machine in lab orange, geared for a mountain that is mostly uphill. Takes a thirty-degree face at twenty metres a second, spins its track out somewhere past forty, reverses out of whatever it could not climb, and weighs enough that corners are a decision you make early.',
     look: {
@@ -527,7 +529,7 @@ const LIVERY = {
     // the number, big, on the flank
     drawTracked(x, '07', W * 0.20, H * 0.50, 96, 6, L.body);
     // and the wordmark behind it
-    drawTracked(x, 'RED DOG', W * 0.62, H * 0.46, 42, 10, L.accent);
+    drawTracked(x, BRAND, W * 0.62, H * 0.46, 42, 10, L.accent);   // painted on the cowl
     drawTracked(x, 'SNO-1', W * 0.62, H * 0.66, 22, 8, L.body);
 
     // vent louvres at the tail

@@ -38,6 +38,7 @@ import './surprise.js';
 import './snowball.js';
 import './markers.js';
 import './audio.js';
+import { FULL_LOCKER, DEBUG_HUD, LABEL, pick } from './flags.js';
 
 const cfg = window.__PLAY;
 const say = cfg.say || (() => {});
@@ -245,10 +246,15 @@ const pubGear = (g) => (g === 'rocket' ? 'glider' : g);
 
 // ---- default gear: ?gear= > the world's declared gear (PLAYABLE.md) > a
 // small poi map > boots. You spawn wearing it; tap-E toggles boots ↔ it.
-const POI_GEAR = {};   // D37 — the bench's per-poi map keys off bench run names
-// D35 — no bike, no jet. The glider is deliberately in no POI map: it belongs
-// to any world with air, and it stays reachable only through the locker.
-const GEAR_NAMES = ['boots', 'skis', 'glider', 'sled', 'snowmobile'];
+// specs/0003 — `gearSet`. On the ski set there is no bike gear at all, so the
+// per-poi map (which keys off BENCH run names and means nothing to a standalone
+// build) is empty and 'bike' is not a name the player can reach.
+// The glider is deliberately in no POI map: it belongs to any world with air,
+// and on both sets it stays reachable only through the locker.
+const POI_GEAR = FULL_LOCKER ? { 'eagles-nest-kt22': 'skis', 'truckee-bike-park': 'bike' } : {};
+const GEAR_NAMES = FULL_LOCKER
+  ? ['boots', 'skis', 'bike', 'glider', 'sled', 'snowmobile']
+  : ['boots', 'skis', 'glider', 'sled', 'snowmobile'];
 const defaultGear = (() => {
   const q = pubGear(qGear);
   if (GEAR_NAMES.includes(q)) return q;
@@ -946,7 +952,11 @@ const hud = createHud({
   onResume: () => enter(),
   onRespawn: () => { ctrl.respawn(); camRig.applyTo(camera); },
 });
-document.title = 'Red Dog Chair — Palisades Tahoe';
+// specs/0003 — `brand`, with the bench's own `label` (the name the LAB lists a
+// world/mode under) winning when it is set. The public build never sets `label`.
+document.title = LABEL
+  ? 'POI LAB / ' + LABEL
+  : pick('WORLD · ' + cfg.run, 'Red Dog Chair — Palisades Tahoe');
 
 // ------------------------------------------------------------- the ski rack
 // One ski model is one set of overrides on SKI_TUNING plus one topsheet. Both
@@ -974,9 +984,11 @@ applySki(skiId, { remember: false });
 // same numbers and clears the same jumps it always did.
 function applyBike(id, { remember = true, flash = false } = {}) {
   bikeId = getBikeModel(id).id;
-  // D35 — there is no bike gear in this build, so there is no tuning object to
-  // write into. The rigs below are still styled: main.js builds them whether or
-  // not anything can ride them, and leaving them intact costs nothing.
+  // specs/0003 — on the ski set there is no bike GEAR, so there is no tuning
+  // object to write into and an unguarded Object.assign throws at module scope,
+  // before the first frame. The rigs below are still styled either way: main.js
+  // builds them whether or not anything can ride them, and leaving them intact
+  // costs nothing.
   Object.assign(ctrl.gearTuning('bike') || {}, bikeTuningFor(bikeId, unitScale));
   styleBikeRig(THREE, tpBike, bikeId, { rider: 'tp' });
   styleBikeRig(THREE, fpBikeInner, bikeId, { rider: 'fp' });
@@ -1092,15 +1104,15 @@ hud.setLiftKey(lifts.count() > 0);
 
 // ------------------------------------------------------------------- boost
 // The rocket's motor. It belongs to ONE gear: `gear: 'rocket'` is the whole
-// gate, and with anything else equipped G does nothing at all. The gear itself
+// gate, and with anything else equipped holding SPACE does nothing at all. The gear itself
 // (walking, coasting, landing) is rocket.js, in the controller's registry. See
 // boost.js; the frame loop steps it just before ctrl.update.
 // ...and one machine you can bolt it to: the snowmobile fires the same tank off
-// SHIFT (or G), which is why SHIFT is no longer the sled's brake. See `riders`
+// SHIFT (or hold-SPACE), which is why SHIFT is no longer the sled's brake. See `riders`
 // in boost.js — no other gear is listed, and none of them can spend it.
 boost = createBoost({
   THREE, scene: world.scene, ctrl, camera, unitScale, gear: 'rocket',
-  riders: { snowmobile: { keys: ['boost', 'sprint'], mode: 'sled' } },
+  riders: { snowmobile: { keys: ['jumpHeld', 'sprint'], mode: 'sled' } },
 });
 window.__playBoost = boost;      // fx.js reads burning() for the speed lines
 
@@ -1202,7 +1214,6 @@ const KEYMAP = {
   ArrowUp: 'flipFwd', ArrowDown: 'flipBack',
   ArrowLeft: 'spinLeft', ArrowRight: 'spinRight',   // steer on the ground, hard spin in the air
   ShiftLeft: 'sprint', ShiftRight: 'sprint',
-  KeyG: 'boost',                                    // hold — the rocket (boost.js)
 };
 const setKey = (code, v) => {
   const k = KEYMAP[code];
@@ -1220,7 +1231,12 @@ let eTimer = null, eMenuOpened = false;
 // The menu lists EQUIPMENT TYPES, not controller gears: there is one `glider`
 // row and it equips whichever flight model the locker has selected. 'rocket' is
 // a gear the player never names.
-const menuGears = () => ['boots', 'skis'];
+// specs/0003 — `gearSet`. On the ski set hold-E shows exactly boots and skis;
+// everything else still exists and is still reachable through the I locker, it
+// is simply not advertised (D34/D44).
+const menuGears = () => (FULL_LOCKER
+  ? ['boots', ...ctrl.gears.filter((g) => g !== 'rocket')]
+  : ['boots', 'skis']);
 
 // what the toast says when you change gear — the glider names its model, because
 // "gear · glider" twice in a row for two very different flights is a lie
@@ -1256,6 +1272,12 @@ function openLocker() {
 addEventListener('keydown', (e) => {
   if (typingIn(e.target)) return;                    // dev note field
   if (e.code === 'F8') {
+    // specs/0003 §A2 — dev mode is not in every build. The public one gets a
+    // stubbed dev.js, and there F8 must do NOTHING: not clear the player's held
+    // keys, not swallow the keystroke, not re-enter. `available()` is the only
+    // honest test — `toggle()` returning false is also what turning dev mode OFF
+    // looks like, so it cannot tell "there is no dev mode" from "I just left it".
+    if (!dev.available()) return;
     for (const k of Object.keys(ctrl.keys)) ctrl.keys[k] = false;   // do not resume a held key
     if (dev.toggle()) hud.setPaused(false);        // dev owns the screen, not the pause panel
     else enter();                                  // back to the body — re-take the pointer
@@ -1306,6 +1328,9 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     // edge for boots/skis (instant jump, exactly as ever); level for the bike's
     // preload/pop, which cares about hold-and-release
+    // ...and, since 2026-08-31, `jumpHeld` is ALSO the rocket throttle: boost.js
+    // reads it instead of the old `boost` key, so hold-SPACE is what G was. The
+    // press half is untouched, and the motor is still gated on wearing the pack.
     if (!hud.isPaused()) { ctrl.keys.jump = true; ctrl.keys.jumpHeld = true; e.preventDefault(); }
     return;
   }
@@ -1345,9 +1370,11 @@ for (const t of ['pointerdown', 'pointerup', 'pointermove', 'wheel', 'contextmen
   addEventListener(t, pointerCapture, { capture: true, passive: t !== 'wheel' && t !== 'contextmenu' });
 }
 
-// D29 — coarse pointers reuse the tested no-pointer-lock path rather than
-// getting a second one: skip requestPointerLock, do not re-pause on
-// pointerlockchange, boot unpaused.
+// D29 — POINTER LOCK DOES NOT EXIST ON iOS SAFARI, and without this the game
+// boots permanently paused on every phone. A coarse pointer takes the same path
+// cfg.test already takes: skip requestPointerLock, do not re-pause on
+// pointerlockchange, boot unpaused. Not a flag — there is no environment in
+// which a phone should boot into a pause panel it cannot dismiss.
 const touchMode = matchMedia('(pointer: coarse)').matches;
 let testFree = cfg.test || touchMode;      // headless / touch: no pointer lock
 function enter() {
@@ -1382,15 +1409,39 @@ let simTime = 0;          // seconds of simulation actually stepped
 let perfectPops = 0;      // lifetime count, surfaced on __player for tests
 
 // ---- D16.2 the respawn fence. NOT a wall, and as of 2026-08-30 not a boundary
-// either: it is the recovery from falling into nothing. See
-// patches/play-main.patch.mjs for the whole argument. In one line —
+// either: it is the recovery from falling into nothing. In one line —
 //
 //     grounded on real surface  =>  never, at any coordinate
 //     no recoverable ground under you for graceMs  =>  fade and respawn
 //
-// The world's own REPORT treats "continuous standable ground with no invisible
-// wall anywhere" as a shipped property, and a position fence quietly broke that
-// the moment all seven lifts started boarding.
+// It used to fire on POSITION: 2 s continuously outside a box and you faded
+// home. That was correct for a build where one lift boarded and every unload
+// was inside it. The universal-lifts wave made it a defect — four of the seven
+// top terminals unload outside that box, so riding the Gold Coast Funitel to
+// its top and pushing off started the grace timer and put you back on Red Dog,
+// every single time ("flashing and teleporting").
+//
+// Why ground-below and not a ray-distance cap: the glider legitimately puts the
+// player hundreds of metres above real terrain, and any distance cap generous
+// enough for a glide is no cap at all. The honest condition is the one the
+// design states — is there recoverable ground, yes or no.
+//
+// THE BOX SURVIVES as FENCE.x0..y1, a HARD BACKSTOP the exporter sets at
+// CORE ± 8 km, and it is honestly labelled: NOTHING IN PLAY CAN REACH IT.
+// controller.js already clamps pos.x/pos.z into collision.bounds every frame,
+// so the backstop is four comparisons of belt-and-braces against a future
+// teleport that bypasses the physics. It is checked BEFORE the grounded
+// early-out so that it is a genuine last resort. What actually catches you at
+// the edge of the world is the ground test: the collision grid is wider than
+// the terrain in it, so the far west edge is real, reachable void INSIDE the
+// grid and groundAt returns null there.
+//
+// Cost: one extra downward ray per frame, and only while airborne. Grounded —
+// most frames of most sessions — returns on the second line.
+//
+// THE BENCH SETS NO `cfg.fence`, so FENCE is null there and fenceStep() returns
+// immediately: the lab has no containment layer and never had one. This is the
+// deploy's rule living in the source it belongs to, not a second code path.
 const FENCE = (cfg.fence && typeof cfg.fence.x0 === 'number') ? cfg.fence : null;
 // Below the lowest collidable triangle in the world, with a margin, is "under
 // the map" by construction — derived from the scene, not a guessed altitude.
@@ -1411,7 +1462,7 @@ function fenceStep(dt) {
   if (wx < FENCE.x0 || wx > FENCE.x1 || wy < FENCE.y0 || wy > FENCE.y1) {
     why = 'past the hard world limit';
   } else if (ctrl.grounded) {
-    // 2. ON THE SURFACE. Unconditional, and the whole point of the rewrite.
+    // 2. ON THE SURFACE. Unconditional, and the whole point of the rule.
     fenceOutT = 0; fenceWhy = null; return;
   } else if (p.y < FENCE_VOID_Y) {
     why = 'below the world';
@@ -1435,15 +1486,20 @@ function fenceStep(dt) {
     setTimeout(() => { fencing = false; }, 320);
   }, 280);
 }
+
 let paidPumps = 0;        // pump transitions that actually paid, for the combo link
 // The per-frame player systems that are NOT the controller: the trick/combo
 // machine and the pump's instruments. Factored out because the deterministic
 // test stepper (__player.stepFixed) has to drive exactly the same set — a trick
 // accumulator that only advances under requestAnimationFrame is untestable.
 function playerSystems(dt, live) {
-  // D16.2 — see patches/play-main.patch.mjs. Here rather than on the rAF line
-  // so that __player.stepFixed drives it: a containment layer no deterministic
-  // test can ride against is a containment layer nobody can prove.
+  // D16.2 — the fence is a per-frame SYSTEM, so it is stepped here with the
+  // others and not off the rAF line. On the rAF line it would be untestable:
+  // __player.stepFixed — the deterministic stepper every ride assertion is
+  // written against — calls ctrl.update() and playerSystems() and nothing else,
+  // and a containment layer no deterministic test can ride against is a
+  // containment layer nobody can prove. playerSystems() runs AFTER ctrl.update()
+  // in both callers, so the fence reads the position the frame just produced.
   if (live) fenceStep(dt);
   tricks.update(dt, live);
   // the one place §1 and §3 touch: a transition clean enough (eta >= 1.2) LINKS
@@ -1523,7 +1579,9 @@ const info = {
   bbox: box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() },
   tuning: ctrl.T,
 };
-if (cfg.qs && cfg.qs.has('dev')) console.log('[play]', info);
+// specs/0003 — `debugHud`. The bench dumps this on every boot; the shareable
+// build does not, and `?dev` turns it back on there for a bug report.
+if (DEBUG_HUD || (cfg.qs && cfg.qs.has('dev'))) console.log('[play]', info);
 
 window.__player = {
   ready: true,
@@ -1567,6 +1625,12 @@ window.__player = {
   lastTrick: () => ctrl.lastTrick,
   wipeT: () => ctrl.wipeT,
   defaultGear: () => defaultGear,
+  // specs/0003 — the two ways `gearSet` shows up, surfaced so a gate can assert
+  // them instead of counting DOM. `gears` is the CONTROLLER REGISTRY, which is
+  // the only "can ride this" flag the player has; `gearMenuOptions` is what
+  // hold-E would offer right now.
+  gears: () => ctrl.gears,
+  gearMenuOptions: () => menuGears(),
   gearMenuOpen: () => hud.gearOpen(),
   // ---- the ski rack + the locker (ski.js / inventory.js)
   skiModel: () => skiId,
@@ -1678,36 +1742,35 @@ window.__player = {
   },
   groundAt: (x, z) => collision.groundAt(x, z, collision.bounds.maxY + 5),
   keys: (obj) => { Object.assign(ctrl.keys, obj || {}); return { ...ctrl.keys }; },
-  // intro.js calls this when the controls card is dismissed
+  clearKeys: () => { for (const k of Object.keys(ctrl.keys)) ctrl.keys[k] = false; },
+  // intro.js calls this when the controls card is dismissed — the same door a
+  // canvas click has always used.
   enter: () => enter(),
   touchMode: () => touchMode,
+  toggleCam: () => camRig.setMode(camRig.mode === 'tp' ? 'fp' : 'tp'),
   // D16.2 — "why" and "outT" are what make the surface-aware rule testable:
   // "the fence did not fire" is also true of a fence that is not wired up, and
-  // the gate has to be able to tell those apart.
+  // a gate has to be able to tell those apart. Null when no host set cfg.fence,
+  // which is what a bench boot asserts on to prove the lab has no containment.
   fence: () => (FENCE ? {
     ...FENCE, trips: fenceTrips, why: fenceWhy, outT: +fenceOutT.toFixed(3),
     voidY: FENCE_VOID_Y, grounded: ctrl.grounded,
     groundBelow: collision.groundAt(ctrl.position.x, ctrl.position.z, ctrl.position.y + 0.5 * unitScale),
   } : null),
-  // D42 — the build gate reads these. world.report.stats is the world's own
-  // count, not an estimate, and simTime is what a "seconds of ride" test has to
-  // measure against on a software renderer running at 8 fps.
+  // D42 — the export build gate reads these. world.report.stats is the world's
+  // own count, not an estimate.
   stats: () => (world.report && world.report.stats) || null,
-  simTime: () => simTime,
   sceneRoot: () => world.scene,
   markers: () => world.markers || [],
   pixelRatio: () => (world.renderer ? world.renderer.getPixelRatio() : null),
   // ---- D27: the whole touch seam. touch.js writes the same mutable boolean
-  // object the physics already reads by reference, and calls the same look()
-  // the mouse does. No physics module and no gear module learns touch exists.
-  look: (dx, dy, sens) => ctrl.look(dx, dy, sens),
-  respawn: () => { ctrl.respawn(); camRig.applyTo(camera); },
-  toggleCam: () => camRig.setMode(camRig.mode === 'tp' ? 'fp' : 'tp'),
-  clearKeys: () => { for (const k of Object.keys(ctrl.keys)) ctrl.keys[k] = false; },
-  // NOTE: this is the SECOND `look` in this object literal and therefore the
-  // only one that exists — see patches/play-main.patch.mjs. It takes the
-  // sensitivity touch.js passes it, and still defaults to the 1 rad/px the
-  // two-argument form has always used.
+  // object the physics already reads by reference, and calls this look() — the
+  // one the mouse calls. No physics module and no gear module learns touch
+  // exists. THE THIRD ARGUMENT IS LOAD-BEARING and it used to be missing: touch
+  // passes LOOK = 0.00022 and a two-argument signature dropped it on the floor
+  // and turned at ctrl.look's own `sens = 1`, 450x the mouse's 0.0022. That is
+  // the whole of "phone drag-look was far too hot". It still DEFAULTS to the 1
+  // the two-argument form always used, so a two-argument caller is unchanged.
   look: (dx, dy, sens) => ctrl.look(dx, dy, sens === undefined ? 1 : sens),
   paused: (v) => { if (v !== undefined) hud.setPaused(!!v); return hud.isPaused(); },
   respawn: () => ctrl.respawn(),
@@ -1788,12 +1851,60 @@ window.__player.devMode = () => dev.active();
 window.__player.dev = dev;
 window.__playerDebug = window.__player;   // alias
 
-// ?dev=1 — boot straight into the fly camera (the world-building entry point)
-if (cfg.qs && cfg.qs.has('dev') && cfg.qs.get('dev') !== '0') {
+// ?dev=1 — boot straight into the builder camera (the world-building entry
+// point). Guarded by available() for the same reason F8 is (specs/0003 §A2):
+// in a build with no dev mode this must not silently un-pause the game behind
+// the intro card for anyone who types the query string.
+if (dev.available() && cfg.qs && cfg.qs.has('dev') && cfg.qs.get('dev') !== '0') {
   dev.setActive(true);
   hud.setPaused(false);
 }
 
 const boot = document.getElementById('play-boot');
 if (boot) { boot.classList.add('is-gone'); setTimeout(() => boot.remove(), 300); }
+
+// ------------------------------------------------------- the product overlays
+// specs/0003 §B. These five used to be exporter TEMPLATES chained together in
+// the standalone build's index.html, which meant the bench would have needed a
+// second copy of that chain — and two wirings is exactly the drift 0003 exists
+// to stop. So main.js owns it, once, and the conditions are the flags:
+//
+//   speedo.js  clean.js    always
+//   touch.js                coarse pointer only
+//   intro.js   idle.js      `guide` only — they are the guided run's boot flow
+//                           and its stuck-player nudge, and neither makes sense
+//                           in front of a bench world you opened to test a lip
+//
+// ORDER MATTERS and it is the order below. Every one of them polls
+// `window.__player`, and clean.js also reaches for `window.__playMarkers`, so
+// they all come after the handle above. idle.js additionally watches for
+// `.intro` leaving the DOM, so it comes after intro.js.
+//
+// EACH ONE IS INDIVIDUALLY CAUGHT. None of them is load-bearing for the game —
+// a mountain with no speedometer is still a mountain — and the old chain got
+// this wrong: a failure in speedo.js also skipped clean.js, because they were
+// links in one promise chain. A per-module catch means one broken overlay costs
+// exactly one overlay. `intro-up` is the exception that has to be undone by
+// hand: intro.js is what clears it, so if intro.js is the module that failed,
+// the class would suppress the entire screen forever.
+for (const [name, want] of [
+  ['./speedo.js', true],
+  ['./clean.js', true],
+  ['./touch.js', touchMode],
+  ['./intro.js', guideFlag],
+  ['./idle.js', guideFlag],
+]) {
+  if (!want) continue;
+  try {
+    await import(name);
+  } catch (e) {
+    console.warn('[play] overlay failed to load: ' + name, e);
+    if (name === './intro.js') document.body.classList.remove('intro-up');
+  }
+}
+
+// LAST, and after the overlays on purpose: `__playerReady` is the one signal a
+// test or a gate waits on, and it used to go up while intro.js was still in
+// flight — so "the player is ready" and "window.__intro exists" were two
+// different moments and anything reading the second raced the first.
 window.__playerReady = true;

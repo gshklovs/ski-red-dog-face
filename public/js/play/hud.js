@@ -3,6 +3,7 @@
 
 import { gliderState } from './glider.js';
 import { skiState } from './ski.js';
+import { DEBUG_HUD, BRAND, pick } from './flags.js';
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -15,9 +16,22 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
   const root = el('div', 'phud');
 
   // ---- readout
+  //
+  // specs/0003 — `debugHud`. The top-left readout (x/y/z · speed · state · gear
+  // · cam) and the top-right fps chip are instrumentation for a WORLD BUILDER,
+  // and they are the two things a screenshot of a shareable build should not
+  // have in it (Greg: "the debug hud will still live in the master builder but
+  // not the shareable red dog"). On the shareable build the corner they used to
+  // occupy is the speedometer's instead — designed rather than instrumented.
+  //
+  // They are BUILT in every environment and only APPENDED in the lab: `read`,
+  // `rows`, `fps` and `fpsVal` all stay in scope because paintInstruments() and
+  // tick() write into them on every frame, and cutting the writes as well would
+  // be forty lines of branch for two DOM nodes that are already off the screen.
+  // A detached node costs nothing and it keeps this to two `if`s.
   const read = el('div', 'phud__read pchip');
   const title = el('div', 'phud__title');
-  title.append(el('span', 'dot'), el('b', null, 'RED DOG'));
+  title.append(el('span', 'dot'), el('b', null, pick((poi || 'world').toUpperCase(), BRAND)));
   read.append(title);
   const rows = {};
   for (const [k, label] of [['pos', 'x / y / z'], ['spd', 'speed'], ['state', 'state'], ['gear', 'gear'], ['cam', 'cam']]) {
@@ -26,47 +40,56 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
     rows[k] = r.lastChild;
     read.append(r);
   }
-  // D43 — the readout is BUILT and never appended. It is a debug instrument.
+  if (DEBUG_HUD) root.append(read);
 
   // ---- fps
   const fps = el('div', 'phud__fps pchip');
   fps.append(el('span', 'k', 'fps '), el('span', 'v', '—'));
   const fpsVal = fps.lastChild;
-  // D43 — and so is the fps counter. tick() still updates both, into the void.
+  if (DEBUG_HUD) root.append(fps);
 
-  // ---- dev readout (F8). Where the fly camera is, in the terms a world
-  // builder needs: pose, lens, fly speed, and the spawn params that reproduce
-  // this exact view. dev.js drives it; see harness/TUNING.md.
-  const devRead = el('div', 'phud__dev pchip');
-  devRead.hidden = true;
-  const devTitle = el('div', 'phud__title');
-  devTitle.append(el('span', 'dot'), el('b', null, 'DEV FLY'));
-  devRead.append(devTitle);
-  const devRows = {};
-  for (const [k, label] of [['pos', 'x / y / z'], ['ang', 'yaw / pitch'], ['fov', 'fov'], ['spd', 'speed'], ['cmp', 'compare']]) {
-    const r = el('div', 'r');
-    r.append(el('span', 'k', label), el('span', 'v', '—'));
-    devRows[k] = r.lastChild;
-    devRead.append(r);
-  }
-  const devParams = el('div', 'phud__dev-url');
-  devParams.textContent = '?spawn=';
-  devRead.append(devParams);
-  const devBtns = el('div', 'phud__dev-btns');
-  const devCopyP = el('button', 'pdev-btn pdev-btn--sm', 'copy params');
-  const devCopyU = el('button', 'pdev-btn pdev-btn--sm', 'copy url');
-  devCopyP.type = devCopyU.type = 'button';
-  devBtns.append(devCopyP, devCopyU);
-  devRead.append(devBtns);
-  root.append(devRead);
+  // ---- dev readout (F8). Where the builder camera is, in the terms a world
+  // builder needs: pose, lens, speed, and the spawn params that reproduce this
+  // exact view. dev.js drives it; see harness/TUNING.md.
+  //
+  // specs/0003 §A2 — THIS IS THE OTHER HALF OF "DEV MODE DOES NOT SHIP". The
+  // module is stubbed in the public build, so nothing would ever have driven
+  // this panel there — but "never shown" and "never built" are not the same
+  // claim, and A2 makes the stronger one. `devRead` stays a `let` so every
+  // writer below can null-check it in one place rather than every build growing
+  // a second code path.
+  let devRead = null, devRows = {}, devParams = null;
   let devFull = '';
-  const copy = (text, what) => {
-    const done = () => { toast.textContent = 'copied · ' + what; toast.hidden = false; toastT = 1.2; };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => {});
-    else done();
-  };
-  devCopyP.addEventListener('click', (e) => { e.stopPropagation(); copy(devParams.textContent, 'spawn params'); });
-  devCopyU.addEventListener('click', (e) => { e.stopPropagation(); copy(devFull, 'play url'); });
+  if (DEBUG_HUD) {
+    devRead = el('div', 'phud__dev pchip');
+    devRead.hidden = true;
+    const devTitle = el('div', 'phud__title');
+    devTitle.append(el('span', 'dot'), el('b', null, 'DEV FLY'));
+    devRead.append(devTitle);
+    for (const [k, label] of [['pos', 'x / y / z'], ['ang', 'yaw / pitch'], ['fov', 'fov'], ['spd', 'speed'], ['cmp', 'compare']]) {
+      const r = el('div', 'r');
+      r.append(el('span', 'k', label), el('span', 'v', '—'));
+      devRows[k] = r.lastChild;
+      devRead.append(r);
+    }
+    devParams = el('div', 'phud__dev-url');
+    devParams.textContent = '?spawn=';
+    devRead.append(devParams);
+    const devBtns = el('div', 'phud__dev-btns');
+    const devCopyP = el('button', 'pdev-btn pdev-btn--sm', 'copy params');
+    const devCopyU = el('button', 'pdev-btn pdev-btn--sm', 'copy url');
+    devCopyP.type = devCopyU.type = 'button';
+    devBtns.append(devCopyP, devCopyU);
+    devRead.append(devBtns);
+    root.append(devRead);
+    const copy = (text, what) => {
+      const done = () => { toast.textContent = 'copied · ' + what; toast.hidden = false; toastT = 1.2; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => {});
+      else done();
+    };
+    devCopyP.addEventListener('click', (e) => { e.stopPropagation(); copy(devParams.textContent, 'spawn params'); });
+    devCopyU.addEventListener('click', (e) => { e.stopPropagation(); copy(devFull, 'play url'); });
+  }
 
   // ---- legend
   const legend = el('div', 'phud__legend');
@@ -76,31 +99,59 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
     legend.append(k);
     return k;
   };
-  // D44 (poi-lab tools/export-red-dog) — a chip that is BUILT and never put on
-  // the strip. Same children as mk()'s, so tick() can go on writing to
-  // `.lastChild.nodeValue` and toggling classes exactly as it does for a visible
-  // chip; it is just never appended, so nothing advertises the feature.
+  // A chip that is BUILT and never put on the strip. SAME CHILDREN as mk()'s,
+  // which is the whole point: tick() relabels the SHIFT chip live
+  // (`keyEls.sprint.lastChild.nodeValue = bike ? 'brake' : 'sprint'`), and on a
+  // childless span `lastChild` is null and that line throws ONCE PER FRAME —
+  // 1,632 page errors in a single gate run, silent on screen. So a stripped chip
+  // stays a real chip that is simply not on the strip, and every future tick()
+  // write lands on a node instead of on null.
   const dark = (cap, what) => {
     const k = el('span', 'pkey is-hidden');
     k.append(el('b', null, cap), document.createTextNode(what));
     return k;
   };
+  // D44, and it is a PRODUCT decision rather than a strip: "secretly keep hidden
+  // features but don't clutter user knowledge of their existence." E gear, I
+  // locker and F lift are chips for features that are deliberately undocumented
+  // in both builds, and a permanent strip naming them is the loudest possible
+  // advertisement of the thing it is meant to keep quiet. They all keep WORKING
+  // — only the chips go. SHIFT goes for a different reason: it does nothing at
+  // all on skis now, so a chip offering it is a hint for a dead key.
+  //
+  // WHAT SURVIVES, and why:
+  //   WASD · SPACE · ← → · C · R · ESC   the documented six, in the order the
+  //                                      ESC panel lists them
+  //   HOLD SPACE boost   contextual and rocket-only (tick() reveals it), so it
+  //             can only ever appear to someone who has ALREADY found the rocket
+  //             — that is helping a finder, not advertising the find
+  //   F lift    the CHIP goes; the contextual boarding prompt under the
+  //             crosshair is untouched and says it at the moment it is true
+  //
+  // B refs and F8 dev are the LAB's own instruments (`debugHud`), so they are on
+  // the strip in the bench and dark in the shareable build.
   const keyEls = {
     move: mk('WASD', 'move'),
     sprint: dark('SHIFT', 'sprint'),
     jump: mk('SPACE', 'jump'),
     gear: dark('E', 'gear'),
     inv: dark('I', 'locker'),
-    boost: mk('G', 'boost'),
+    // 2026-08-31 — the throttle moved from G to hold-SPACE. The cap says HOLD
+    // SPACE rather than SPACE because the strip already carries a SPACE chip for
+    // the jump, and two chips reading SPACE with different words after them is a
+    // worse hint than no chip. Still contextual and still rocket-only.
+    boost: mk('HOLD SPACE', 'boost'),
     lift: dark('F', 'lift'),
     spin: mk('← →', 'spin'),
     cam: mk('C', 'camera'),
+    // R is one of the documented keys — it is on the intro controls card and on
+    // the ESC panel — and it was the only one of them with no chip. That is the
+    // wrong asymmetry: R is the key you want at the exact moment you are least
+    // likely to reopen a panel to look it up. It carries no state, because R is
+    // always available and a chip that is always true should not blink.
     reset: mk('R', 'reset'),
-    // D34/D37 — the 'B refs' and 'F8 dev' chips are gone from the legend. The
-    // dev element still exists (nothing else would satisfy the toggle below);
-    // it is simply never appended to the strip.
-    refs: dark('B', 'refs'),
-    dev: dark('F8', 'dev'),
+    refs: DEBUG_HUD ? mk('B', 'refs') : dark('B', 'refs'),
+    dev: DEBUG_HUD ? mk('F8', 'dev') : dark('F8', 'dev'),
     pause: mk('ESC', 'pause'),
   };
   keyEls.lift.classList.add('is-hidden');       // shown only if the world has lifts
@@ -262,10 +313,45 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
     },
   };
 
-  // D34 — the reference-bundle viewer (B, [ ]) is CUT from the public build.
-  // It fetched /api/poi/<poi> from the bench, which does not exist on a static
-  // host: a 404 on every boot and then a "no reference bundle" caption. Every
-  // other hidden feature keeps working; this one could not.
+  // ---- reference bundle viewer (keyboard-driven so it works pointer-locked:
+  //      B toggles, [ ] cycle through aerials + photos of this poi)
+  //
+  // specs/0003 — `debugHud`, and this one is not cosmetic. It fetches
+  // `/api/poi/<poi>` from the BENCH SERVER. On a static host that route does not
+  // exist, so building it there was a 404 on every single boot and then a "no
+  // reference bundle" caption: a hidden feature that visibly fails is not
+  // hidden. The whole thing — panel, fetch and key handler — now only exists
+  // where the API it depends on does.
+  if (DEBUG_HUD) {
+    const ref = el('div', 'phud__ref pchip');
+    ref.hidden = true;
+    const refImg = el('img', 'phud__ref-img');
+    refImg.alt = '';
+    const refCap = el('div', 'phud__ref-cap');
+    ref.append(refImg, refCap);
+    root.append(ref);
+    let refItems = [], refIdx = 0;
+    fetch('/api/poi/' + encodeURIComponent(poi))
+      .then((r) => r.json())
+      .then((p) => { refItems = [...(p.aerials || []), ...(p.photos || [])]; })
+      .catch(() => {});
+    const refShow = () => {
+      if (!refItems.length) { refCap.textContent = 'no reference bundle'; return; }
+      refIdx = (refIdx + refItems.length) % refItems.length;
+      const it = refItems[refIdx];
+      refImg.src = it.url.replace('/files/', '/thumb/') + '?w=900';
+      refCap.textContent = it.name.replace(/\.(jpe?g|png|webp)$/i, '') + ' · ' + (refIdx + 1) + '/' + refItems.length + ' · [ ] cycle · B close';
+    };
+    const typing = (t) => !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    addEventListener('keydown', (e) => {
+      if (!gmenu.hidden) return;                    // gear menu owns the keyboard
+      if (typing(e.target)) return;                 // the dev note field
+      if (document.body.classList.contains('is-dev')) return;   // dev.js owns [ ]
+      if (e.code === 'KeyB') { ref.hidden = !ref.hidden; if (!ref.hidden) refShow(); }
+      else if (!ref.hidden && e.code === 'BracketRight') { refIdx++; refShow(); }
+      else if (!ref.hidden && e.code === 'BracketLeft') { refIdx--; refShow(); }
+    });
+  }
 
   // ---- crosshair
   const cross = el('div', 'phud__cross');
@@ -276,53 +362,100 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
   pause.hidden = true;
   const panel = el('section', 'panel ppause__panel');
   const hd = el('div', 'panel__hd');
-  hd.append(el('span', 'lbl lbl--accent', 'paused'), el('span', 'spacer'), el('span', 'lbl', 'red dog chair'));
+  // specs/0003 — `brand`. The bench names the run it is playing; the shareable
+  // build names itself, because "palisades-front-A-merge-01" is an internal
+  // identity string (D9) and nobody outside this repo can read it.
+  hd.append(el('span', 'lbl lbl--accent', 'paused'), el('span', 'spacer'), el('span', 'lbl', pick(run || '', 'red dog chair')));
   const bd = el('div', 'panel__bd ppause__bd');
   const keys = el('div', 'ppause__keys');
   // 'lift' rows only exist for worlds that declare lifts[] — setLiftKey() below
   let liftCap = null, liftWhat = null;
-  for (const [cap, what, only] of [
-    // THE PAUSE PANEL LISTS FIVE KEYS AND NOTHING ELSE, and it is the same five
-    // the intro controls card shows. Greg's line: "nothing else compared to
-    // before."
-    //
-    // ESC leads, and it is listed as SETTINGS rather than 'release cursor' or
-    // 'pause': this panel IS the settings screen — it is the only screen the
-    // game has — so the row names the destination, not the mechanism. It is
-    // also the one row that is true of the panel you are reading it on.
-    //
-    // What is deliberately NOT here and why:
-    //   SPACE / S / A D / W           still work, and a skier finds them in
-    //                                 about four seconds without being told
-    //   SHIFT                         does nothing on skis in this build at all
-    //                                 (play-ski.patch.mjs)
-    //   F  ride the chairlift         the contextual prompt under the crosshair
-    //                                 at the terminal is what says this, at the
-    //                                 moment it is true — which is better than
-    //                                 a line in a panel nobody reopens
-    //   E / I / G / B / [ ] / F8      hidden features stay undocumented (D34)
+  // THE PANEL LEADS WITH FIVE ROWS AND THEY ARE THE SAME FIVE, IN THE SAME
+  // ORDER, as the intro controls card (intro.js). Two lists that differ by one
+  // row is a worse outcome than either list on its own.
+  //
+  // ESC leads, and it is listed as SETTINGS rather than 'release cursor' or
+  // 'pause': this panel IS the settings screen — it is the only screen the game
+  // has — so the row names the destination, not the mechanism. It is also the
+  // one row that is true of the panel you are reading it on.
+  //
+  // What is deliberately NOT in the five and why:
+  //   SPACE / S / A D / W       still work, and a skier finds them in about four
+  //                             seconds without being told
+  //   SHIFT                     does nothing on skis in this build at all
+  //   F  ride the chairlift     the contextual prompt under the crosshair at the
+  //                             terminal says this at the moment it is true,
+  //                             which beats a line in a panel nobody reopens
+  //   E / I / G / B / [ ] / F8  hidden features stay undocumented (D34)
+  const FIVE_ROWS = [
     ['ESC', 'settings'],
     ['W A S D', 'move'],
     ['← →', 'tricks in the air'],
     ['C', 'camera'],
     ['R', 'reset'],
-  ]) {
+  ];
+  // specs/0003 — `debugHud`. The LAB keeps the full reference underneath the
+  // five, because the lab is the superset: it has the bike, the glider and the
+  // rocket pack on the gear menu, and a world builder who cannot look up the
+  // glider's flare key has to go and read glider.js. The shareable build ships
+  // the five and nothing else.
+  const LAB_ROWS = [
+    ['SHIFT', 'sprint'], ['SPACE', 'jump'], ['MOUSE', 'look'],
+    ['E', 'gear · tap toggles, hold for menu'],
+    ['I', 'inventory · the ski rack, and every other gear type'],
+    ['SPACE', 'hold to thrust · on the rocket pack — 6 s of fuel, refills itself at 1×'],
+    ['F', 'ride the chairlift · at a base terminal', 'lift'],
+    ['A D', 'carve · on skis'],
+    // S and W are one signed push along the ski axis (§2.1): whichever one
+    // opposes the way you are actually travelling is the brake, so the same key
+    // is "stop" going forward and "go" going backward.
+    //
+    // There is NO SHIFT ROW FOR SKIS, on purpose: SHIFT does nothing on skis at
+    // all now — not a brake, not a tuck — and a key listed here that does
+    // nothing when you press it is worse than no line.
+    ['S', 'stop · on skis; moving backward it drives instead'],
+    ['W', 'skate · on skis; moving backward it stops you'],
+    ['W S', 'pedal / pump · on bike'], ['SHIFT', 'brake · on bike'],
+    ['SPACE', 'hold to preload, release on a lip to pop · on bike'],
+    ['MOUSE', 'aim where to fly — the wing banks and carves round to it · on glider'],
+    ['W S', 'nose down / nose up · on glider'],
+    ['SPACE', 'hold to flare — bleed speed for a clean landing · on glider'],
+    ['MOUSE', 'aim the motor — thrust goes exactly where you look · on the rocket pack'],
+    ['SPACE', 'let go and you are a falling body; burn back down the way you came to land · on the rocket pack'],
+    // the arrows are the two trick axes now (§3.1). On the snow ↑ ↓ are still
+    // exact aliases of W and S, so the row says so rather than pretending they
+    // are air-only keys.
+    ['← →', 'spin / flip · in the air'],
+    ['↑ ↓', 'spin / flip · in the air; on the snow they are W and S'],
+    ['← →', 'barrel roll · flying'],
+    // (no second C or R row: the five above already carry them)
+    ['B', 'reference photos'], ['[ ]', 'cycle refs'],
+    ['F8', 'dev fly mode · noclip + reference compare'],
+  ];
+  for (const [cap, what, only] of (DEBUG_HUD ? [...FIVE_ROWS, ...LAB_ROWS] : FIVE_ROWS)) {
     const c = el('div', 'cap', cap), w = el('div', 'what', what);
     if (only === 'lift') { c.classList.add('is-hidden'); w.classList.add('is-hidden'); liftCap = c; liftWhat = w; }
     keys.append(c, w);
   }
   const resume = el('button', 'btn btn--accent ppause__big', 'click to resume');
   resume.type = 'button';
-  // The RESPAWN button is gone: the panel already says "R  reset", and a button
-  // that duplicates a listed key is one more thing on a screen that is supposed
-  // to have four things on it. The button object still exists because onRespawn
-  // is part of this function's contract with main.js; it is just not appended.
+  // The RESPAWN button and the RETURN TO BENCH link are the lab's (`debugHud`):
+  // there is no bench to return to from a standalone build, and the panel there
+  // already says "R  reset", so a button duplicating a listed key is one more
+  // thing on a screen that is supposed to have five things on it. Both objects
+  // still EXIST in every build, because `onRespawn` is part of this function's
+  // contract with main.js; they are simply not appended.
+  const back = el('a', 'btn btn--ghost', 'return to bench');
+  back.href = '/#/run/' + encodeURIComponent(poi) + '/' + encodeURIComponent(run);
   const resp = el('button', 'btn btn--ghost', 'respawn');
   resp.type = 'button';
   const rowA = el('div', 'ppause__row'); rowA.append(resume);
   const rowB = el('div', 'ppause__row');
-  // D6 — ODbL attribution travels with the deployed artifact, not only with the
-  // repo. One line on the intro card, one here.
+  if (DEBUG_HUD) rowB.append(back, resp, el('span', 'lbl', 'adapter · ' + adapter));
+  // D6 — ODbL attribution travels with the artifact, not only with the repo.
+  // One line on the intro card, one here. Unconditional: attribution is never
+  // the wrong thing to be showing, and every world this player has ever loaded
+  // is USGS 3DEP terrain with OpenStreetMap trails on it.
   const credit = el('div', 'ppause__credit', 'terrain USGS 3DEP · trails © OpenStreetMap contributors (ODbL)');
   bd.append(keys, rowA, rowB, credit);
   panel.append(hd, bd);
@@ -387,8 +520,7 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
     const paused = !pause.hidden;
     for (const n of [fps, legend, toast, trick, promptEl, fuel, pump, combo, cend, bdot]) n.classList.toggle('is-hidden', paused);
     for (const n of [cross, read]) n.classList.toggle('is-hidden', paused || devOn);
-    devRead.classList.toggle('is-hidden', paused);
-    devRead.hidden = !devOn;
+    if (devRead) { devRead.classList.toggle('is-hidden', paused); devRead.hidden = !devOn; }
   }
 
   return {
@@ -406,6 +538,9 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
       paintInstruments();
     },
     devTick(f) {
+      // A build with no dev panel can still be handed a tick — nothing drives
+      // one there today, but a no-op is the right answer either way.
+      if (!devRead) return;
       for (const k of Object.keys(devRows)) if (f[k] != null) devRows[k].textContent = f[k];
       if (f.params != null) devParams.textContent = f.params;
       if (f.url != null) devFull = f.url;
@@ -415,8 +550,11 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
     setLiftKey(on) {
       hasLifts = !!on;
       keyEls.lift.classList.toggle('is-hidden', !hasLifts);
-      // the pause panel no longer carries an F row, so these two are null; the
-      // legend chip and the contextual prompt still do the work.
+      // A panel with no F row has no liftCap/liftWhat — that is the five-row
+      // panel, and main.js calls setLiftKey() the moment a lift comes into
+      // range, so unguarded this is a TypeError on the first approach to a base
+      // terminal, i.e. exactly where a first-time player goes. The legend chip
+      // and the contextual prompt still do the work.
       if (liftCap) liftCap.classList.toggle('is-hidden', !hasLifts);
       if (liftWhat) liftWhat.classList.toggle('is-hidden', !hasLifts);
     },

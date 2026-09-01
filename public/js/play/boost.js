@@ -73,10 +73,10 @@ const MAXT = 44;             // exhaust ribbon samples
 // still one tank; a rider is a MACHINE you bolt the same motor to, declared by
 // the caller rather than assumed here:
 //
-//   riders: { snowmobile: { keys: ['boost', 'sprint'], mode: 'sled' } }
+//   riders: { snowmobile: { keys: ['jumpHeld', 'sprint'], mode: 'sled' } }
 //
-// `keys` is what fires it on that gear (the sled takes SHIFT as well as G, which
-// is why SHIFT is no longer its brake), and mode 'sled' is the one behavioural
+// `keys` is what fires it on that gear (the sled takes SHIFT as well as SPACE,
+// which is why SHIFT is no longer its brake), and mode 'sled' is the one behavioural
 // fork in this file: a motor bolted to a machine pushes the MACHINE, flat along
 // its heading, and leaves the machine's own model running so it still steers and
 // its track drag still sets the terminal. No liftoff, no up-tilt, no cancelled
@@ -214,7 +214,19 @@ export function createBoost({ THREE, scene, ctrl, camera, unitScale = 1, tuning 
     const rider = ctrl.mode === gear ? null : riders[ctrl.mode];
     const worn = ctrl.mode === gear || !!rider;
     const sled = !!(rider && rider.mode === 'sled');
-    const fire = !!(rider ? (rider.keys || ['boost']).some((k) => keys[k]) : keys.boost);
+    // THE THROTTLE IS HOLD-SPACE, and it used to be G (Greg, 2026-08-31: "no
+    // more G"). `jumpHeld` is the LEVEL half of the jump input the player already
+    // had — main.js sets it on Space down and clears it on Space up, and touch.js
+    // sets the same boolean for a hold on the right half of the glass — so the
+    // rebind is a read of an existing seam rather than a new key, and the phone
+    // gets the motor for free. Space's EDGE (`keys.jump`) is untouched: press is
+    // still exactly the jump it always was, and only the HOLD adds thrust.
+    //
+    // Nothing here changes what gates the motor. `worn` above is still the whole
+    // story — you are on the pack, or on a machine it is bolted to — so a skier
+    // leaning on Space gets a jump and no thrust, the same as a skier leaning on
+    // G got a jump and no thrust.
+    const fire = !!(rider ? (rider.keys || ['jumpHeld']).some((k) => keys[k]) : keys.jumpHeld);
     if (!worn || !fire || fuel >= S.tank - 1e-6) dry = false;
     // A wipe blows the motor out. That is the opposite of invincibility: you
     // asked for 100 m/s into a rock face and the motor stops answering.

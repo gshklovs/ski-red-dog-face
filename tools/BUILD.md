@@ -6,7 +6,7 @@ Everything under `public/` is written by one script in a private research repo:
 poi-lab/tools/export-red-dog/build.mjs --out <this repo> --gate
 ```
 
-Built from poi-lab commit `37045523d42f25da8215abf385ba94d4dae3a8d1` on `2026-08-31T06:27:24Z`.
+Built from poi-lab commit `2bd4c3c89ea8cf1190b2fe01b8e862114e34d6b4` on `2026-09-01T02:40:34Z`.
 
 A hand-edited change here is lost on the next bake, silently. If something in
 `public/` is wrong, the fix belongs in one of three places in poi-lab:
@@ -15,7 +15,8 @@ A hand-edited change here is lost on the next bake, silently. If something in
 |---|---|
 | the mountain — terrain, runs, trees, signs | `runs/palisades-front-A-merge-01/scene/` (then re-bake) |
 | the game — physics, HUD, camera, gear | `bench/public/js/play/` (then re-bake) |
-| the *crop or the strip* — what ships and what does not | `tools/export-red-dog/manifest.json` and `tools/export-red-dog/patches/` |
+| the *crop* — what geometry ships | `tools/export-red-dog/manifest.json` and `tools/export-red-dog/patches/` |
+| the *strip* — debug HUD, gear set, branding, the guide | the four flags in `tools/export-red-dog/templates/index.html` |
 
 ## How the bake works
 
@@ -30,12 +31,20 @@ A hand-edited change here is lost on the next bake, silently. If something in
 3. **Transforms.** `copy`, `stub-module` (replace a module body with the named
    exports it must still provide), `crop-dem` (block-mean decimation of a base64
    Int16 DEM frame, span/origin untouched) and `bundle-three`.
-4. **Patches.** The ~20 edits to the player and the world are anchored
-   find/replace hunks in `tools/export-red-dog/patches/`, applied at build time.
-   **A hunk whose anchor is missing, or present more times than declared, fails
-   the build.** That rejection is the signal that master moved under a strip
-   site and a human has to look — which is the entire reason the edits are
-   patches instead of a forked copy that would rot in silence.
+4. **Flags, then patches.** Since poi-lab's specs/0003 the lab and this build
+   are ONE product: every difference between them is one of four values —
+   `guide`, `gearSet`, `debugHud`, `brand` — declared in `templates/index.html`
+   and read once by `js/play/flags.js`. Nothing is forked and nothing user-
+   visible is text-patched any more.
+
+   What is left in `tools/export-red-dog/patches/` is the two SCENE patches,
+   whose every hunk is a pure function of the crop: the raster extent, the
+   derived spawn block, the positional marker filter, the fog distance. They are
+   anchored find/replace hunks applied at build time, and **a hunk whose anchor
+   is missing, or present more times than declared, fails the build.** That
+   rejection is the signal that the source moved under a crop site and a human
+   has to look — which is the entire reason they are patches rather than a
+   forked copy that would rot in silence.
 5. **Spawn.** Derived, not transcribed. The builder loads the *cropped* scene's
    own `layout.mjs` and `ground.mjs`, walks Snow King Road from the point
    nearest the Red Dog Express top terminal, and asserts that the resulting
@@ -81,7 +90,9 @@ breakage sites is touched.
   below the map. Probed on the built scene before the change: every one of the
   seven terminals, the whole Mountain Run corridor down to the village and the
   KT descent all have collidable ground under them, so nothing had to be added
-  to the collision to make this ski. See `patches/play-main.patch.mjs`.
+  to the collision to make this ski. The rule lives in `js/play/main.js` now
+  (poi-lab specs/0003 upstreamed it — it is the LAB's fence rule too, and the
+  lab simply declares no `fence` for it to read).
 
   The old box survives as a hard backstop at CORE ± 8 km and nothing in play can
   reach it — `controller.js` clamps you into the collision grid, which runs to
@@ -109,14 +120,16 @@ its chip on 2026-08-30 — it is the key you want at the exact moment you are
 least likely to reopen a panel to look it up. And if you stop moving for seven
 seconds on the ground with no input, one quiet line says `R — back to the run`;
 it is gone on the first key, the first touch or the first metre travelled, and
-it re-arms. That is `templates/idle.js`, ~120 lines, deploy-only.
+it re-arms. That is `js/play/idle.js`, ~120 lines, and since poi-lab's
+specs/0003 it is ordinary player source that runs wherever the guided run does.
 
 Everything else the player can do still works and is simply not advertised —
 SHIFT, SPACE, carve and snowplow are found in about four seconds by anyone who
 has held a controller; `F` to board the chair is announced by the contextual
 prompt under the crosshair *at the terminal*, at the moment it is true, which is
-better than a line in a panel nobody reopens; and `E` / `I` / `G` / `T` stay
-hidden (D34).
+better than a line in a panel nobody reopens; and `E` / `I` / `T` stay hidden
+(D34). The rocket pack's throttle is **hold SPACE** — it moved off `G` on
+2026-08-31, and its chip only ever appears to somebody already wearing the pack.
 
 While the intro is up, **nothing else is on the screen at all** — not the pause
 panel, not the instrument HUD, not the marker prompt. That is one structural CSS

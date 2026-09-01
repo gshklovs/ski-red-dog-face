@@ -41,6 +41,8 @@
 // back airspeed, and the wing catches. Mushy, and always recoverable by pointing
 // down.
 
+import { BRAND, pick } from './flags.js';
+
 export const GLIDER_TUNING = {
   // ---- envelope
   maxSpeed: 32,          // m/s — hard 3D backstop; drag normally caps you below
@@ -134,7 +136,7 @@ export const GLIDER_MODELS = [
     facts: [['trim', '16 m/s'], ['top speed', '32 m/s'], ['sink', '~1.5 m/s'], ['ridge lift', 'yes']],
   },
   {
-    id: 'rocket-pack', gear: 'rocket', name: 'Alpine Rocket Pack', brand: 'RED DOG',
+    id: 'rocket-pack', gear: 'rocket', name: pick('Lab Rocket Pack', 'Alpine Rocket Pack'), brand: BRAND,
     tag: 'rocket pack', group: 'lab', glyph: 'rocket', preview: 'pack',
     blurb: 'Two tanks and one look-vector. On the ground you are simply wearing it — walk, sprint and jump are the boots you already know. Hold G and it throws you where you are aiming at 35 m/s² until the sky runs out around 100. Let go and there is no wing under you: burn back down the way you came, or arrive the way a falling body does.',
     stats: { turn: 0.90, speed: 1.00, stab: 0.28, pop: 1.00 },

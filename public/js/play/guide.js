@@ -1311,17 +1311,39 @@ export async function init(ctx) {
       } catch { S.lipSource = 'config'; }
     }
 
-    // PATCHED by poi-lab tools/export-red-dog (patches/play-guide.patch.mjs).
-    // The host page owns the boot flow in this build — templates/intro.js, the
-    // D32 title + five-row controls cards, with the ODbL line on both. The
-    // guide's own cards would be a second control list on top of it, and would
-    // hold .phud off the screen for another 9.4 s after the player dropped in.
-    // bootCards() is left in the module, unreferenced, so the diff against
-    // master stays one line wide.
+    // ---- THE HOST OWNS THE BOOT FLOW (specs/0003).
     //
-    // The card CONTAINER goes too: buildDom() made it, bootCards() would have
-    // filled it, and an empty one is a fixed, inset-0, pointer-events:auto layer
-    // at z-index 70 — a transparent click trap over the whole canvas.
+    // TWO BOOT FLOWS IS THE BUG. bootCards() opens with its own title card and
+    // its own seven-row CONTROLS card (2.4 s + 7.0 s of holds), and the player
+    // already has that screen: intro.js, whose controls card is the FIVE ROWS the
+    // ESC panel echoes and which carries the ODbL line D6 requires. Shipping both
+    // means reading two control lists back to back, the second listing keys
+    // (MOUSE, SPACE, F) the first deliberately does not.
+    //
+    // It is not merely ugly. `body.intro-up > *:not(canvas):not(.intro):not(.pboot)`
+    // hides the whole `.gd` overlay while intro.js is up, so the guide cards do
+    // not appear UNTIL intro.js hands the screen over — and then they take it
+    // straight back for another 9.4 s, with `body.gd-intro-up .phud { display:
+    // none }` holding the instrument HUD off the screen the whole time.
+    //
+    // intro.js loads under exactly the condition guide.js does (`guide`), so
+    // "the host owns the cards" is true in every build that runs this module —
+    // which is why this is unconditional rather than a flag. Nothing is lost:
+    // bootCards()'s only side effects are the two cards, the `gd-intro-up` class
+    // it sets and clears itself, and a call to ctx.enter() when it finishes, and
+    // intro.js already calls the very same window.__player.enter(). The stage
+    // machine is untouched — init() builds the route and calls advanceTo(0)
+    // below either way, and update() no-ops until `live`.
+    //
+    // AND THE EMPTY CARD LAYER HAS TO GO WITH IT, which is the half that is easy
+    // to miss: buildDom() creates `.gd__cards` unconditionally and bootCards()
+    // only ever FILLS it, so declining to call bootCards() leaves a childless
+    // `position:fixed; inset:0; z-index:70; pointer-events:auto` div behind — an
+    // invisible full-screen click trap over the canvas. Removed, not hidden: an
+    // element that exists only to be ignored is the same bug one refactor later.
+    //
+    // bootCards() itself stays in the module, unreferenced, because it is the
+    // record of what the guide's own flow was.
     if (S.dom && S.dom.cards) S.dom.cards.remove();
     S.intro = { skip: () => {}, stage: () => 2 };
     S.route = buildRoute();
@@ -1329,12 +1351,18 @@ export async function init(ctx) {
     S.ok = true;
     if (S.stages.length) {
       advanceTo(0);
-      // poi-lab tools/export-red-dog — settle the chevrons before the first
-      // frame. This build boots paused behind an intro card, so update() (which
-      // is what normally scales and fades them) does not run until the player
-      // drops in, and the arrows nearest the spawn would paint at full size
-      // across the title card. dt = 1 lands the opacity lerp on its target in
-      // one step. Arrows only: no stage tick, no prompt.
+      // SETTLE THE CHEVRONS BEFORE THE FIRST FRAME. buildArrows() lays the
+      // teach-W chevrons down the first 130 m at full scale, and the thing that
+      // makes them behave — fadeArrows(), which shrinks the one you are about to
+      // ski through to nothing and fades the strip out past fadeR — is called
+      // from update(dt, live) and nowhere else. The desktop boots PAUSED so the
+      // first click is a real user gesture (pointer lock needs that), update()
+      // no-ops while paused, and the spawn stands 6 m from the first chevron —
+      // so the title card painted over two unfaded arrows filling the left and
+      // right thirds of the screen. dt = 1 drives the opacity lerp straight to
+      // its target instead of easing, so the strip is in its steady state on
+      // frame one. NOT a call to update(): that would tick the stage machine and
+      // light a prompt before the player has dropped in. Arrows only.
       try { if (props && props.arrows) fadeArrows(props.arrows, 1); } catch (e) { err(e); }
     }
     return api;

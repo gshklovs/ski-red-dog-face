@@ -42,6 +42,7 @@ import {
   SNOWMOBILE_MODELS, SNOWMOBILE_DEFAULT, snowmobileThumbURL, rememberSnowmobileId,
   resolveSnowmobileId, makeSnowmobileRig, styleSnowmobileRig,
 } from './snowmobile.js';
+import { FULL_LOCKER, BRAND } from './flags.js';
 
 // the two glider models paint from the same 300×58 frame as the boots
 const GLIDER_LOOK = {
@@ -250,7 +251,34 @@ const TABS = [
       ],
     })),
   },
-  // D35 — the bike rack is cut from the public build with the bike gear.
+  // specs/0003 — `gearSet`. The bike rack is LAB-ONLY: on the ski set there is
+  // no bike gear (controller.js registers none), and a locker tab that switches
+  // nothing is the same anti-pattern the B viewer was cut for. bike.js itself
+  // still ships in both — main.js and this file import it unconditionally, and
+  // deleting the module is a module-level fatal, which is exactly the
+  // file-deletion-vs-registry-edit distinction D24 warns about.
+  ...(FULL_LOCKER ? [{
+    // The bike rack (bike.js), same shape as the skis: every card's stats and
+    // facts are derived from the tuning the physics will actually run, and the
+    // thumbnail is drawn from the same head angle and wheelbase.
+    id: 'bike', label: 'bikes', gear: 'bike', kind: 'bike', icon: 'bike', accent: '#ff7a29',
+    items: () => BIKE_MODELS.map((m) => ({
+      id: m.id, name: m.name, brand: m.brand, tag: m.disc, group: m.group,
+      blurb: m.blurb, stats: m.stats, thumb: bikeThumbURL(m),
+      spec: `${m.spec.travel} travel · ${m.spec.head.toFixed(1)}° head · ${m.spec.mass} · ${m.spec.wheel}`,
+      facts: [
+        ['travel', m.spec.travel],
+        ['head angle', m.spec.head.toFixed(1) + '°'],
+        ['wheelbase', m.spec.wb + ' mm'],
+        ['weight', m.spec.mass],
+        ['wheels', m.spec.wheel],
+        ['top speed', m.stats.term.toFixed(1) + ' m/s'],
+        ['pedal cap', m.stats.pedalMax.toFixed(1) + ' m/s'],
+        ['spin', m.stats.spinTorque.toFixed(1) + ' rad/s'],
+        ['pop', m.stats.popFull.toFixed(1) + ' m/s'],
+      ],
+    })),
+  }] : []),
   {
     // ONE equipment type, two flight models — the rack lives in glider.js, and
     // each entry names the controller gear that actually flies it, so the wing
@@ -312,7 +340,7 @@ const TABS = [
   {
     id: 'boots', label: 'boots', gear: 'boots', kind: 'boots', icon: 'boots', accent: '#e0b166',
     items: () => [{
-      id: 'boots', name: 'Boots', brand: 'RED DOG', tag: 'on foot', group: 'lab',
+      id: 'boots', name: 'Boots', brand: BRAND, tag: 'on foot', group: 'lab',
       blurb: 'The Quake-ish walk controller, untouched since the first commit. Walk, sprint, jump, step over anything under 55 cm. Nothing you equip can change how this feels.',
       stats: { turn: 1.0, speed: 0.10, stab: 1.0, pop: 0.20 },
       thumb: swatchURL('boots', { base: '#26231f', ink: '#12110f', accent: '#cdc7ba' }, 'boot'),

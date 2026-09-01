@@ -33,6 +33,7 @@ import { gliderStep, gliderLand, gliderJudgeWipe, gliderReset, scaleGliderTuning
 import { rocketStep, rocketLand, rocketJudgeWipe, rocketReset, scaleRocketTuning } from './rocket.js';
 import { sledStep, sledLand, sledReset, scaleSledTuning } from './sled.js';
 import { snowmobileStep, snowmobileLand, snowmobileReset, scaleSnowmobileTuning } from './snowmobile.js';
+import { FULL_LOCKER } from './flags.js';
 
 export const TUNING = {
   eyeHeight: 1.70,      // m — standing eye
@@ -67,8 +68,25 @@ export function createController(THREE, collision, spawn, tuning = {}) {
       reset: resetSki,           // the pump bank and the stivot state are not
                                  // yours across a respawn, a gear change or a teleport
     },
-    // D35 — no bike on a ski mountain. The module still ships (main.js and
-    // inventory.js both import it unconditionally); it simply has no gear.
+    // specs/0003 — `gearSet`. THIS REGISTRY IS THE FLAG: there is no separate
+    // "can ride a bike" boolean anywhere in the player, so with no entry here
+    // ctrl.mode can never become 'bike' — every path into it goes through GEARS.
+    // bike.js still ships and is still imported above, because main.js builds
+    // the fp/tp rigs from it unconditionally and inventory.js imports its
+    // thumbnail painter. A registry edit, not a file deletion (D24).
+    ...(FULL_LOCKER ? {
+      bike: {
+        S: scaleBikeTuning(1, tuning.bike || {}),
+        step: bikeStep, land: bikeLand,
+        jumpVel: (S) => S.hop,     // bunny hop (unused while holdJump is set)
+        launch: bikeLaunch,        // lips hand back the vertical the snap ate
+        reset: bikeReset,
+        wipe: false,
+        holdJump: true,            // SPACE is preload/pop: the gear's step owns the
+                                   // jump (writes vel.y on release), so the instant
+                                   // keys.jump path must not fire
+      },
+    } : {}),
     glider: {
       S: scaleGliderTuning(1, tuning.glider || {}),
       step: gliderStep, land: gliderLand,
@@ -120,13 +138,16 @@ export function createController(THREE, collision, spawn, tuning = {}) {
 
   const keys = {
     forward: false, back: false, left: false, right: false, sprint: false, jump: false,
-    jumpHeld: false,                         // SPACE level (not edge) — bike preload/pop
+    // SPACE level (not edge). Three consumers now: the bike's preload/pop, the
+    // glider's flare, and — since 2026-08-31 — the rocket's THROTTLE, which used
+    // to be its own `boost` key on G. One level input, one key, and touch.js
+    // already sets it for a hold on the right half of the glass.
+    jumpHeld: false,
     spinLeft: false, spinRight: false,       // ← → : steer on the ground, trick-spin in the air
     // ↑ ↓ : EXACT aliases of W/S on the ground (ski.js reads them that way), the
     // flip axis in the air (tricks.js). Split off W/S so a flip is not a brake.
     flipFwd: false, flipBack: false,
     tuck: false,                             // SHIFT — flex/absorb in a turn, aero tuck in a line
-    boost: false,                            // G level — read by boost.js, not by this file
   };
   // The rocket's motor (boost.js) is driving the velocity this frame. Every gear
   // model here tops out around 30 m/s, so a 100 m/s thrust cannot merely be added

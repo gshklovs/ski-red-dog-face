@@ -66,7 +66,8 @@ async function loadContract(THREE, cfg, say) {
   if (typeof build !== 'function') throw new Error('world.mjs exports no buildWorld(THREE)');
   const out = await build(THREE, {
     units: 'm',
-    // D31 — the only opts key buildWorld honours, and the device that needs it
+    // D31 — the only opts key buildWorld honours, and the device that needs it:
+    // on touch the 2048^2 shadow pass never runs.
     shadows: !matchMedia('(pointer: coarse)').matches,
   });
   const scene = out && (out.scene || (out.isScene ? out : null));
@@ -85,7 +86,10 @@ async function loadContract(THREE, cfg, say) {
     // derives its whole course from them.
     runs: Array.isArray(out.runs) ? out.runs : null,
     markers: Array.isArray(out.markers) ? out.markers : null,  // optional POI signs (markers.js)
-    report: out.report || null,   // D42 — drawCalls / triangles / collidableTriangles / buildMs
+    report: out.report || null,   // D42 — drawCalls / triangles / collidableTriangles / buildMs.
+                                  // The world counts these itself; the loader used to
+                                  // drop them on the floor, so no perf budget could be
+                                  // enforced against anything but an estimate.
     upAxis: out.up === 'z' ? 'z' : 'y',
     declaredUp: out.up !== undefined,
     update: typeof out.update === 'function' ? out.update : null,
@@ -112,7 +116,9 @@ async function loadGltf(THREE, cfg, say) {
 
 function makeRenderer(THREE) {
   const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  // D25 — coarse pointers cap at 1.5. Everything else keeps 2.
+  // D25 — COARSE POINTERS CAP AT 1.5, everything else keeps 2. A 3x phone at
+  // DPR 2 renders 4x the pixels of DPR 1 for a screen held at arm's length, and
+  // it is the device least able to afford them.
   r.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
   r.setSize(innerWidth, innerHeight);
   r.outputColorSpace = THREE.SRGBColorSpace;

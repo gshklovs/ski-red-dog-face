@@ -26,6 +26,8 @@
 //
 // Boots physics live in controller.js and never come through here.
 
+import { BRAND, pick } from './flags.js';
+
 export const SKI_TUNING = {
   maxSpeed: 29,          // m/s — hard backstop; drag normally caps you below it
   slopeAccel: 0.92,      // × gravity·sinθ along the fall line
@@ -624,7 +626,7 @@ export const SKI_REF = { len: 180, waist: 88 };   // the geometry of lab-standar
 
 export const SKI_MODELS = [
   {
-    id: 'lab-standard', name: 'Red Dog 180', brand: 'RED DOG',
+    id: 'lab-standard', name: pick('Lab Standard', 'Red Dog 180'), brand: BRAND,
     disc: 'lab', group: 'lab', len: 180, waist: 88, radius: 18,
     blurb: 'The house ski. Every number in ski.js exactly as written — the ruler the rest of the rack is measured against.',
     look: { base: '#ff4d00', ink: '#17161a', accent: '#f4f1ea', pattern: 'lab' },
@@ -1106,8 +1108,11 @@ const PAINTERS = {
     x.fillRect(0, H * 0.93, W, H * 0.07);
     x.fillStyle = 'rgba(244,241,234,.55)';
     for (let i = 0; i < 8; i++) x.fillRect(W * 0.22, H * 0.34 + i * 36, W * 0.56, 3);
-    crossText(x, 'RED DOG', W / 2, 0.055, 11, L.base, { track: 2 });
-    runText(x, 'PALISADES 180', W * 0.5, 0.24, 10, 'rgba(23,22,26,.85)');
+    // D9/D36 — the topsheet painter does NOT read `brand`/`name`, it paints
+    // string literals, which is why the metadata above is not enough on its own:
+    // this wordmark is legible across the tip in first person on EVERY frame.
+    crossText(x, BRAND, W / 2, 0.055, 11, L.base, { track: 2 });
+    runText(x, pick('LAB STANDARD', 'PALISADES 180'), W * 0.5, 0.24, 10, 'rgba(23,22,26,.85)');
   },
 
   // ------------------------------------------------------------- Redsters
