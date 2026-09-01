@@ -38,7 +38,7 @@ import './surprise.js';
 import './snowball.js';
 import './markers.js';
 import './audio.js';
-import { FULL_LOCKER, DEBUG_HUD, LABEL, pick } from './flags.js';
+import { BIKE_GEAR, FULL_GEAR_MENU, DEBUG_HUD, LABEL, pick } from './flags.js';
 
 const cfg = window.__PLAY;
 const say = cfg.say || (() => {});
@@ -251,8 +251,8 @@ const pubGear = (g) => (g === 'rocket' ? 'glider' : g);
 // build) is empty and 'bike' is not a name the player can reach.
 // The glider is deliberately in no POI map: it belongs to any world with air,
 // and on both sets it stays reachable only through the locker.
-const POI_GEAR = FULL_LOCKER ? { 'eagles-nest-kt22': 'skis', 'truckee-bike-park': 'bike' } : {};
-const GEAR_NAMES = FULL_LOCKER
+const POI_GEAR = FULL_GEAR_MENU ? { 'eagles-nest-kt22': 'skis', 'truckee-bike-park': 'bike' } : {};
+const GEAR_NAMES = BIKE_GEAR
   ? ['boots', 'skis', 'bike', 'glider', 'sled', 'snowmobile']
   : ['boots', 'skis', 'glider', 'sled', 'snowmobile'];
 const defaultGear = (() => {
@@ -1234,7 +1234,7 @@ let eTimer = null, eMenuOpened = false;
 // specs/0003 — `gearSet`. On the ski set hold-E shows exactly boots and skis;
 // everything else still exists and is still reachable through the I locker, it
 // is simply not advertised (D34/D44).
-const menuGears = () => (FULL_LOCKER
+const menuGears = () => (FULL_GEAR_MENU
   ? ['boots', ...ctrl.gears.filter((g) => g !== 'rocket')]
   : ['boots', 'skis']);
 

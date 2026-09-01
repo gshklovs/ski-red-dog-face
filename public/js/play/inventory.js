@@ -42,7 +42,7 @@ import {
   SNOWMOBILE_MODELS, SNOWMOBILE_DEFAULT, snowmobileThumbURL, rememberSnowmobileId,
   resolveSnowmobileId, makeSnowmobileRig, styleSnowmobileRig,
 } from './snowmobile.js';
-import { FULL_LOCKER, BRAND } from './flags.js';
+import { BIKE_GEAR, BRAND } from './flags.js';
 
 // the two glider models paint from the same 300×58 frame as the boots
 const GLIDER_LOOK = {
@@ -257,7 +257,7 @@ const TABS = [
   // still ships in both — main.js and this file import it unconditionally, and
   // deleting the module is a module-level fatal, which is exactly the
   // file-deletion-vs-registry-edit distinction D24 warns about.
-  ...(FULL_LOCKER ? [{
+  ...(BIKE_GEAR ? [{
     // The bike rack (bike.js), same shape as the skis: every card's stats and
     // facts are derived from the tuning the physics will actually run, and the
     // thumbnail is drawn from the same head angle and wheelbase.

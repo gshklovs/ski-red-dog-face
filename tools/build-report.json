@@ -1,8 +1,8 @@
 {
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
-  "pin": "2bd4c3c89ea8cf1190b2fe01b8e862114e34d6b4",
-  "builtAt": "2026-09-01T02:40:42.884Z",
+  "pin": "420bde3d9373f043c725bc3a33f5143957907ce8",
+  "builtAt": "2026-09-01T04:05:16.370Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -22,9 +22,18 @@
     "markerFilter": {
       "x0": -620,
       "y1": 740,
-      "$keep": "D37a is POSITIONAL, and one waypoint has to survive it by name: the KT-22 summit. All seven lifts board, kt22-express is one of them, and a lift you can ride to a summit with no sign on it is a worse outcome than a sign 900 m west of CORE. It is the only allowlisted id.",
+      "$keep": "D37a is POSITIONAL, and as of 2026-08-31 the allowlist is the WHOLE upper mountain (Greg). The positional rule was written when the crop was the product and everything west of CORE was backdrop nobody could reach; then all seven lifts started boarding and the fence became surface-aware, and the far west stopped being scenery — you can ride to it and ski down from it. A place you can stand on with no sign on it is the defect the crop was trying to avoid, not the tidiness it was trying to buy. So all 19 markers ship: the 9 that were always inside CORE, kt22, and these 9 upper-mountain ids by name.",
       "keep": [
-        "kt22"
+        "kt22",
+        "eagles-nest",
+        "gs-bowl",
+        "olympic-lady",
+        "funitel-top",
+        "gold-coast",
+        "high-camp",
+        "mountain-run",
+        "gold-coast-park",
+        "gold-coast-hip"
       ]
     },
     "$fence": "D16.2 is SURFACE-AWARE as of 2026-08-30, and since specs/0003 the rule lives in bench/public/js/play/main.js rather than in a patch — the bench simply declares no `fence` for it to read. It no longer fires on POSITION at CORE+250: standing on real collision ground never trips it, at any coordinate, because four of the seven rideable top terminals are outside that box and riding to one used to fade you home in a loop. It fires on the absence of recoverable ground. fenceHardPadM is a backstop for coordinates no physics can produce, not a play boundary.",
@@ -105,9 +114,9 @@
   "files": 65,
   "sizes": {
     "n": 65,
-    "raw": 7263063,
-    "gz": 3019371,
-    "br": 2340247,
+    "raw": 7265258,
+    "gz": 3020296,
+    "br": 2341065,
     "byGroup": {
       "css": {
         "n": 4,
@@ -117,15 +126,15 @@
       },
       "html": {
         "n": 1,
-        "raw": 8432,
-        "gz": 3964,
-        "br": 3177
+        "raw": 8825,
+        "gz": 4146,
+        "br": 3316
       },
       "player": {
         "n": 29,
-        "raw": 914308,
-        "gz": 320390,
-        "br": 275804
+        "raw": 915982,
+        "gz": 321088,
+        "br": 276444
       },
       "scene:data": {
         "n": 7,
@@ -135,9 +144,9 @@
       },
       "scene:code": {
         "n": 23,
-        "raw": 638654,
-        "gz": 230636,
-        "br": 195178
+        "raw": 638782,
+        "gz": 230681,
+        "br": 195217
       },
       "vendor": {
         "n": 1,
@@ -179,15 +188,15 @@
       },
       {
         "file": "js/play/main.js",
-        "raw": 93558,
-        "gzip": 32256,
-        "brotli": 27786
+        "raw": 93576,
+        "gzip": 32266,
+        "brotli": 27792
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85747,
-        "gzip": 30599,
-        "brotli": 26213
+        "raw": 85875,
+        "gzip": 30644,
+        "brotli": 26252
       },
       {
         "file": "js/play/markers.js",
@@ -253,15 +262,15 @@
       },
       {
         "file": "js/play/main.js",
-        "raw": 93558,
-        "gzip": 32256,
-        "brotli": 27786
+        "raw": 93576,
+        "gzip": 32266,
+        "brotli": 27792
       },
       {
         "file": "scene/world.mjs",
-        "raw": 85747,
-        "gzip": 30599,
-        "brotli": 26213
+        "raw": 85875,
+        "gzip": 30644,
+        "brotli": 26252
       },
       {
         "file": "js/play/markers.js",
@@ -295,15 +304,15 @@
       },
       {
         "file": "js/play/bike.js",
-        "raw": 69839,
-        "gzip": 23142,
-        "brotli": 19818
+        "raw": 70284,
+        "gzip": 23356,
+        "brotli": 20031
       },
       {
         "file": "js/play/inventory.js",
-        "raw": 64284,
-        "gzip": 20604,
-        "brotli": 17865
+        "raw": 64280,
+        "gzip": 20598,
+        "brotli": 17899
       },
       {
         "file": "scene/ground.mjs",
@@ -391,9 +400,9 @@
       },
       {
         "file": "js/play/controller.js",
-        "raw": 25743,
-        "gzip": 9091,
-        "brotli": 7942
+        "raw": 25739,
+        "gzip": 9086,
+        "brotli": 7933
       },
       {
         "file": "js/play/tricks.js",
@@ -505,9 +514,9 @@
       },
       {
         "file": "index.html",
-        "raw": 8432,
-        "gzip": 3964,
-        "brotli": 3177
+        "raw": 8825,
+        "gzip": 4146,
+        "brotli": 3316
       },
       {
         "file": "scene/pou-data.mjs",
@@ -558,6 +567,12 @@
         "brotli": 1751
       },
       {
+        "file": "js/play/flags.js",
+        "raw": 4665,
+        "gzip": 2054,
+        "brotli": 1676
+      },
+      {
         "file": "css/speedo.css",
         "raw": 4093,
         "gzip": 1992,
@@ -574,12 +589,6 @@
         "raw": 4244,
         "gzip": 1920,
         "brotli": 1489
-      },
-      {
-        "file": "js/play/flags.js",
-        "raw": 3446,
-        "gzip": 1569,
-        "brotli": 1280
       },
       {
         "file": "scene/canopy.mjs",

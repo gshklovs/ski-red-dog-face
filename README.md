@@ -68,7 +68,7 @@ Total download: about 2 MB compressed. It is a static site — there is no serve
   world quietly puts you back at the top. There is no boundary to hit.
 
 Generated from a private research repo (`poi-lab`) by one script, from commit
-`2bd4c3c89e` on `2026-09-01T02:40:34Z`. Nothing in here is hand-edited; a re-bake of the
+`420bde3d93` on `2026-09-01T04:05:09Z`. Nothing in here is hand-edited; a re-bake of the
 terrain regenerates the whole tree.
 
 ## Run it locally

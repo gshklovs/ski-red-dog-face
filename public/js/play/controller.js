@@ -33,7 +33,7 @@ import { gliderStep, gliderLand, gliderJudgeWipe, gliderReset, scaleGliderTuning
 import { rocketStep, rocketLand, rocketJudgeWipe, rocketReset, scaleRocketTuning } from './rocket.js';
 import { sledStep, sledLand, sledReset, scaleSledTuning } from './sled.js';
 import { snowmobileStep, snowmobileLand, snowmobileReset, scaleSnowmobileTuning } from './snowmobile.js';
-import { FULL_LOCKER } from './flags.js';
+import { BIKE_GEAR } from './flags.js';
 
 export const TUNING = {
   eyeHeight: 1.70,      // m — standing eye
@@ -74,7 +74,7 @@ export function createController(THREE, collision, spawn, tuning = {}) {
     // bike.js still ships and is still imported above, because main.js builds
     // the fp/tp rigs from it unconditionally and inventory.js imports its
     // thumbnail painter. A registry edit, not a file deletion (D24).
-    ...(FULL_LOCKER ? {
+    ...(BIKE_GEAR ? {
       bike: {
         S: scaleBikeTuning(1, tuning.bike || {}),
         step: bikeStep, land: bikeLand,

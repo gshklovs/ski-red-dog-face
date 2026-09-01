@@ -42,6 +42,8 @@
 //
 // Boots physics live in controller.js and never come through here.
 
+import { BRAND, pick } from './flags.js';
+
 export const BIKE_TUNING = {
   maxSpeed: 22,          // m/s — hard backstop (downhill + gravity territory)
   pedalMax: 11,          // m/s — cranks spin out here; W does nothing above it
@@ -404,11 +406,16 @@ export function bikeLand(vel, impact, normal, S) {
 // balloon cruiser ever shipped with a geometry table.
 export const BIKE_MODELS = [
   {
-    id: 'lab-standard', name: 'Lab Standard Bike', brand: 'POI-LAB',
+    // D9  14 this WAS dead data: the bike had no gear and no locker tab, so its
+    // wordmark was unreachable. The bikes are back in the shipped locker as of
+    // 2026-08-31, which makes both strings below reachable and therefore
+    // scrubbable  14 the brand on the card, and `mark` painted on the down tube,
+    // which is on screen in third person the whole time you ride it.
+    id: 'lab-standard', name: pick('Lab Standard Bike', 'Red Dog Trail'), brand: BRAND,
     disc: 'dirt jump', group: 'lab',
     spec: { travel: '100 / 0 mm', head: 69.0, wb: 1080, mass: '11.4 kg', wheel: '26 × 2.3"' },
     blurb: 'The house bike. Every number in bike.js exactly as written — the ruler the rest of the rack is measured against, and the bike both parks were shaped around. Nothing you equip changes how this one feels.',
-    look: { front: '#ff4d00', rear: '#17161a', fork: '#17161a', ink: '#17161a', accent: '#f4f1ea', link: '#3a3a42', rim: '#1b1b1f', word: '#f4f1ea', panel: null, deco: 'plain', face: 'mono', mark: 'POI-LAB' },
+    look: { front: '#ff4d00', rear: '#17161a', fork: '#17161a', ink: '#17161a', accent: '#f4f1ea', link: '#3a3a42', rim: '#1b1b1f', word: '#f4f1ea', panel: null, deco: 'plain', face: 'mono', mark: BRAND },
     geo: { wheelR: 0.337, tyre: 58, wb: 1.080, cs: 0.395, bb: 0.313, ac: 0.480,
       head: 69.0, ht: 0.11, riser: 0.09, barW: 0.74, seat: 0.62, fork: 'single',
       rear: false, bar: 'riser' },

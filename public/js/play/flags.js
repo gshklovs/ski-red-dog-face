@@ -15,10 +15,9 @@
 // Set by the host page before it imports main.js:
 //
 //   guide     true  → the guided run, its intro cards and the idle nudge
-//   gearSet   'skis' → the ski mountain: no bike gear, no bike rack, hold-E is
-//                      boots+skis. Glider / sled / snowmobile stay in the secret
-//                      I locker, which is where they already were.
-//             'full' → the lab: bikes back in the registry and in the locker.
+//   gearSet   'full' | 'locker' | 'skis' → what gear EXISTS, and separately
+//                      what hold-E advertises. The three tiers and the reason
+//                      there are three are documented at GEAR_SET below.
 //   debugHud  true  → the top-left readout, the fps chip, the B reference
 //                     viewer, the full ESC key reference, the bench pause row,
 //                     the T fast-travel card, the [play] console dump.
@@ -37,11 +36,32 @@
 const P = (typeof window !== 'undefined' && window.__PLAY) || {};
 
 // ------------------------------------------------------------------ gearSet
-export const GEAR_SET = P.gearSet === 'skis' ? 'skis' : 'full';
-// The single question every gear site actually asks. Named for what it MEANS
-// rather than for the flag, so a reader at the call site does not have to come
-// back here to find out which way round 'skis' runs.
-export const FULL_LOCKER = GEAR_SET === 'full';
+//
+// THREE TIERS, because "what exists" and "what is ADVERTISED" are two different
+// questions and the shipped build answers them differently. Greg, 2026-08-31:
+// sneak the bikes back into the secret inventory — the SHIPPED one — without
+// putting a bike anywhere a player who has not gone looking can see it.
+//
+//   'full'    the lab. Bike registered, bike rack in the locker, and hold-E
+//             lists every gear the controller owns.
+//   'locker'  the shipped build. Bike registered and the rack is in the I
+//             locker for anyone who finds it — but hold-E still offers exactly
+//             boots and skis, and no bike string reaches the legend, the pause
+//             panel or the boot cards. Found, not advertised (D34/D44).
+//   'skis'    the ski mountain with no bike in it at all. Nothing sets this
+//             today; it is kept because "no bike anywhere" is a real answer and
+//             deleting the tier would mean rediscovering it later.
+//
+// Anything unrecognised falls back to 'full' — the LAB — for the same reason
+// every default in this file does: forgetting a flag must fail towards showing
+// too much in the workshop, never towards shipping something unnoticed.
+const TIERS = ['skis', 'locker', 'full'];
+export const GEAR_SET = TIERS.includes(P.gearSet) ? P.gearSet : 'full';
+// Does the bike EXIST — controller registry and locker rack. Named for what it
+// means at the call site, not for the flag.
+export const BIKE_GEAR = GEAR_SET !== 'skis';
+// Does hold-E ADVERTISE everything, or just boots and skis.
+export const FULL_GEAR_MENU = GEAR_SET === 'full';
 
 // ----------------------------------------------------------------- debugHud
 export const DEBUG_HUD = P.debugHud !== false;

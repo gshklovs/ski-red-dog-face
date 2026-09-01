@@ -1512,7 +1512,7 @@ export async function buildWorld(THREE, opts = {}) {
         sub: 'GOLD COAST HIP', tag: '30 ft × 25 ft × 50 ft (2025 build)',
         line: 'Two days of cat work for one feature. It is a speed brake as much as a jump — it bleeds you off and points you at the rails.' },
     ].filter((m) => (m.pos[0] > -620 && m.pos[1] < 740)
-                 || ["kt22"].indexOf(m.id) >= 0),
+                 || ["kt22","eagles-nest","gs-bowl","olympic-lady","funitel-top","gold-coast","high-camp","mountain-run","gold-coast-park","gold-coast-hip"].indexOf(m.id) >= 0),
   };
 }
 
