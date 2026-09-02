@@ -342,11 +342,55 @@ const LAYERS = new Map();
  *   id       — 'L2-atmosphere', 'L1-snow', ...
  *   uniforms — { name: { value: Float32Array } }. Typed arrays only: anything
  *              else is cloned per material and stops being live-tunable.
+ *   shared   — { name: { value: Texture|null } }. Uniforms whose HOLDER OBJECT
+ *              is force-shared by every material (see below). Declared here and
+ *              not in `uniforms` because the sharing costs one assignment per
+ *              material per program build and only a sampler needs it.
  *   chunks   — { shaderChunkName: (src) => newSrc }. Applied in registration
  *              order, so two layers can both extend the same chunk.
+ *
+ * ----------------------------------------------------- WHY `shared` EXISTS
+ * The typed-array trick above (see "WHY THE VALUES ARE TYPED ARRAYS") does not
+ * work for a TEXTURE, and specs/0013 §2.3's guess that it would — "a texture
+ * uniform is assigned by reference in cloneUniforms and is therefore shared
+ * too" — is WRONG on r180. `cloneUniforms()` (three.core.js, r180) reads:
+ *
+ *     if ( property.isTexture ) {
+ *       if ( property.isRenderTargetTexture ) {
+ *         console.warn( 'UniformsUtils: Textures of render targets cannot be
+ *                        cloned via cloneUniforms() or mergeUniforms().' );
+ *         dst[ u ][ p ] = null;                 // NULLED, once per material
+ *       } else { dst[ u ][ p ] = property.clone(); }   // CLONED, per material
+ *     }
+ *
+ * so a render target's texture parked in `ShaderLib[*].uniforms` reaches every
+ * material as `null` and warns once per material per program build, and an
+ * ordinary texture reaches it as a per-material COPY that a later write cannot
+ * find. Either way L3's ping-pong recentre — which swaps which render target
+ * the world is reading — could not be published with one write.
+ *
+ * The fix is a placement, not a mechanism. `WebGLRenderer.getProgram()` does
+ * (three.module.js r180):
+ *
+ *     parameters.uniforms = programCache.getUniforms( material );   // the clone
+ *     material.onBeforeCompile( parameters, _this );                // then this
+ *     materialProperties.uniforms = parameters.uniforms;
+ *
+ * — for BUILT-IN materials too, not just ShaderMaterial. So the safety net in
+ * installLook() below runs after the clone and can put the ORIGINAL holder
+ * object back. Every material then indexes the same `{ value }`, and
+ * `holder.value = otherTarget.texture` is one write for the whole world, which
+ * is the same property the typed arrays have.
+ *
+ * KNOWN HOLE, and it is harmless: `granite.mjs` and `kt-rocks.mjs` assign an
+ * INSTANCE `onBeforeCompile`, which shadows the prototype net. Those two keep
+ * the clone's null and three binds its 1x1 empty texture. They are the two rock
+ * materials; L3 reads only where L1's albedo gate says "snow", which no rock
+ * fragment passes, so they never sample it. A future layer that needs a sampler
+ * ON ROCK has to chain those two hooks — say so here rather than debug it twice.
  */
-export function registerLookLayer({ id, uniforms = {}, chunks = {} }) {
-  LAYERS.set(id, { id, uniforms, chunks });
+export function registerLookLayer({ id, uniforms = {}, shared = {}, chunks = {} }) {
+  LAYERS.set(id, { id, uniforms, shared, chunks });
 }
 
 /** The named-tunable surface. Layers hang their dials here (see `dial`). */
@@ -442,6 +486,96 @@ export function dialColorArray(name, arr, hexList, { stride = 3 } = {}) {
   Object.defineProperty(LOOK, name, { value: view, enumerable: true, configurable: true });
 }
 
+// ----------------------------------------------------------------- presets
+//
+// specs/0024. A PRESET IS A TABLE OF DIAL VALUES AND NOTHING ELSE: the same
+// names Greg types in the console, holding the same things their setters take —
+// a float, an sRGB hex, or an array of either for the `dialVec` /
+// `dialColorArray` views. There is no second representation of the look and no
+// code path a preset can reach that the console cannot.
+//
+// `default` IS CAPTURED, NOT AUTHORED. The table under that name is filled from
+// the dials themselves at `definePresets()` time (env.mjs's last statement, by
+// which point terrain, granite and env have all registered), so
+// `preset('default')` is an exact undo rather than a second hand-copied list
+// that can drift from the initial values. A dial that registers LATER and is
+// then touched by a preset gets its own value folded into that table on the
+// first write, so the undo stays exact for anything that arrives afterwards.
+const PRESETS = new Map();
+let CURRENT = 'default';
+
+/** read one dial back in the form a preset table writes it. */
+function readDial(name) {
+  const v = LOOK[name];
+  // a dialVec / dialColorArray view is array-LIKE (indices + length), not an Array
+  return (v && typeof v === 'object' && typeof v.length === 'number') ? Array.from(v) : v;
+}
+
+/**
+ * Write one. The vector views are defined with `value:` and no setter, so
+ * `LOOK.FOG_BAND_COLOR = [...]` would throw in a module's strict mode — an
+ * array is written through the view element by element, which is also the only
+ * form that keeps `dialVec`'s derived slots (the reciprocal half-widths) in step.
+ */
+function writeDial(name, v) {
+  if (Array.isArray(v)) {
+    const view = LOOK[name];
+    for (let i = 0; i < v.length && i < view.length; i++) view[i] = v[i];
+  } else {
+    LOOK[name] = v;
+  }
+}
+
+/**
+ * Register the preset tables. `tables.default` is FILLED IN PLACE with the
+ * captured snapshot (env.mjs declares it as an empty object and exports the
+ * whole map, so what is registered and what is inspectable are one object).
+ *
+ * IT CAPTURES THE UNION OF WHAT THE OTHER TABLES NAME, NOT EVERY DIAL, and that
+ * distinction was found by measuring rather than reasoned about. Snapshotting
+ * the whole registry made `preset('default')` an undo of things no preset had
+ * done: `TRACKS_GAIN` is registered by terrain.mjs and then OWNED AT RUNTIME by
+ * the player's tracks.js, so a "restore" wrote the registration value over a
+ * live setting and switched the carve tracks off. A preset undoes ITS OWN
+ * writes; anything it never touched is somebody else's state.
+ */
+export function definePresets(tables) {
+  const captured = tables.default || (tables.default = {});
+  for (const [name, table] of Object.entries(tables)) {
+    if (name === 'default') continue;
+    for (const k of Object.keys(table)) if (k in LOOK && !(k in captured)) captured[k] = readDial(k);
+  }
+  for (const [name, table] of Object.entries(tables)) PRESETS.set(name, table);
+  return LOOK;
+}
+
+/** the preset names, `default` first. */
+LOOK.presets = () => [...PRESETS.keys()];
+
+/**
+ * `LOOK.preset()` — the current name.
+ * `LOOK.preset('golden-hour')` — apply it, and return the list of dials moved.
+ * An unknown name changes nothing, warns once and returns null.
+ */
+LOOK.preset = (name) => {
+  if (name === undefined) return CURRENT;
+  const table = PRESETS.get(name);
+  if (!table) {
+    console.warn(`look: no preset "${name}" — have ${[...PRESETS.keys()].join(', ') || '(none)'}`);
+    return null;
+  }
+  const undo = PRESETS.get('default');
+  const applied = [];
+  for (const [k, v] of Object.entries(table)) {
+    if (!(k in LOOK)) continue;                       // a dial this build does not have
+    if (undo && !(k in undo)) undo[k] = readDial(k);  // registered after the capture
+    writeDial(k, v);
+    applied.push(k);
+  }
+  CURRENT = name;
+  return applied;
+};
+
 // ------------------------------------------------------------- the install
 /**
  * Patch THREE for every registered layer. Must run before the first render;
@@ -456,17 +590,34 @@ export function installLook(THREE) {
 
   const uniforms = {};
   for (const L of LAYERS.values()) Object.assign(uniforms, L.uniforms);
+  // the sampler holders (see registerLookLayer's `shared`). Kept in their own
+  // bag because (2) must declare the NAME without parking a render-target
+  // texture in ShaderLib — that is the thing cloneUniforms nulls and warns on.
+  const shared = {};
+  for (const L of LAYERS.values()) Object.assign(shared, L.shared || {});
 
-  // (2) every built-in material type carries the declarations
-  for (const k of Object.keys(THREE.ShaderLib)) Object.assign(THREE.ShaderLib[k].uniforms, uniforms);
+  // (2) every built-in material type carries the declarations. A shared holder
+  // is declared here as `{ value: null }` — a DIFFERENT object from the live
+  // holder, so whatever the live one is pointing at never enters cloneUniforms.
+  // three binds its 1x1 empty texture for a null sampler, so a material that
+  // misses step (3) is inert rather than broken.
+  const declared = { ...uniforms };
+  for (const n of Object.keys(shared)) declared[n] = { value: null };
+  for (const k of Object.keys(THREE.ShaderLib)) Object.assign(THREE.ShaderLib[k].uniforms, declared);
 
   // (3) the safety net. A material with its OWN onBeforeCompile (granite,
   // kt-rocks) shadows this — both are MeshLambertMaterial and so are already
   // covered by (2), and both pin their own customProgramCacheKey.
+  //
+  // ...and, for `shared`, this is no longer only a safety net: it is the whole
+  // mechanism. It runs on `parameters.uniforms`, which getProgram() has ALREADY
+  // filled from cloneUniforms(), so assigning UNCONDITIONALLY here replaces the
+  // per-material copy with the one holder object the layer owns.
   const inherited = THREE.Material.prototype.onBeforeCompile;
   THREE.Material.prototype.onBeforeCompile = function poiLookUniforms(shader, renderer) {
     if (shader && shader.uniforms) {
       for (const n in uniforms) if (!(n in shader.uniforms)) shader.uniforms[n] = uniforms[n];
+      for (const n in shared) shader.uniforms[n] = shared[n];
     }
     return inherited.call(this, shader, renderer);
   };

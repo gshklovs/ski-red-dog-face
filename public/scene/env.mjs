@@ -5,12 +5,18 @@
 
 import { buf, tri, quad, prism, makeRng, rr, ri, lin, mixc, scalec, clamp, smooth, toGeo,
          registerLookLayer, f32, dial, dialVec, dialSoft, halfInv,
-         dialColor, dialColorArray } from './lib/core.mjs';
+         dialColor, dialColorArray, LOOK, definePresets } from './lib/core.mjs';
 import { SUN_AZ, SUN_EL, SUN_DIR } from './terrain.mjs';
 
 // Warm low sun + a strongly blue sky dome. Because the terrain's vertex colour
 // is albedo (see terrain.mjs), THIS is what makes a sunlit slope read warm
 // white and a north-facing one read blue — the whole point of the palette.
+//
+// world.mjs constructs the DirectionalLight and the HemisphereLight out of this
+// object and never hands them back, so these five are ALSO live dials
+// (SUN_COLOR / SUN_INTENSITY / AMB_SKY / AMB_GROUND / AMB_INTENSITY, below):
+// a write lands here AND on the light, and a write that happens before the
+// world is built simply changes what world.mjs reads. specs/0024 §2.
 export const SUN = {
   dir: SUN_DIR,
   color: 0xfff0d8,
@@ -20,11 +26,82 @@ export const SUN = {
   ambIntensity: 1.48,
 };
 
-// deep winter blue overhead falling to a pale horizon
-const SKY_TOP = lin(0x3d7ec9);
-const SKY_MID = lin(0x8dbbe8);
-const SKY_HORIZON = lin(0xdfeaf7);
-const SKY_LOW = lin(0xc9d9ea);
+// deep winter blue overhead falling to a pale horizon.
+//
+// The four stops are dials too (specs/0024 §2) — they live as LINEAR rgb in one
+// Float32Array so `dialColor` can own them, and moving any of them repaints the
+// dome's vertex-colour attribute (`repaintSky`). This is the one non-uniform
+// write in the look system: ~1025 vertices, once per change, never per frame.
+const uSky = f32(new Array(12).fill(0));
+dialColor('SKY_TOP', uSky, 0, 0x3d7ec9);
+dialColor('SKY_MID', uSky, 3, 0x8dbbe8);
+dialColor('SKY_HORIZON', uSky, 6, 0xdfeaf7);
+dialColor('SKY_LOW', uSky, 9, 0xc9d9ea);
+const skyStop = (i) => [uSky[i], uSky[i + 1], uSky[i + 2]];
+
+// The warm bloom the dome carries around the sun BEARING (not its elevation —
+// see the preset table). It is the fifth thing the dome is made of and the one
+// an evening sky leans on hardest, so it is a dial like the other four.
+let SKY_SUN_GLOW = 0xffe9c8;
+let SKY_SUN_GLOW_AMOUNT = 0.35;
+
+// --------------------------------------------------- the dome and the lights
+// specs/0024 §2. Neither of these is a shader uniform, so neither can ride the
+// Float32Array trick: the dome is a vertex-colour attribute and the lights are
+// two objects world.mjs owns. Both are given the same LOOK.NAME surface anyway,
+// because a preset is a table of dial names and a look that lives half on
+// __look and half in a constant is not tunable.
+//
+// The lights are found LAZILY off the dome's parent. world.mjs adds the dome
+// and both lights to the same scene and returns none of them, and world.mjs is
+// not this spec's territory — so `skyMesh.parent` is the scene, and one
+// traverse finds them. A write that lands BEFORE the world is built needs none
+// of this: it changes SUN, and world.mjs then constructs the lights from it.
+let lightsFor = null, sunLight = null, hemiLight = null;
+function lights() {
+  const scene = skyMesh && skyMesh.parent;
+  if (!scene) return null;
+  if (lightsFor !== scene) {
+    lightsFor = scene; sunLight = null; hemiLight = null;
+    scene.traverse((o) => {
+      if (!sunLight && o.isDirectionalLight) sunLight = o;
+      if (!hemiLight && o.isHemisphereLight) hemiLight = o;
+    });
+  }
+  return (sunLight || hemiLight) ? { sun: sunLight, hemi: hemiLight } : null;
+}
+
+/** LOOK.NAME <-> SUN[key], written through to the live light when there is one. */
+function lightDial(name, key, apply) {
+  Object.defineProperty(LOOK, name, {
+    get: () => SUN[key],
+    set: (v) => { SUN[key] = v; const L = lights(); if (L) apply(L, v); },
+    enumerable: true, configurable: true,
+  });
+}
+// `setHex(hex)` is exactly what `new THREE.DirectionalLight(hex)` does with it,
+// so a dialled colour and a constructed one land in the same working space.
+lightDial('SUN_COLOR', 'color', (L, v) => { if (L.sun) L.sun.color.setHex(v); });
+lightDial('SUN_INTENSITY', 'intensity', (L, v) => { if (L.sun) L.sun.intensity = v; });
+lightDial('AMB_SKY', 'ambSky', (L, v) => { if (L.hemi) L.hemi.color.setHex(v); });
+lightDial('AMB_GROUND', 'ambGround', (L, v) => { if (L.hemi) L.hemi.groundColor.setHex(v); });
+lightDial('AMB_INTENSITY', 'ambIntensity', (L, v) => { if (L.hemi) L.hemi.intensity = v; });
+
+// the dome's own dials, wrapped so any write repaints it. `dialColor` has no
+// change hook and lib/core.mjs's dial constructors are not this spec's
+// territory, so the descriptor it installed is re-wrapped here instead.
+Object.defineProperty(LOOK, 'SKY_SUN_GLOW', {
+  get: () => SKY_SUN_GLOW,
+  set: (v) => { SKY_SUN_GLOW = v; repaintSky(); }, enumerable: true, configurable: true,
+});
+Object.defineProperty(LOOK, 'SKY_SUN_GLOW_AMOUNT', {
+  get: () => SKY_SUN_GLOW_AMOUNT,
+  set: (v) => { SKY_SUN_GLOW_AMOUNT = +v; repaintSky(); }, enumerable: true, configurable: true,
+});
+for (const n of ['SKY_TOP', 'SKY_MID', 'SKY_HORIZON', 'SKY_LOW']) {
+  const d = Object.getOwnPropertyDescriptor(LOOK, n);
+  Object.defineProperty(LOOK, n, { ...d, set: (v) => { d.set(v); repaintSky(); } });
+}
 
 // ============================================================ L2 — ATMOSPHERE
 // specs/0005, decided against reference A1 (Firewatch). Two changes, both of
@@ -216,12 +293,18 @@ uniform vec4 uShadowTint;
 // line alone — and the containment D16.1 was buying at 3.6 km is what
 // FOG_BAND_LIMIT[2] = 3800 now does in both builds.
 
-export function buildSky(THREE) {
-  const R = 13000;
-  const g = new THREE.SphereGeometry(R, 40, 24);
-  const pos = g.attributes.position;
-  const col = new Float32Array(pos.count * 3);
+const SKY_R = 13000;
+
+/**
+ * The dome's vertex colours, written into `col` from the four SKY_* dials and
+ * the sun bearing. Split out of buildSky so a preset can repaint the dome that
+ * is already in the scene without rebuilding the geometry.
+ */
+function paintSky(pos, col) {
+  const R = SKY_R;
   const sd = SUN_DIR;
+  const top = skyStop(0), mid = skyStop(3), hor = skyStop(6), low = skyStop(9);
+  const glow = lin(SKY_SUN_GLOW), amt = SKY_SUN_GLOW_AMOUNT;
   for (let i = 0; i < pos.count; i++) {
     // the sphere is built Y-up; the mesh is rotated to Z-up below, so the
     // gradient must be driven by the POST-rotation axis (this is the bug that
@@ -229,15 +312,38 @@ export function buildSky(THREE) {
     const x = pos.getX(i), y = pos.getY(i), zz = pos.getZ(i);
     const up = -zz / R;                       // after rotateX(-PI/2), +Z world = -Z local
     let c;
-    if (up > 0.30) c = mixc(SKY_MID, SKY_TOP, smooth(0.30, 0.95, up));
-    else if (up > 0.0) c = mixc(SKY_HORIZON, SKY_MID, smooth(0.0, 0.30, up));
-    else c = mixc(SKY_LOW, SKY_HORIZON, smooth(-0.25, 0.0, up));
+    if (up > 0.30) c = mixc(mid, top, smooth(0.30, 0.95, up));
+    else if (up > 0.0) c = mixc(hor, mid, smooth(0.0, 0.30, up));
+    else c = mixc(low, hor, smooth(-0.25, 0.0, up));
     // a little warmth around the sun bearing
     const wx = x / R, wy = y / R;
     const dot = wx * sd[0] + (-zz / R) * sd[2] + wy * sd[1];
-    c = mixc(c, lin(0xffe9c8), clamp(dot, 0, 1) ** 6 * 0.35);
+    c = mixc(c, glow, clamp(dot, 0, 1) ** 6 * amt);
     col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
   }
+}
+
+// the dome, once world.mjs has built it — the handle the dials repaint through,
+// and (see `lights()`) this file's only route to the scene it was added to.
+let skyMesh = null;
+
+function repaintSky() {
+  if (!skyMesh) return;                       // dialled before the world exists
+  const g = skyMesh.geometry;
+  paintSky(g.attributes.position, g.attributes.color.array);
+  g.attributes.color.needsUpdate = true;
+}
+
+// The dome's colour buffer, for anything that needs to prove the repaint is
+// exact — the bench player exposes no scene handle, so this is the only route
+// to it from outside. A function, so `preset()`'s dial walk skips it (it reads
+// `typeof !== 'function'`); the same shape tracks.js's `__look.tracksMap` uses.
+LOOK.skyColors = () => (skyMesh ? skyMesh.geometry.attributes.color.array : null);
+
+export function buildSky(THREE) {
+  const g = new THREE.SphereGeometry(SKY_R, 40, 24);
+  const col = new Float32Array(g.attributes.position.count * 3);
+  paintSky(g.attributes.position, col);
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false,
@@ -246,6 +352,7 @@ export function buildSky(THREE) {
   m.name = 'sky';
   m.renderOrder = -10;
   m.frustumCulled = false;
+  skyMesh = m;
   return m;
 }
 
@@ -279,3 +386,148 @@ export function buildClouds(THREE) {
   m.frustumCulled = false;
   return m;
 }
+
+// ============================================================ THE PRESET TABLE
+//
+// specs/0024. This is the whole feature: a map of dial name -> value, in
+// exactly the form `__look.NAME = value` takes. No shader edit, no second
+// lighting path, no per-frame work — `LOOK.preset('golden-hour')` is a loop
+// over this object.
+//
+// THE SUN DOES NOT MOVE, and that is the one deliberate hole in the illusion.
+// terrain.mjs bakes the cast shadow and the sky occlusion into the vertex
+// colours against SUN_DIR (az 215 / el 33), so dropping the sun's elevation
+// would put lit snow inside a baked shadow and leave a hard, wrong edge across
+// every slope in the world. Golden hour here is sold by COLOUR, RAMP and FOG —
+// a warmer and weaker sun, a colder and stronger shadow, a step edge pushed up
+// so more of the mountain falls into that shadow, and a peach horizon under a
+// zenith that is still blue. Not orange soup, and not a sunset: the Firewatch
+// reference 0005 was decided against (A1), an hour later in the day.
+//
+// `default` is EMPTY ON PURPOSE. definePresets() fills it from the dials
+// themselves — see lib/core.mjs — so the undo cannot drift from the values the
+// dials actually registered with.
+export const PRESETS = {
+  default: {},
+  'golden-hour': {
+    // -- the light. Warmer and weaker; the ambient swings from a cold blue sky
+    // + neutral bounce to a violet sky + warm snow-bounce.
+    // ROUND 2 REBALANCED THE KEY AGAINST THE FILL, and it is the change that
+    // finally made this read as an hour rather than a filter. A low sun is a
+    // STRONG WARM KEY over a WEAK COOL FILL; round 1 had a 1.78 sun against a
+    // 1.36 hemisphere of saturated violet, which is a midday ratio, and it
+    // painted lit snow the same mauve as shadowed snow. The sun goes up, the
+    // fill comes down and desaturates, and the warm half wins the frame back.
+    // (round 4, one dial: back toward the spec's own 0xffc890. 0xffc08a has
+    // enough magenta in it that white snow under it reads PINK rather than
+    // gold, and snow is most of every frame in this world.)
+    //
+    // ROUND 5 SPLIT THE KEY FROM THE FILL AGAIN, and this time it was measured
+    // rather than eyeballed: the village pan looks DOWN-SUN at flat snow, so
+    // almost every face there sits near the step edge and the frame was carried
+    // by the ambient — which is violet — and read LAVENDER end to end (sunlit
+    // snow at hue 346, a magenta, against the KT pan's 33). The fix is a
+    // stronger warm key and a weaker cool fill, because the ambient tint lands
+    // on the LIT half too (the shader tints the INDIRECT term for every
+    // fragment, not only the shadowed ones), so anything that warms lit snow by
+    // way of the ambient also un-violets the shadow. AMB_INTENSITY is the one
+    // lever that separates them: it scales the fill without changing its hue,
+    // so lit snow loses its violet cast and shadow pockets keep theirs.
+    //
+    // AMB_SKY WAS MEASURED AND LEFT ALONE. Warming/desaturating it (0xa8a4ac,
+    // 0xbcb0ac) moved sunlit snow by 2-3 hue degrees and cost the shadow half
+    // its violet outright (shadow saturation 54 -> 27), because at these tint
+    // strengths SHADOW_TINT, not AMB_SKY, is what decides the ambient's hue.
+    // A dial that does not move the thing it was reached for is not in the table.
+    // (round 5: SUN_COLOR desaturated, not re-hued — 0xffc896 and 0xffd0a2 are
+    // the same 29 deg of gold, at 41 % and 36 % saturation. The paler sun lets
+    // lit snow keep more of its own white, which is what "cream" is.)
+    SUN_COLOR: 0xffd0a2,
+    SUN_INTENSITY: 2.00,
+    AMB_SKY: 0x7f92c2,
+    AMB_GROUND: 0xe8c9a8,
+    // (round 5: 1.06 -> 0.86. The fill was carrying the flat frames.)
+    AMB_INTENSITY: 0.86,
+
+    // -- the warm/cool split. A higher step edge leaves more of the mountain
+    // short of the sun, which is what a low sun does.
+    //
+    // THE RAMP CARRIES LESS WARMTH THAN THE SUN DOES, and that is the round-1
+    // correction: the ramp multiplies SUN_COLOR, it does not replace it, so an
+    // orange ramp under an orange sun squared the warmth and turned lit snow
+    // salmon. SUN_COLOR is now the only place the hour's colour is authored and
+    // the ramp is a lean toward it, exactly as it is at default.
+    // (round 3: SUN_STEP_GAIN joined the table. A downhill camera sees one broad
+    // slope whose normals hardly vary, so the hard step gives it no shading of
+    // its own — the whole frame took one hue and the "warm light / cool shadow"
+    // read went flat. A hotter lit half puts a near-white core back under the
+    // peach, which is what makes it read as LIGHT rather than as paint.)
+    // (round 5: EDGE 0.32 -> 0.26, GAIN 0.80 -> 0.90, RAMP_LO a step warmer,
+    // TINT_STRENGTH 0.56 -> 0.46. 0.32 put the village's broad down-sun rolls —
+    // dot(N,L) around 0.22-0.33 — on the SHADOW side of the step, so the one
+    // frame in the set with no strongly-lit aspect in it had no warm half at
+    // all. 0.26 lands them back in the sun, the higher gain gives that half a
+    // near-white core, RAMP_LO is the colour the just-past-the-step faces
+    // actually take and those faces are most of that frame, and 0.46 stops the
+    // ambient tint from painting the lit half violet along with the shadow.)
+    //
+    // (round 6: RAMP_LO 0xffc888 -> 0xffdcbc, GAIN 0.90 -> 0.96. Round 5 warmed
+    // RAMP_LO and that was the wrong direction — ROUND 1'S LESSON, RE-LEARNT.
+    // 0xffc888 and SUN_COLOR are both about 30 deg of warmth, so the ramp
+    // squares the hour's colour instead of leaning toward it: measured, the
+    // warm ramp left village lit snow at 15.5 % saturation, a peach, and the
+    // pale one drops it to 12.8 % — a cream — at the same hue. The ramp's job
+    // is to be PALE and lean warm; the hour's colour is authored once, in
+    // SUN_COLOR. The extra gain is the last of the way to a white core, and it
+    // lands on the lit half only, so the shadow does not follow it.)
+    SUN_STEP_EDGE: 0.26,
+    SUN_STEP_GAIN: 0.96,
+    SUN_RAMP_LO: 0xffdcbc,
+    SUN_RAMP_HI: 0xffecd4,
+    SHADOW_TINT: 0x6e6bb8,
+    SHADOW_TINT_STRENGTH: 0.46,
+
+    // -- the fog bands. Band 2 lands ON SKY_HORIZON (within a step of it) so
+    // the furthest ridge still reads as a silhouette cut out of the sky rather
+    // than as an object; 0 and 1 walk in from a COOL violet-grey. They were a
+    // dusty magenta in round 0 and every ridge past 850 m read as a Mars
+    // sunset: the mid-distance is the cool half of this look, not the warm one.
+    // (round 2: band 2 dropped a step DARKER than SKY_HORIZON. Level with it,
+    // the skyline ridge stopped being a silhouette and read as khaki haze.)
+    FOG_BAND_COLOR: [0xb2b0c6, 0xcbc6d6, 0xddccbe],
+
+    // -- the dome. Still blue overhead: the whole read depends on the zenith
+    // NOT going warm.
+    SKY_TOP: 0x2f5f9e,
+    // (round 2: bluer and a touch brighter. Every downhill camera sees only the
+    // HORIZON->MID half of the dome, so MID is what decides whether a frame
+    // aimed below the horizon has any blue in it at all.)
+    SKY_MID: 0x86a8dc,
+    SKY_HORIZON: 0xecd8c0,
+    SKY_LOW: 0xe0b48c,
+    SKY_SUN_GLOW: 0xffc98e,
+    SKY_SUN_GLOW_AMOUNT: 0.45,
+  },
+};
+
+// LAST STATEMENT IN THE FILE, and it has to be: definePresets() captures
+// `default` from every dial registered so far, and world.mjs imports terrain,
+// granite and this file in that order, so this is the first point at which the
+// whole registry exists.
+definePresets(PRESETS);
+
+// ------------------------------------------------------------- `?look=` boot
+// The boot read lives HERE and not in the player: main.js is another spec's
+// territory, and this is the module that owns the table. It runs at import,
+// which is before world.mjs builds anything — so the dome is PAINTED in the
+// preset's colours rather than repainted, and world.mjs constructs its lights
+// straight out of the dialled SUN.
+//
+// `location` is guarded the way inventory.js guards its own query read: the
+// headless harness, the OG shoot and any node-side import of this module all
+// reach this line, and a world that will not load without a URL bar is worse
+// than one that boots default.
+try {
+  const q = new URLSearchParams(globalThis.location.search).get('look');
+  if (q) LOOK.preset(q);
+} catch { /* no location to read — default look */ }

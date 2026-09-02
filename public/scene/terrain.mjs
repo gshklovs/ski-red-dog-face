@@ -337,6 +337,172 @@ uniform vec4 uSparkleFade;   // x NEAR  y 1/(FAR-NEAR)  z FAR`,
   });
 }
 
+// ------------------------------------------------------- L3: ski tracks read
+//
+// specs/0013. THIS FILE ONLY READS. The splat map itself — the render target,
+// the per-frame quads and the recentre blit — is `bench/public/js/play/tracks.js`,
+// which is the only thing that ever draws into it. Everything here is four
+// uniforms and ~10 lines of GLSL that darken the snow where the map says a ski
+// has been, and brighten the rim the splat wrote alongside it.
+//
+// SHIPS OFF at TRACKS_GAIN = 0, and off is BIT-EXACT: gate 0 is a uniform
+// compare that short-circuits before the texture fetch, exactly as L1's does.
+// That is not politeness, it is the contract two other things depend on —
+// `harness/shader-perf.mjs` A/Bs this layer by writing the gain rather than by
+// rebuilding the page, and `scene/index.html` (the standalone scene the perf
+// tool and every look-* render drive) has no tracks.js and must therefore be
+// pixel-identical to a build where this block was never installed.
+//
+// WHO TURNS IT ON: tracks.js, at boot, after it has made the render target —
+// `__look.TRACKS_GAIN = 1` plus one write of the sampler holder. So the gain
+// is on exactly where there is a map to read, and nowhere else.
+//
+// THE FRAME. In the bench the whole scene hangs under a `play:zup` wrapper
+// (bench main.js: `rotation.x = -PI/2`), so the shader's world space is Y-UP and
+// the horizontal plane really is `world.xz` — the same numbers `ctrl.position.x`
+// and `.z` are in, so tracks.js needs no conversion at all. In the standalone
+// scene page there is no wrapper and `world.xz` is (east, −up); that page never
+// has a map and runs at GAIN 0, so it never looks.
+const TRACKS_ON = 1;
+// x,y  the RT window's centre in world xz, metres (tracks.js writes it)
+// z    1 / TRACKS_SPAN — the reciprocal, so the fragment path never divides
+// w    TRACKS_GAIN. 0 = OFF, and off is bit-exact.
+const uTracksXf = f32([0, 0, 1 / 64, 0]);
+// x TRACKS_DARK  y TRACKS_RIM  z SNOW_EDGE (sum of linear rgb)  w unused
+//
+// TRACKS_DARK IS 0.45 AND NOT specs/0013's 0.22 (orchestrator, 2026-09-02,
+// after reading the compares: at 0.22 the tracks are invisible in the chase
+// shot and barely there from above). Measured, top-down, on-screen peak delta
+// against GAIN 0 — see renders/look-l3/RESULTS.md:
+//     0.22 -> 11/255 (4 %)      0.45 -> 28/255 (11 %)      0.70 -> 63/255
+// 0.45 is the value that reads on the hill without turning a traverse into a
+// black stripe; 0.70 starts to look painted on.
+//
+// TRACKS_RIM STAYS AT 0.10, and that is a measurement rather than an oversight.
+// The rim brightens TOWARD WHITE, and this snow is already near-white, so it
+// has almost nowhere to go: on its own it peaks at 2/255 at 0.10 and only
+// 13/255 at 0.80. Worse, at TRACKS_SPAN/TRACKS_RT_SIZE = 12.5 cm per texel the
+// lip band (TRACKS_RIM_WIDTH = 0.45 of the half-width) works out at about HALF
+// A TEXEL, so it cannot be spatially separated from the rut it is supposed to
+// sit beside — after filtering the brightening and the darkening land on the
+// same texels and FIGHT. Raising it measurably erases track:
+//     DARK 0.45, RIM 0.10 -> mean delta 0.0984, 0.797 % of pixels changed
+//     DARK 0.45, RIM 0.80 -> mean delta 0.0880, 0.762 % of pixels changed
+// So it is left low deliberately. It becomes worth raising the moment a texel
+// gets smaller than the lip — TRACKS_RT_SIZE up, or TRACKS_SPAN down.
+const uTracksMix = f32([0.45, 0.10, 1.30, 0]);
+// the sampler. Its HOLDER is shared by every material in the world (see
+// lib/core.mjs `registerLookLayer({ shared })` and the r180 cloneUniforms note
+// there) — which is the whole reason §2.2's ping-pong recentre can swap which
+// render target the world reads with a single assignment.
+const uTracksMap = { value: null };
+
+dial('TRACKS_GAIN', uTracksXf, 3);
+dial('TRACKS_DARK', uTracksMix, 0);
+dial('TRACKS_RIM', uTracksMix, 1);
+// The albedo gate's edge. specs/0013 §2.3 says to reuse L1's test, and this is
+// the same NUMBER (1.30, summed linear rgb: snow is 1.3-3.0, rock 0.4, canopy
+// 0.05) held in this layer's OWN uniform rather than read out of `uSparkle2`.
+// Ground rule 1 is why: L1 and L3 are each a single revert, and a layer that
+// reached into another layer's uniform array would make `git revert <L1>` a
+// compile error in L3.
+dial('TRACKS_SNOW_EDGE', uTracksMix, 2);
+// TRACKS_W, TRACKS_INK_MIN and TRACKS_MIN_V are SPLAT-side dials and live on the
+// same `__look` surface; tracks.js hangs them there when it boots, so that
+// `__look.TRACKS_W = 0.14` works whether or not you know which file owns it.
+// TRACKS_RT_SIZE / TRACKS_SPAN / TRACKS_RECENTRE are boot constants (§2.4).
+
+// ---- the two handles tracks.js drives this layer with. FUNCTIONS on purpose:
+// `harness/shader-perf.mjs` walks `Object.keys(__look)` looking for dials and
+// skips anything callable, so the window and the sampler cannot be mistaken for
+// tunables and poked to 1e9 during its OFF search. (A bare Float32Array here
+// WOULD be — it has a `.length` — and the tool would then report the window
+// centre as this layer's gate instead of TRACKS_GAIN.)
+LOOK.tracksWindow = (cx, cz, span) => {
+  uTracksXf[0] = +cx; uTracksXf[1] = +cz; uTracksXf[2] = 1 / Math.max(1e-3, +span);
+};
+LOOK.tracksMap = (tex) => { uTracksMap.value = tex || null; return uTracksMap.value; };
+
+if (TRACKS_ON) {
+  registerLookLayer({
+    id: 'L3-tracks',
+    uniforms: {
+      uTracksXf: { value: uTracksXf },
+      uTracksMix: { value: uTracksMix },
+    },
+    // NOT in `uniforms`: a sampler is not a Float32Array and does not get the
+    // typed-array free ride. See lib/core.mjs.
+    shared: { uTracks: uTracksMap },
+    chunks: {
+      // declarations in <common>, for the reason L1's are: it is the one
+      // include every compiled shader carries, so the four names are in scope
+      // wherever the block below lands and stay legal for a material type that
+      // is not MeshLambert.
+      common: (src) => src + `
+uniform sampler2D uTracks;   // R ink, G rim  (RG8, 512^2, tracks.js owns it)
+uniform vec4 uTracksXf;      // xy centre(world xz)  z 1/SPAN  w TRACKS_GAIN
+uniform vec4 uTracksMix;     // x TRACKS_DARK  y TRACKS_RIM  z SNOW_EDGE`,
+
+      // ---------------------------------------------------------- THE READ
+      // <opaque_fragment>, appended AFTER L1's sparkle (chunks apply in
+      // registration order and L1 registers above). Three reasons this is the
+      // right hook and not something earlier:
+      //
+      //   * <color_fragment> is not available — granite.mjs and kt-rocks.mjs
+      //     splice it (specs/0013 Territory says so).
+      //   * The usual argument for darkening before lighting is FOG: a term
+      //     added after the fog mix punches through haze. It does not apply
+      //     here. <opaque_fragment> runs BEFORE <tonemapping_fragment>,
+      //     <colorspace_fragment> and <fog_fragment>, so this is still linear
+      //     light and still gets fogged and colour-managed — and in any case
+      //     the map is a 64 m box centred on the player, so no fragment this
+      //     touches is ever more than ~32 m away, where L2's first band has not
+      //     started.
+      //   * For a Lambert surface `outgoingLight` is `diffuseColor * irradiance`
+      //     plus the emissive/ambient add, so scaling it here and scaling the
+      //     albedo differ only by that add — which on this world's terrain
+      //     materials is the ambient hemisphere, and darkening THAT too is the
+      //     correct read anyway: a rut is a rut in the shade as well.
+      //
+      // COST — the whole point of the ordering:
+      //   0. GAIN. A uniform branch, coherent over every draw, one compare.
+      //      TRACKS_GAIN = 0 never reaches the fetch, so the shipped-off state
+      //      is free AND bit-exact (work/l3_neutral.mjs proves it by frame
+      //      hash, the way work/l1_neutral.mjs does for L1).
+      //   1. ALBEDO. The same four ops L1 spends: snow is 1.3-3.0 in summed
+      //      linear rgb, rock 0.4, canopy 0.05. Rejects every tree, every rock
+      //      face, every prop and the plowed asphalt — and the terrain's own
+      //      far apron and backdrop material, which is what "materialFar does
+      //      not read it" comes to in a world where one MeshLambertMaterial is
+      //      shared by near and far geometry.
+      //   2. THE WINDOW. One `all(lessThan(abs(uv-0.5), 0.5))` — outside the
+      //      64 m box (which is most of any frame) there is nothing to read.
+      // Past those gates it is ONE texture fetch and four multiplies, exactly
+      // as §2.3 asks. The rim is derived in the SPLAT, never here.
+      opaque_fragment: (src) => src + `
+#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )
+	// GATE 0 — the gain. Uniform branch: one compare, and the reason
+	// TRACKS_GAIN = 0 is a bit-exact no-op rather than a multiply by zero.
+	if ( uTracksXf.w > 0.0 ) {
+		float poiTsnow = ( diffuseColor.r + diffuseColor.g + diffuseColor.b ) - uTracksMix.z;
+		if ( poiTsnow > 0.0 ) {
+			// world position, reconstructed the way L1's hash cell is: the view
+			// matrix is orthonormal, so its TRANSPOSE is its inverse rotation
+			// and \`vec4( p, 0 ) * viewMatrix\` is that product for free.
+			vec3 poiTw = cameraPosition + ( vec4( geometryPosition, 0.0 ) * viewMatrix ).xyz;
+			vec2 poiTuv = ( poiTw.xz - uTracksXf.xy ) * uTracksXf.z;
+			if ( abs( poiTuv.x ) < 0.5 && abs( poiTuv.y ) < 0.5 ) {
+				vec2 poiTk = texture2D( uTracks, poiTuv + 0.5 ).rg * uTracksXf.w;
+				gl_FragColor.rgb *= 1.0 - poiTk.x * uTracksMix.x;
+				gl_FragColor.rgb += poiTk.y * uTracksMix.y;
+			}
+		}
+	}
+#endif`,
+    },
+  });
+}
+
 // ------------------------------------------------------- baked shade raster
 // 5 m cells over the whole dem-tight frame. 14-step march toward the sun.
 // Spans TIGHT u PLAY, so a promoted sector gets the same cast-shadow and

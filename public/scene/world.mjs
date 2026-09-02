@@ -213,6 +213,15 @@ export async function buildWorld(THREE, opts = {}) {
   // 72 spans it was 16 k collidable triangles the player's grid was flattening
   // for nothing. Splitting it is both cheaper and more correct.
   const Bc = buf();
+  // ...and specs/0018 splits the SHEDS off the towers, for the same reason the
+  // cables were split off both: they are different things and the player meets
+  // them differently. A tower is a 60 cm column you clip on a bad line; a
+  // terminal is a building with a roof, a wall and a doorway. They were in one
+  // mesh, so the harvest could only give them one class byte — and "the lift is
+  // not a slalom gate" is the wrong thing to say about running into the Funitel
+  // base's granite gable. Same geometry, same coordinates, same collider set;
+  // `lift-terminals` reads as CLASS_BUILDING and `lift-structures` as CLASS_TOWER.
+  const Bterm = buf();
   const liftState = [];
   const funTowers = [];          // the Funitel's tower feet, for cameras.mjs
   const cableClear = [];         // increment 22: the rope-clearance ledger
@@ -284,8 +293,8 @@ export async function buildWorld(THREE, opts = {}) {
       DECK_B = 0; DECK_T = 4.5;
       const back = (p, u, d) => ({ x: p.x + u * d * p.ux, y: p.y + u * d * p.uy });
       const c0 = back(b0, -1, 51 / 2 - 6), cN = back(bN, +1, 46 / 2 - 6);
-      term0 = funitelBase(Bl, 21, { x: c0.x, y: c0.y, z: b0.z, yaw: yaw0, len: 51, w: 22 });
-      term1 = funitelTop(Bl, 22, { x: cN.x, y: cN.y, z: bN.z, yaw: yawN,
+      term0 = funitelBase(Bterm, 21, { x: c0.x, y: c0.y, z: b0.z, yaw: yaw0, len: 51, w: 22 });
+      term1 = funitelTop(Bterm, 22, { x: cN.x, y: cN.y, z: bN.z, yaw: yawN,
                                    len: 46, w: 24, deckHi: DECK_T, deckLo: 1.1 });
       funBase = { c: c0, yaw: yaw0, len: 51, w: 22, z: b0.z };
       funTop = { c: cN, yaw: yawN, len: 46, w: 24, z: bN.z };
@@ -373,8 +382,8 @@ export async function buildWorld(THREE, opts = {}) {
       // the solve may have raised a terminal head; the shed grows with it
       DECK_B = +(NC[0].z - b0.z + 1.5).toFixed(3);
       DECK_T = +(NC[NC.length - 1].z - bN.z + 1.5).toFixed(3);
-      term0 = terminal(Bl, 11, { x: b0.x, y: b0.y, z: b0.z, yaw: yaw0, len: 27, w: 7.4, deck: DECK_B });
-      term1 = terminal(Bl, 12, { x: bN.x, y: bN.y, z: bN.z, yaw: yawN, len: 25, w: 7.2, deck: DECK_T });
+      term0 = terminal(Bterm, 11, { x: b0.x, y: b0.y, z: b0.z, yaw: yaw0, len: 27, w: 7.4, deck: DECK_B });
+      term1 = terminal(Bterm, 12, { x: bN.x, y: bN.y, z: bN.z, yaw: yawN, len: 25, w: 7.2, deck: DECK_T });
       nodes = [[b0.x, b0.y, b0.z + DECK_B - 1.5]];
       for (let k = 1; k < NC.length - 1; k++) {
         const nd = NC[k], T = tw0[k - 1];
@@ -539,6 +548,12 @@ export async function buildWorld(THREE, opts = {}) {
   // (work/bake_upper_props.py -> upper-props.mjs). view-9 and view-10 supply
   // what they look like; OSM supplies where they are and what shape they are.
   const Bu = buf();
+  // specs/0018 — THE DECK FURNITURE GETS ITS OWN NAME, and nothing else changes.
+  // The tables were always built here, at these coordinates, from this rng, into
+  // the lodge's buffer; they now go into their own so the harvest has a name to
+  // read (`deck-benches` -> CLASS_BENCH). Same triangles, same places, one more
+  // mesh — the spec allows a group to be given the tag it lacks, not moved.
+  const Bdeck = buf();
   const upperRng = makeRng('gold-coast');
   const upperSigns = [];
   for (const b of UPPER_BUILDINGS) {
@@ -557,7 +572,7 @@ export async function buildWorld(THREE, opts = {}) {
       ringBuilding(Bu, ring, z0, { storeys: 3, glass: 0.70, deck: 6.5,
                                    wall: mixc(PAL.redLo, PAL.timberLo, 0.42),
                                    roof: PAL.dark });
-      deckTables(Bu, ring, z0, upperRng, 16);
+      deckTables(Bdeck, ring, z0, upperRng, 16);
       upperSigns.push({ ring, z0, text: 'GOLD COAST' });
     } else {
       // view-10: "heavy concrete-and-glass multi-storey blocks with the granite
@@ -581,10 +596,20 @@ export async function buildWorld(THREE, opts = {}) {
   upperMesh.castShadow = true; upperMesh.receiveShadow = true;
   scene.add(upperMesh); colliders.push(upperMesh);
 
+  const deckMesh = new THREE.Mesh(toGeo(THREE, Bdeck), SHEET);
+  deckMesh.name = 'deck-benches';
+  deckMesh.castShadow = true; deckMesh.receiveShadow = true;
+  scene.add(deckMesh); colliders.push(deckMesh);      // specs/0018 — CLASS_BENCH
+
   const liftMesh = new THREE.Mesh(toGeo(THREE, Bl), SHEET);
   liftMesh.name = 'lift-structures';
   liftMesh.castShadow = true; liftMesh.receiveShadow = true;
   scene.add(liftMesh); colliders.push(liftMesh);
+
+  const termMesh = new THREE.Mesh(toGeo(THREE, Bterm), SHEET);
+  termMesh.name = 'lift-terminals';
+  termMesh.castShadow = true; termMesh.receiveShadow = true;
+  scene.add(termMesh); colliders.push(termMesh);     // specs/0018 — CLASS_BUILDING
 
   const cableMesh = new THREE.Mesh(toGeo(THREE, Bc), SHEET);
   cableMesh.name = 'lift-cables';
@@ -680,6 +705,24 @@ export async function buildWorld(THREE, opts = {}) {
     for (let i = 0; i < g.col.length; i++) B.col.push(g.col[i]);
   }
   const Bs = buf();
+  // specs/0025 — THE ARENA FURNITURE GETS ITS OWN NAME, and nothing else
+  // changes. `Bs` used to accumulate six different things: the run-entrance sign
+  // posts, the boundary wands, the Red Dog Face A-nets, the GS gate panels, the
+  // finish arch and the arena banner wall. 0018 declared the whole buffer a
+  // collider under the sentence "A SIGN POST IS A THIN TOWER" — which is true of
+  // the posts and the wands and is not true of a 78 m × 1.25 m sponsor banner
+  // wall lying straight across the Julia's Gold run-out. The exhibition-gs racer
+  // cleared 11/11 gates, hit that wall at 19.7 m/s and was pinned there for the
+  // rest of the race (`time: null`); see renders/gate-rca/RCA.md §2.
+  //
+  // So the buffer is split BY NAME, exactly the way 0018 split `deck-benches`
+  // off the lodge and `lift-terminals` off the towers: same geometry, same
+  // coordinates, same rng, same material, one more mesh. `sign-posts` keeps the
+  // posts and the wands and stays a collider (CLASS_TOWER); `arena-furniture`
+  // takes the A-nets, the gate panels, the arch and the banner wall and is
+  // deliberately NOT in `colliders[]` — race dressing is scenery you ski past,
+  // not hardware you clip.
+  const Ba = buf();
   const signMeshes = [];
   for (const r of RUNS) {
     if (!r.sign) continue;
@@ -744,26 +787,26 @@ export async function buildWorld(THREE, opts = {}) {
         const p = along(s);
         line.push([p.x - p.uy * side * HW, p.y + p.ux * side * HW]);
       }
-      aNet(Bs, line, gz, { h: 1.9 });
+      aNet(Ba, line, gz, { h: 1.9 });
     }
     // gate panels on the dye line
     for (let s = 40; s < L - 60; s += 26) {
       const p = along(s);
       const v = 11 * Math.sin((s / 42) * Math.PI * 2);
       const x = p.x - p.uy * v, y = p.y + p.ux * v;
-      gatePanel(Bs, x, y, gz(x, y), Math.atan2(p.uy, p.ux), (s / 26 | 0) % 2 ? PAL.red : PAL.blue);
+      gatePanel(Ba, x, y, gz(x, y), Math.atan2(p.uy, p.ux), (s / 26 | 0) % 2 ? PAL.red : PAL.blue);
     }
     // finish arch + arena banner wall at the foot of the face
     {
       const p = along(L - 22);
       const yaw = Math.atan2(p.uy, p.ux) + Math.PI / 2;
-      finishArch(Bs, p.x, p.y, gz(p.x, p.y), yaw, { span: 18, h: 6.2 });
+      finishArch(Ba, p.x, p.y, gz(p.x, p.y), yaw, { span: 18, h: 6.2 });
       const w = [];
       for (let k = -6; k <= 6; k++) {
         const q = along(L - 6);
         w.push([q.x - q.uy * (k * 6) + q.ux * 12, q.y + q.ux * (k * 6) + q.uy * 12]);
       }
-      bannerWall(Bs, w, gz, { h: 1.25 });
+      bannerWall(Ba, w, gz, { h: 1.25 });
       // spectators along the arena
       for (let k = 0; k < 16; k++) {
         const q = along(L - 6 - rr(rng, 0, 26));
@@ -774,10 +817,23 @@ export async function buildWorld(THREE, opts = {}) {
     }
   }
 
+  // specs/0018 — A SIGN POST IS A THIN TOWER, and it is now solid. The name is
+  // already the tag the harvest reads (`sign-posts` -> CLASS_TOWER); the only
+  // thing missing was the collider declaration. The geometry is untouched.
+  // specs/0025 narrows what that name COVERS: entrance posts and boundary wands
+  // only. The arena dressing is the mesh below.
   const signPosts = new THREE.Mesh(toGeo(THREE, Bs), SHEET);
   signPosts.name = 'sign-posts';
   signPosts.castShadow = true;
-  scene.add(signPosts);
+  scene.add(signPosts); colliders.push(signPosts);
+
+  // specs/0025 — the GS course's own furniture: A-nets, gate panels, the finish
+  // arch and the arena banner wall. Drawn exactly as before, at the same
+  // coordinates, out of the same SHEET; deliberately NOT a collider.
+  const arenaFurniture = new THREE.Mesh(toGeo(THREE, Ba), SHEET);
+  arenaFurniture.name = 'arena-furniture';
+  arenaFurniture.castShadow = true;
+  scene.add(arenaFurniture);                         // specs/0025 — not a collider
 
   // ------------------------------------------------------------------ trees
   const F = placeForest();
@@ -1007,10 +1063,15 @@ export async function buildWorld(THREE, opts = {}) {
     }
     handline(Bk, pts, gz);
   }
+  // specs/0018 — the KT summit crowd, same rule. NOTE FOR THE REPORT: this mesh
+  // is not only people. The hut, the DANGER CLIFF AREA board and the scramble
+  // handline were merged into it long before there was a class byte, so they all
+  // carry CLASS_PERSON now. Splitting them would be moving geometry, which this
+  // spec may not do; the class is coarse and the wipe is the same either way.
   const ktPropMesh = new THREE.Mesh(toGeo(THREE, Bk), SHEET);
   ktPropMesh.name = 'kt-summit-props';
   ktPropMesh.castShadow = true;
-  scene.add(ktPropMesh);
+  scene.add(ktPropMesh); colliders.push(ktPropMesh);
 
   // ------------------------------------------ POULSEN'S GULLY — INCREMENT 21
   // THE CLIFF IS GEOMETRY, NOT GROUND, and REPORT §21.1 gives the two
@@ -1060,7 +1121,7 @@ export async function buildWorld(THREE, opts = {}) {
     const pouProps = new THREE.Mesh(toGeo(THREE, POU.props), SHEET);
     pouProps.name = 'poulsen-props';
     pouProps.castShadow = true;
-    scene.add(pouProps);
+    scene.add(pouProps); colliders.push(pouProps);      // specs/0018 — CLASS_PERSON
 
     report.notes.push(`Poulsen's cliff band: main step ${POU.stats.mainDrop15.toFixed(2)} m at the `
       + `ledger's GPS lip fix, side takeoff ${POU.stats.sideDrop15.toFixed(2)} m at v=+`
@@ -1175,11 +1236,125 @@ export async function buildWorld(THREE, opts = {}) {
   carGeosLo.forEach((g, k) => instance('cars-far-' + k, g, carPtsLo.filter((_, i) => i % 4 === k), SOLID, { castShadow: false, zScale: false }));
 
   // ------------------------------------------------------ static people/props
+  //
+  // specs/0029 — NOBODY STANDS ON THE TUTORIAL LINE. specs/0025 replayed the
+  // guided run's respawn walk and it stalled dead at stage `carve`, 19.25 m/s
+  // to 0.15 m/s in ten iterations and then parked for 760 more, with the 24-ray
+  // fan reporting `people-props [cls 4] @ 0.21 m`. specs/0018 made this mesh
+  // SOLID; whatever is standing on the guided line is now a wall. The thing on
+  // the line turned out to be the SNOWCAT below — `snow-king-road`'s own vertex
+  // 0.32 of the way down is a point ON the descent, so "parked on the bench"
+  // parked it in the middle of the road.
+  //
+  // So: a keep-out. Every static body placed into `Bp` from here down is
+  // rejected if it lands within GUIDE_KEEPOUT_M of a leg of the guided route,
+  // and either redraws (the groups whose positions come out of `rng`) or is
+  // pushed off sideways (the groups whose positions are fixed offsets).
+  //
+  // The route legs are the run ids bench/public/js/play/guide.js joins to build
+  // it: `RED_DOG.descent` (guide.js:77), `.chairline` (:83), `.poulsen` (:85)
+  // and `.outrun` (:86). world.mjs is a scene module and the player is not on
+  // its import graph, so they are duplicated rather than imported — if that
+  // table in guide.js changes, change this one with it.
+  const GUIDE_RUNS = {
+    descent: ['snow-king-road', 'lower-champs', 'red-dog-face'],   // guide.js:77
+    chairline: ['upper-dog-leg'],                                  // guide.js:83
+    poulsen: ['pou-entrance-3'],                                   // guide.js:85
+    outrun: ['lower-dog-leg'],                                     // guide.js:86
+  };
+  const GUIDE_KEEPOUT_M = 6;
+  const GUIDE_PUSH_M = 7;          // where a fixed placement is pushed OUT to
+  // guide.js `joinRuns`: nose to tail, dropping a vertex that repeats the last
+  // one within 1.5 m. Its own resample (`makePath`, step 6 m) puts no point
+  // anywhere off these segments, so segment distance is the same distance.
+  const GUIDE_LINES = Object.entries(GUIDE_RUNS).map(([leg, ids]) => {
+    const pts = [];
+    for (const id of ids) {
+      const r = RUNS.find((q) => q.id === id);
+      if (!r) continue;
+      for (const p of r.pts) {
+        const last = pts[pts.length - 1];
+        if (last && Math.hypot(last[0] - p[0], last[1] - p[1]) < 1.5) continue;
+        pts.push([p[0], p[1]]);
+      }
+    }
+    return { leg, pts };
+  }).filter((q) => q.pts.length > 1);
+  // nearest point on one leg, in plan
+  function nearOnLeg(x, y, pts) {
+    let bd = Infinity, bx = 0, by = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const L2 = dx * dx + dy * dy;
+      const t = L2 ? clamp(((x - a[0]) * dx + (y - a[1]) * dy) / L2, 0, 1) : 0;
+      const px = a[0] + dx * t, py = a[1] + dy * t;
+      const d = Math.hypot(x - px, y - py);
+      if (d < bd) { bd = d; bx = px; by = py; }
+    }
+    return { d: bd, x: bx, y: by };
+  }
+  // the closest leg to (x, y), skipping any leg named in `except`
+  function nearGuide(x, y, except) {
+    let best = null;
+    for (const g of GUIDE_LINES) {
+      if (except && except.includes(g.leg)) continue;
+      const n = nearOnLeg(x, y, g.pts);
+      if (!best || n.d < best.d) best = { ...n, leg: g.leg };
+    }
+    return best;
+  }
+  const offGuide = (x, y, except) => {
+    const n = nearGuide(x, y, except);
+    return !n || n.d >= GUIDE_KEEPOUT_M;
+  };
+  // `draw()` gives a candidate [x, y]; redraw until it is off the line, bounded
+  // at 20 tries. RNG ORDER: a candidate that passes first time consumes exactly
+  // the draws the old code consumed, in the old order, so every placement that
+  // was never on the line is byte-identical. Only a rejected draw shuffles the
+  // stream, and only from that placement on.
+  let guideSkipped = 0;
+  function offLine(draw, except) {
+    for (let t = 0; t < 20; t++) {
+      const p = draw();
+      if (offGuide(p[0], p[1], except)) return p;
+    }
+    guideSkipped++;                // 20 draws all landed on the line: skip it
+    return null;
+  }
+  // ...and for a placement whose position is not drawn but derived, push it
+  // straight out from the line it is standing on to GUIDE_PUSH_M. No rng.
+  function pushOffLine(x, y, except) {
+    const n = nearGuide(x, y, except);
+    if (!n || n.d >= GUIDE_KEEPOUT_M) return [x, y];
+    if (n.d > 1e-3) {
+      const k = GUIDE_PUSH_M / n.d;
+      return [n.x + (x - n.x) * k, n.y + (y - n.y) * k];
+    }
+    // standing exactly ON a vertex — no outward direction to grow. Step off
+    // perpendicular to the line and keep the side whose ground sits closest to
+    // the line's own height, which on a road cut is the bench rather than the
+    // fill below it.
+    const leg = GUIDE_LINES.find((q) => q.leg === n.leg).pts;
+    let bi = 1, bd = Infinity;
+    for (let i = 1; i < leg.length; i++) {
+      const d = Math.hypot(leg[i][0] - x, leg[i][1] - y);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    const a = leg[bi - 1], b = leg[bi];
+    const m = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const nx = -(b[1] - a[1]) / m, ny = (b[0] - a[0]) / m;
+    const z0 = gz(x, y);
+    const cand = [[x + nx * GUIDE_PUSH_M, y + ny * GUIDE_PUSH_M], [x - nx * GUIDE_PUSH_M, y - ny * GUIDE_PUSH_M]];
+    return Math.abs(gz(cand[0][0], cand[0][1]) - z0) <= Math.abs(gz(cand[1][0], cand[1][1]) - z0) ? cand[0] : cand[1];
+  }
+
   // unloading at the top terminal (views 10, 11)
   const TT = liftState[0].fr.at(liftState[0].fr.L);
   const topGroup = [[16, 10, 2.1], [24, 4, 2.6], [10, -8, 0.4], [30, 16, 3.0], [-8, 14, 1.4]];
   for (const [du, dv, yaw] of topGroup) {
-    const x = TT.x + du, y = TT.y + dv;
+    // fixed offsets off the terminal: nothing to redraw, so push instead
+    const [x, y] = pushOffLine(TT.x + du, TT.y + dv);
     place(Bp, skierGeo(ri(rng, 1, 999), null, {}), x, y, gz(x, y), yaw);
   }
   // the view-16 group standing on the roll at the top of Dog Leg
@@ -1187,35 +1362,55 @@ export async function buildWorld(THREE, opts = {}) {
     const r = RUNS.find((q) => q.id === 'upper-dog-leg');
     const p = r.pts[2];
     for (let i = 0; i < 6; i++) {
-      const x = p[0] - 8 + i * 3.4 + rr(rng, -1, 1), y = p[1] + rr(rng, -4, 4);
-      place(Bp, skierGeo(ri(rng, 1, 999), null, {}), x, y, gz(x, y), rr(rng, 1.6, 3.0));
+      // EXEMPT FROM `chairline`, and only from that leg. This group IS the roll
+      // at the top of Dog Leg — view 16 is a crowd standing on it, and Upper Dog
+      // Leg is the guide's chairline leg, so a 6 m keep-out here does not move
+      // the crowd off the line, it deletes the view. The `chairline` stage is a
+      // traverse off the unload, not a 19 m/s descent. Left where 0018 put them.
+      const q = offLine(() => [p[0] - 8 + i * 3.4 + rr(rng, -1, 1), p[1] + rr(rng, -4, 4)], ['chairline']);
+      if (!q) continue;
+      place(Bp, skierGeo(ri(rng, 1, 999), null, {}), q[0], q[1], gz(q[0], q[1]), rr(rng, 1.6, 3.0));
     }
   }
   // base area life
   for (let i = 0; i < 14; i++) {
-    const x = rr(rng, -230, 120), y = rr(rng, 366, 424);
-    place(Bp, skierGeo(ri(rng, 1, 999), null, {}), x, y, gz(x, y), rr(rng, 0, 6.28));
+    const q = offLine(() => [rr(rng, -230, 120), rr(rng, 366, 424)]);
+    if (!q) continue;
+    place(Bp, skierGeo(ri(rng, 1, 999), null, {}), q[0], q[1], gz(q[0], q[1]), rr(rng, 0, 6.28));
   }
   // the Gold Coast bench and the High Camp plaza — view-9 ("skiers are spread
   // over the open bench above and below") and view-10 (the plaza)
   for (let i = 0; i < 12; i++) {
-    const x = A.goldCoast[0] + rr(rng, -40, 190), y = A.goldCoast[1] + rr(rng, -90, 60);
-    place(Bp, skierGeo(ri(rng, 1, 999), null, {}), x, y, gz(x, y), rr(rng, 0, 6.28));
+    const q = offLine(() => [A.goldCoast[0] + rr(rng, -40, 190), A.goldCoast[1] + rr(rng, -90, 60)]);
+    if (!q) continue;
+    place(Bp, skierGeo(ri(rng, 1, 999), null, {}), q[0], q[1], gz(q[0], q[1]), rr(rng, 0, 6.28));
   }
   for (let i = 0; i < 6; i++) {
-    const x = A.highCamp[0] + rr(rng, -60, 60), y = A.highCamp[1] + rr(rng, -70, -40);
-    place(Bp, skierGeo(ri(rng, 1, 999), null, { skis: false }), x, y, gz(x, y), rr(rng, 0, 6.28));
+    const q = offLine(() => [A.highCamp[0] + rr(rng, -60, 60), A.highCamp[1] + rr(rng, -70, -40)]);
+    if (!q) continue;
+    place(Bp, skierGeo(ri(rng, 1, 999), null, { skis: false }), q[0], q[1], gz(q[0], q[1]), rr(rng, 0, 6.28));
   }
-  // a snowcat parked on the Snow King Road bench
+  // a snowcat parked on the Snow King Road bench — 0025's blocker. `pts[0.32L]`
+  // is a vertex OF the road, so this parked a 5 m machine on the racing line.
   {
     const r = RUNS.find((q) => q.id === 'snow-king-road');
     const p = r.pts[Math.floor(r.pts.length * 0.32)];
-    place(Bp, snowcatGeo(2), p[0], p[1], gz(p[0], p[1]) + 0.5, rad(200));
+    const [x, y] = pushOffLine(p[0], p[1]);
+    place(Bp, snowcatGeo(2), x, y, gz(x, y) + 0.5, rad(200));
   }
+  if (guideSkipped) {
+    report.notes.push(`static people: ${guideSkipped} placement(s) skipped — 20 draws each `
+      + `landed inside the ${GUIDE_KEEPOUT_M} m keep-out along the guided route (specs/0029)`);
+  }
+  // specs/0018 — THE STANDING PEOPLE ARE SOLID. Greg: they "induce wipeout".
+  // Only the ones who are not going anywhere: this mesh is the static crowd, and
+  // `skiers-moving` / `riders-<lift>` stay out of the soup because the soup is
+  // built once and cannot follow them (spec §2). Name unchanged, geometry
+  // unchanged — the harvest reads `people-props` as CLASS_PERSON.
   const propMesh = new THREE.Mesh(toGeo(THREE, Bp), SHEET);
   propMesh.name = 'people-props';
   propMesh.castShadow = true;
-  scene.add(propMesh);
+  scene.add(propMesh); colliders.push(propMesh);
 
   // ---------------------------------------------------- moving chairs
   const chairIms = liftState.map((st, k) => {
