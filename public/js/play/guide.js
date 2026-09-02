@@ -1112,7 +1112,7 @@ function makeStages() {
   // ------------------------------------------------------ 8 · trick school
   const TRICKS = [
     { id: 'spin', key: '← →', text: 'in the air — hold one arrow to spin', fams: ['spin'] },
-    { id: 'flip', key: '↑ ↓', text: 'now the other axis — flip', fams: ['flip', 'underflip'] },
+    { id: 'flip', key: '↑ ↓', text: 'now the other axis — flip', fams: ['flip', 'flipBack', 'underflip'] },
     { id: 'diag', key: '←+↑', text: 'both together — cork, bio, rodeo', fams: ['cork', 'bio', 'misty', 'rodeo'] },
   ];
   st.push({

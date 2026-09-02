@@ -80,8 +80,9 @@ const C = {
 //   SPARKLE — the one thing that cannot be baked, because it is by definition
 //   view-dependent. It is a fragment-shader layer, registered through
 //   lib/core.mjs's look plumbing, and every one of its dials is LIVE. It ships
-//   ON at SNOW_SPARKLE_GAIN = 8 — certified +0.13 ms on the real GPU; see the
-//   sparkle block below.
+//   OFF (SNOW_SPARKLE_GAIN = 0): Greg playtested GAIN 8 on 2026-09-01 and
+//   pulled it — "does not fit the vibe". The layer stays compiled and live so
+//   a restyle can be tried on the bench without a rebuild; see the block below.
 //
 // ---------------------------------------------- WHY TWO OF THE THREE ARE BAKED
 // Not laziness, and not "the vertex path was already there": it is the FRAME
@@ -158,10 +159,15 @@ const CORD_RES_OFF = 3.4;            // and above which it is gone
 
 // -- sparkle (LIVE, on __look)
 //
-// SHIPS ON at SNOW_SPARKLE_GAIN = 8. Everything below is registered, compiled
-// and live — `__look.SNOW_SPARKLE_GAIN = 0` turns it off at runtime with no
-// reload, and off is bit-exact: gate 0 in the GLSL makes GAIN 0 cost one
-// coherent uniform compare per fragment rather than the whole block times zero.
+// SHIPS OFF at SNOW_SPARKLE_GAIN = 0. It shipped ON at GAIN 8 for one day
+// (c1ee598); Greg playtested it 2026-09-01 and pulled it: the half-vector
+// window (NH_EDGE ± SPREAD) lights only the band of slope that bisects sun and
+// eye, which on a uniform pitch is one stripe along the fall line — "it's only
+// in the track behind me" — and the glint itself "does not fit the vibe".
+// Everything below stays registered, compiled and live so a restyle can be
+// tried on the bench with no reload (`__look.SNOW_SPARKLE_GAIN = 8`), and off
+// is bit-exact: gate 0 in the GLSL makes GAIN 0 cost one coherent uniform
+// compare per fragment rather than the whole block times zero.
 //
 // CERTIFIED 2026-09-01 by `harness/shader-perf.mjs --headed` on the real GPU
 // (renders/look-perf/RESULTS.md): GAIN 8 costs +0.13 ms at village-pan and
@@ -178,7 +184,7 @@ const CORD_RES_OFF = 3.4;            // and above which it is gone
 const SNOW_SPARKLE_ON = 1;
 // x GAIN, y DENSITY (glint cells per metre), z NH_EDGE, w SPREAD
 // GAIN 0 = OFF, and off is bit-exact: gate 0 never reaches the additive term.
-const uSparkle = f32([8.0, 6.0, 0.90, 0.09]);
+const uSparkle = f32([0.0, 6.0, 0.90, 0.09]);
 // x 0.5/SHARP, y SNOW_EDGE (sum of linear rgb), z BLOOM, w 1/POINT^2
 const uSparkle2 = f32([0, 1.30, 0.62, 0]);
 // xyz COLOR (linear), w unused

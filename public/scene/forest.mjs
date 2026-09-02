@@ -13,7 +13,7 @@
 //     2023 realignment and still shows canopy under the new line
 // Everything else is the photograph.
 
-import { clamp, lerp, smooth, fbm, makeRng, rr, ri } from './lib/core.mjs';
+import { clamp, lerp, smooth, fbm, makeRng, rr, ri, lin, mixc } from './lib/core.mjs';
 import { groundZ, slopeAt, demAt, RUN_PREP,
          groundZ0, masksAt0, slopeAt0, KT_WORK, POU_WORK } from './ground.mjs';
 import { canopyAt } from './canopy.mjs';
@@ -70,6 +70,297 @@ export function treeVariant(x, y, n = TREE_SEEDS_PER_LOD) {
   h = Math.imul((h ^ (Math.round(y * 32.7) | 0)) ^ (h >>> 13), 0xc2b2ae35);
   h ^= h >>> 16;
   return (h >>> 0) % n;
+}
+
+// ==========================================================================
+// THE SNOW LOAD — lookbook option T3.
+//
+// MEASURED FIRST, because the number is the whole argument. `firGeo` already
+// ends with `snowLace(B, { lo: 0.30, hi: 0.86, amount: flock })`, and the fir's
+// canopy is a stack of narrow cones — a red fir is a SPIRE, radius ~0.085 h —
+// so its skirt faces are steep and their up-component is small. Over the nine
+// shipped prototypes (work/, three seeds x three classes) the canopy triangles'
+// signed nz runs:
+//
+//   big  min 0.024  p25 0.131  median 0.221  p75 0.278  max 0.361
+//   mid  min 0.002  p25 0.067  median 0.118  p75 0.178  max 0.265
+//   far  min -0.014 p25 0.063  median 0.114  p75 0.146  max 0.223
+//
+// Against `lo = 0.30` that is smooth(0.30, 0.86, 0.36) = 0.030 at the single
+// FLATTEST triangle on the biggest tree, times amount 0.32 — a 1 % blend. The
+// shipped world therefore has, to three decimal places, NO SNOW ON ANY FIR AT
+// ALL. The lace call was written for granite (where nz reaches 0.9 on a ledge)
+// and copied onto a tree it cannot touch. That is why Greg could not see it.
+//
+// AND THE THRESHOLD HAS TO BE PER TIER, not per tree — that is the second half
+// of the fix, and the first cut got it wrong. Re-basing the curve on the whole
+// canopy's range (lo 0.02, hi 0.22 for the big fir) whitens by TIER, because nz
+// falls monotonically up the tree: the skirt radius runs 1.42 R at the bottom
+// to 0.28 R at the top while the tier height is constant, so the bottom tiers
+// sit at nz 0.36 and the spire at 0.07. Every face of the lower half went past
+// full blend and the render came back a stand of white cones
+// (renders/trees/T3/, first pass).
+//
+// The canopy triangles are laid down in tier order, exactly `sides` of them per
+// tier (49 = 7x7 big, 20 = 5x4 mid, 16 = 4x4 far — checked, and asserted below
+// by simply not touching anything that does not group evenly). So each tier is
+// normalised against ITS OWN min and max: the flattest faces of every tier take
+// the load, the steepest of every tier stay bare needle, and the white runs all
+// the way up the tree instead of drowning the bottom of it. Within a tier the
+// spread is real and comes from the shipped geometry — `firGeo` jitters each
+// ring vertex's radius over 0.78-1.12 of the tier radius, so no two faces of a
+// tier have the same pitch.
+//
+// A weak ABSOLUTE term rides on top (0.74 + 0.26 x the face's own nz over
+// 0.04-0.30) so a big fir's broad lower skirts still carry visibly more snow
+// than its spire. That is the Sierra read: plates down every tier, heaviest
+// where the branch is widest.
+//
+// TRUNKS ARE EXCLUDED BY COLOUR, NOT BY ANGLE, and that is not a nicety: the
+// tapered trunk tubes reach nz 0.061 and the canopy starts at 0.002, so the two
+// populations OVERLAP and no threshold can separate them. Every needle colour
+// in kit.mjs's palette has g > r (needle 0x1e3527, needleLo, needleHi, pineGrn)
+// and every bark colour has r > g (bark 0x342a22, barkRed, barkPale); `jitc`,
+// `scalec` and `mixc` between greens all preserve the ordering. One compare per
+// triangle, and the bark is untouched to the bit.
+//
+// COST: this rewrites ~375 floats in nine prototype colour buffers at bake
+// time. Zero triangles, zero draw calls, zero runtime, zero bytes of transfer
+// (the geometry is generated in the browser, not shipped). Geometric snow caps
+// were priced at +27k triangles and rejected.
+const TREE_SNOW = lin(0xf2f7ff);        // sunlit new snow, a touch above PAL.snow
+
+/** The canopy triangles of a fir prototype, in build order, with their signed
+ *  face normals. Bark is excluded by the r-vs-g colour test above. */
+function canopyFaces(B) {
+  const P = B.pos, C = B.col, out = [];
+  for (let t = 0; t < P.length; t += 9) {
+    if (C[t + 1] <= C[t]) continue;                       // bark: r > g. leave it.
+    const ax = P[t], ay = P[t + 1], az = P[t + 2];
+    const e1x = P[t + 3] - ax, e1y = P[t + 4] - ay, e1z = P[t + 5] - az;
+    const e2x = P[t + 6] - ax, e2y = P[t + 7] - ay, e2z = P[t + 8] - az;
+    const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    out.push({ t, nx: nx / len, ny: ny / len, nz: nz / len });
+  }
+  return out;
+}
+
+/** Blend the canopy triangles of a fir prototype toward snow, per tier.
+ *  `B` is a kit.mjs buffer; it is mutated in place, at bake time, once. */
+export function firSnowLoad(B, { snow = TREE_SNOW, sides, lo = 0.30, hi = 0.86,
+                                 amount, patchy = 0.22, seed = 17 } = {}) {
+  const C = B.col;
+  const rng = makeRng(seed);
+  const F = canopyFaces(B);
+  const n = Math.max(1, sides | 0);
+  for (let g = 0; g < F.length; g += n) {
+    const tier = F.slice(g, g + n);
+    let mn = Infinity, mx = -Infinity;
+    for (const f of tier) { if (f.nz < mn) mn = f.nz; if (f.nz > mx) mx = f.nz; }
+    const span = Math.max(1e-4, mx - mn);
+    for (const face of tier) {
+      // r: this face's pitch as a fraction of ITS OWN tier's spread
+      const r = (face.nz - mn) / span;
+      let f = smooth(lo, hi, r) * amount
+              * (0.74 + 0.26 * smooth(0.04, 0.30, face.nz));
+      f *= 1 - patchy * rng();
+      if (f <= 0.002) continue;
+      for (let k = 0; k < 3; k++) {
+        const o = face.t + k * 3;
+        C[o] = lerp(C[o], snow[0], f);
+        C[o + 1] = lerp(C[o + 1], snow[1], f);
+        C[o + 2] = lerp(C[o + 2], snow[2], f);
+      }
+    }
+  }
+  return B;
+}
+
+// ==========================================================================
+// THE TWO-TONE CANOPY — lookbook option T4.
+//
+// Each tier already writes a darker ring and a lighter apex, which is a
+// VERTICAL gradient and reads as nothing at 60 m: `scalec(col, 0.82)` on two of
+// three vertices, on a face that is 12 px tall. What a conifer stand actually
+// shows from a chairlift is a HORIZONTAL split — a hard terminator down the
+// crown, pale blue-green into the sun, deep blue-green away from it. (T4 cut
+// that split warm/cold and it read as a lime; see the T4b note on the two
+// greens below — the split is one hue family now and the contrast is value.)
+//
+// THE ROTATION PROBLEM, WHICH IS THE WHOLE DESIGN DECISION HERE.
+//
+// The split has to be baked into the prototype, because the prototype is what
+// the ten thousand instances share. But `placeForest` gives every tree a yaw of
+// `rr(rng, 0, 6.283)`, and an instanced mesh rotates its geometry — colours
+// included. A baked sun side on a randomly-yawed tree faces the sun a fifth of
+// the time and faces AWAY from it a fifth of the time, and the half of the
+// forest with its bright side in shadow does not read as variety, it reads as
+// broken lighting: MeshLambertMaterial is already shading these faces against
+// the real SUN_DIR, so a mis-oriented albedo split fights the light instead of
+// amplifying it. There is no per-vertex function of the LOCAL frame that
+// survives an arbitrary yaw, because yaw is exactly the degree of freedom the
+// split is defined on. So one of the two has to give.
+//
+// YAW GIVES — BUT ±20° IS THE WRONG PRICE, AND THE PLATE SAYS SO. The obvious
+// answer is to pin the yaw hard, ±20°, so the baked terminator is always within
+// a fifth of a turn of the truth. That was cut and shot first, and the
+// chair-eye plate came back a ROW OF CLONES: the fir's own ring period is
+// 360/7 = 51° for the big class, so a 40° window is less than one period and
+// every big fir in the frame presents the same three skirt faces at the same
+// three angles — which is precisely the repeat T1 exists to break. Worse, it
+// takes T3 with it: the snow plates are chosen per tier by face rank, so with
+// the yaw pinned the SAME faces are white on every tree in the world, and from
+// a camera that does not happen to face them the whole stand loses its snow.
+//
+// So the band is the SUN'S OWN HALF OF THE COMPASS: ±90°. That is the weakest
+// constraint that still does the one job a yaw lock is for — no tree's lit side
+// ever points away from the sun; at the extremes it points across it, where the
+// Lambert term is grazing and neither reading is wrong. 180° of freedom is
+// three and a half ring periods for the big fir and two for the far one, so the
+// stand keeps its variety (renders/trees/T4/_trial-yaw.png is the ±90 plate
+// against a free-yaw plate: the difference is small, which is the point — the
+// constraint is nearly free, so take it).
+//
+// `firYaw` replaces the placement yaw for the three fir classes ONLY — snags,
+// boulders and granite keep theirs. The jitter inside the band is a POSITION
+// HASH, not an rng draw, for the same reason `treeVariant` is: every placement
+// loop in `placeForest` is a rejection loop over one shared stream (REPORT
+// §17.3), so a single extra call there would move every snag, outcrop and
+// boulder in the pod. This one is called at instancing time and reads nothing
+// but x and y.
+//
+// WHAT THIS DOES *NOT* CLAIM: with a ±90° band the baked terminator is not the
+// real one, tree by tree. It is not meant to be — MeshLambertMaterial already
+// computes the real one, exactly, per face, per frame, and no albedo can beat
+// it at that. The bake's job is CONTRAST: to give the light term something with
+// range to work on, instead of one near-black green whose lit and shade sides
+// differ by the ambient floor. The constraint is there so the two never fight.
+//
+// COST: zero. Same 375 vertices, same triangle count, same draw calls, and the
+// yaw was already a per-instance matrix compose.
+export const FIR_YAW_BAND = 90 * Math.PI / 180;
+
+/** The yaw a fir wears, so its baked sun side stays sun side. A 32-bit
+ *  avalanche over (x, y) — different constants from `treeVariant` so the two
+ *  hashes do not correlate and the seed buckets do not land in yaw bands. */
+export function firYaw(x, y) {
+  let h = Math.imul((Math.round(x * 41.3) | 0) ^ 0x27d4eb2f, 0x165667b1);
+  h = Math.imul((h ^ (Math.round(y * 41.3) | 0)) ^ (h >>> 15), 0x9e3779b1);
+  h ^= h >>> 16;
+  return ((h >>> 0) / 4294967296 * 2 - 1) * FIR_YAW_BAND;
+}
+
+// THE TWO GREENS — and the T4b correction, which is the reason they are what
+// they are now.
+//
+// THE CONTRAST IS BOUGHT BY LIFTING THE SUN SIDE, NOT BY CRUSHING THE SHADE
+// SIDE. That part of T4 stands and is not up for revisiting: the first cut took
+// the shade side to lin(0x0d1a22) at 0.52 over a 0.42 gain and the chair-eye
+// plate came back a wall of black cut-outs (renders/trees/T4/, first pass).
+// This material is ALREADY lit — MeshLambertMaterial shades every face against
+// SUN_DIR, so the shade side arrives at the framebuffer with the light term
+// already low, and kit.mjs's needle base (0x1e3527) is nearly black to begin
+// with; multiplying two dark things gives a silhouette. Both poses Greg judges
+// look almost straight up-sun (treeline-close bears 232°, far-tier 222°,
+// against SUN_AZ 215°), so the shade side is most of what either frame shows.
+//
+// WHAT T4 GOT WRONG WAS THE HUE IT LIFTED INTO. T4 lifted the sun side toward
+// lin(0x93c063) on the argument that a low January sun is orange, so the lit
+// needles should go WARM. Greg's playtest: "the trees look too warm to be Tahoe
+// trees." He is right, and the buffer says exactly how wrong, measured off the
+// baked prototypes (work/tree_needle_probe.mjs, mean canopy face by sun dot):
+//
+//                 T4 lit               T4 shade
+//   big   #7fa857 rgb(127,168, 87)   #214237 rgb(33,66,55)
+//   mid   #80a857 rgb(128,168, 87)   #224337 rgb(34,67,55)
+//   far   #7fa857 rgb(127,168, 87)   #214236 rgb(33,66,54)
+//
+// hue 90° on the lit side, with B (87) BELOW R (127). That is a lime. The
+// species this stand is made of — red fir, Jeffrey pine, mountain hemlock — are
+// GLAUCOUS: the needle carries a waxy bloom, so it is blue-green to begin with,
+// and in winter light the lit side goes LIGHTER AND GREYER, never yellower.
+// Warm light on a cool needle desaturates it toward the sky; it does not rotate
+// its hue through yellow. The orange-sun argument confuses the ILLUMINANT with
+// the ALBEDO, and the illuminant is the one thing already handled — the sun
+// colour is in terrain.mjs's light, and it multiplies whatever albedo is here.
+// Baking the warmth in a second time is what made the stand read Cascade-in-
+// August instead of Sierra-in-January.
+//
+// SO THE SPLIT IS NOW ONE HUE FAMILY AND THE CONTRAST LIVES IN VALUE. Both
+// sides sit in blue-green; the lit side is lifted in value and DESATURATED, the
+// shade side is deep and saturated. Measured on the same probe:
+//
+//                 T4b lit              T4b shade
+//   big   #7ca997 rgb(124,169,151)   #1d433d rgb(29,67,61)
+//   mid   #7ca997 rgb(124,169,151)   #1e443e rgb(30,68,62)
+//   far   #7ca997 rgb(124,169,151)   #1d433d rgb(29,67,61)
+//
+//   lit   hue 156°  V 169  sat 0.27      (T4: hue 90°, V 168, sat 0.48)
+//   shade hue 170°  V  67  sat 0.57      (T4: hue 159°, V 66, sat 0.50)
+//
+// THE VALUE LADDER IS UNCHANGED TO WITHIN A CODE VALUE — lit 169 vs T4's 168,
+// shade 67 vs 66 — which is the point of the fix and the check on it: nothing
+// about the light/dark read Greg approved in T4 moves, only the hue does. The
+// lit side is not made darker to cool it, and the shade side is not made
+// heavier to compensate.
+//
+// ALL THREE LODs LAND ON THE SAME PAIR, deliberately: the mid and far classes
+// share these constants and their needle bases differ only by firGeo's own
+// jitter, so the 640 m stand in renders/trees/T4b/*far-tier* reads as the same
+// cold forest as the corridor band, not as a second species behind it.
+//
+// The mixes moved with the colours (litMix 0.72 -> 0.76, shadeMix 0.46 -> 0.60)
+// and only to hit those numbers: the base needle is hue ~140 and dark, so it
+// drags a low-mix result back toward green. Measured over the candidate sweep,
+// a cold shade target at the old shadeMix 0.46 comes back at 162°, short of the
+// band, and 0.60 is the smallest mix that puts it at 170; litMix 0.76 is what
+// holds the lit side's VALUE at T4's 169 while its hue rotates 66° cooler.
+//
+// ONE THING THIS DOES NOT CONTROL, AND IT IS WORTH KNOWING. These are albedos.
+// The scene's sky ambient is blue, and it adds roughly +40° of hue to every
+// needle on the way to the framebuffer: T4's own shade side is 159° here and
+// reads 187-190° in the plate, and T4b's 156° lit side reads 193-199°. So the
+// screen is bluer than these constants, uniformly, and always was — the numbers
+// to compare against a reference photograph are the plate's, not these. What
+// changed is the sign of the thing Greg objected to: the brightest tenth of the
+// sunlit needle pixels went from rgb(78,107,69), B nine BELOW R, to
+// rgb(76,108,117), B forty-one ABOVE it, at the same pixels and the same value.
+//
+// The snow is NOT touched. TREE_SNOW is lin(0xf2f7ff), already a cold white,
+// and Greg's note on T3 was that the plates work; a bluer white was available
+// and not taken, because the warmth complaint measures out entirely in the
+// needle hue above and the plates are the part that is already right.
+const NEEDLE_LIT = lin(0x8cbdaa);
+const NEEDLE_SHADE = lin(0x1b4a48);
+
+/** Split a fir prototype's canopy into a sun side and a shade side, against the
+ *  world sun bearing, at bake time. Run BEFORE `firSnowLoad` so the snow plates
+ *  sit on top of the split rather than being tinted by it. */
+export function firTwoTone(B, { sunAz, lit = NEEDLE_LIT, shade = NEEDLE_SHADE,
+                                litMix = 0.76, shadeMix = 0.60, shadeGain = 1.0,
+                                edge = 0.14 } = {}) {
+  const C = B.col;
+  const a = sunAz * Math.PI / 180;
+  const sx = Math.sin(a), sy = Math.cos(a);     // terrain.mjs SUN_DIR's own convention
+  for (const face of canopyFaces(B)) {
+    const hl = Math.hypot(face.nx, face.ny) || 1e-6;
+    // +1 straight into the sun, -1 straight away from it
+    const d = (face.nx * sx + face.ny * sy) / hl;
+    // a HARD terminator: `edge` is the whole width of the transition, so at
+    // most one of a tier's faces is ever caught between the two greens
+    const k = smooth(-edge, edge, d);
+    for (let j = 0; j < 3; j++) {
+      const o = face.t + j * 3;
+      for (let c = 0; c < 3; c++) {
+        const base = C[o + c];
+        const L = lerp(base, lit[c], litMix);
+        const S = lerp(base * shadeGain, shade[c], shadeMix);
+        C[o + c] = lerp(S, L, k);
+      }
+    }
+  }
+  return B;
 }
 
 export function distToRuns(x, y) {

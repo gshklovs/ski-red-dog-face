@@ -11,8 +11,20 @@
 //
 //   2. THE FAMILY SETS THE LANDING RULE. A spin lands every 180°, a flip every
 //      360°, a cork/bio only past 540° and then every 180°, and a misty/rodeo
-//      only on 540° multiples. Slower rate (×0.80) plus a narrower window is what
-//      makes the inverted family the high-risk branch rather than a free upgrade.
+//      only on 540° multiples. The inverted family used to run at ×0.80, and the
+//      slower rate — +25 % hangtime to close the same angle — plus a narrower
+//      window was what made it the high-risk branch rather than a free upgrade.
+//      Greg asked for "diagonal rotations 20 % faster" on 2026-09-01, and BOTH
+//      diagonals took the ×1.20: cork/bio ×1.12 → ×1.344, misty/rodeo
+//      ×0.80 → ×0.96. So the inverted branch now costs +4 % hangtime (1/0.96),
+//      not +25 %, and what still makes it the risky one is the 540° floor and
+//      the 540°-only window rather than the rate. The windows themselves are in
+//      DEGREES, so a faster rate reaches them sooner without moving them.
+//
+//      A pure vertical throw splits by the sign of v: ↑ is `flip` (front) and
+//      ↓ is `flipBack` (back), two families that are identical in every number —
+//      same tilt, rate, window, floor and BASE score — and differ only in the
+//      name they announce. Same v < 0 convention as the cork/rodeo rows.
 //
 //   3. THE COMBO IS SSX-SHAPED. An unbanked active score and a multiplier; a
 //      clean landing banks and raises the multiplier; a bail loses only the
@@ -41,8 +53,10 @@ export const TRICK_TUNING = {
   comboGraceT: 2.0,      // s on the ground a combo survives...
   comboMinSpeed: 4.0,    // ...provided you are still moving this fast
   comboMaxMult: 20,
-  diagBonus: 1.12,       // × rate — cork/bio, the snappy diagonal
-  invertedRate: 0.80,    // × rate — misty/rodeo. THIS is the "+25% hangtime" rule
+  // Both DIAGONAL rates carry Greg's 2026-09-01 "20 % faster" ×1.20.
+  diagBonus: 1.344,      // × rate — cork/bio, the snappy diagonal (was 1.12)
+  invertedRate: 0.96,    // × rate — misty/rodeo (was 0.80, the "+25% hangtime"
+                         //   rule; at 0.96 the same angle costs only +4 %)
   underflipRate: 0.95,
   leadWindow: 0.25,      // s — after the first arrow, how long a second still counts as "also held"
   corkTilt: 0.45,        // rad — shallow tilt: the flip merges into the spin
@@ -53,7 +67,9 @@ export const TRICK_TUNING = {
 
 // BASE score per family, and the THPS3 rotation table — the one with the steep
 // top end, so a 1080 is worth a great deal more than three 360s.
-const BASE = { spin: 100, flip: 150, cork: 220, bio: 220, underflip: 260, misty: 300, rodeo: 300 };
+// `flipBack` scores exactly what `flip` scores: it is the same trick thrown the
+// other way, not a harder one, and the only thing that differs is its name.
+const BASE = { spin: 100, flip: 150, flipBack: 150, cork: 220, bio: 220, underflip: 260, misty: 300, rodeo: 300 };
 const SPIN_MULT = [[180, 1.5], [360, 2], [540, 3], [720, 4], [900, 6], [1080, 8], [1260, 10], [1440, 13]];
 // THPS3's variety decay, keyed on how many times this NAME has already appeared
 // in THIS combo. Doing a Cork 720 four times is worth less than doing it once.
@@ -96,7 +112,15 @@ function classify(h, v, lead) {
   const T = TRICK_TUNING;
   if (h === 0 && v === 0) return null;
   if (h !== 0 && v === 0) return { family: 'spin', tilt: 0, rate: 1.00, land: 180, min: 0 };
-  if (h === 0 && v !== 0) return { family: 'flip', tilt: Math.PI / 2, rate: 1.00, land: 360, min: 0 };
+  // Pure vertical, and the SIGN OF v picks which way it went — the same v < 0
+  // convention the cork/rodeo rows below use. ↓ (flipBack, v = −1) drives
+  // flipAcc negative, main.js renders the flip as fpRig.rotateX(−flipAcc), and
+  // a negative flipAcc therefore takes the ski TIPS UP and the rider over his
+  // tails: that is the backward flip. ↑ is the front one. Every other number in
+  // the two rows is identical, so `flipBack` is `flip` under a different name.
+  if (h === 0 && v !== 0) {
+    return { family: v < 0 ? 'flipBack' : 'flip', tilt: Math.PI / 2, rate: 1.00, land: 360, min: 0 };
+  }
   // both axes. Underflip is the odd one out: ↓ and ↑ together, no horizontal.
   if (lead === 'spin') {
     // spin-led: shallow tilt, non-inverted, the flip merges into the spin
@@ -325,14 +349,21 @@ function judge(info) {
     // ...ON THE AXIS THE ROTATION WAS THROWN ON. `err` is the residual of
     // `hypot(spinAcc, flipAcc)`, which for a pure flip is entirely flipAcc — and
     // this used to be spent entirely on YAW regardless, so an under-rotated
-    // front flip turned the rider up to 48 deg sideways on landing (90 deg on a
-    // double) for a rotation that never touched the heading. Greg: "some of my
-    // front flip landings turn me kind of sideways for no reason."
+    // front OR back flip turned the rider up to 48 deg sideways on landing
+    // (90 deg on a double) for a rotation that never touched the heading. Greg:
+    // "some of my front flip landings turn me kind of sideways for no reason."
+    // `flipBack` carries the same tilt (PI/2) as `flip`, so it gets the same
+    // fix — the axis is the family's, and both flip families fly the same axis.
     S.snapTilt = fam.tilt;
     S.snapLeft = T.snapT;
 
     const c = startCombo();
-    const name = trickName(fam.family === 'flip' && S.vDown < 0 ? 'flipBack' : fam.family, deg);
+    // The family already knows which way the flip went (classify() picked
+    // `flipBack` off the sign of v at takeoff), so the name comes straight off
+    // it. This used to re-derive the direction from S.vDown — the LIVE key state
+    // at touchdown — which reads 0 for anybody who lets go of the arrow before
+    // landing, i.e. every back flip that was not still being thrown on impact.
+    const name = trickName(fam.family, deg);
     const shown = displayName({ family: fam.family, flipAcc: S.flipAcc, deg, name });
     const score = addTrick(c, shown, fam.family, deg, quality);
     S.landed++;

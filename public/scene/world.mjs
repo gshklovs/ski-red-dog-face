@@ -14,7 +14,7 @@ import { UPPER_BUILDINGS } from './upper-props.mjs';
 import { groundZ, demAt, masksAt, slopeAt, normalAt, RUN_PREP, DEM_Z0 } from './ground.mjs';
 import { buildTerrain, SUN_DIR, SUN_AZ, SUN_EL } from './terrain.mjs';
 import { placeForest, forestDensity, distToRuns,
-         treeVariant, TREE_SEEDS } from './forest.mjs';
+         treeVariant, TREE_SEEDS, firSnowLoad, firTwoTone, firYaw } from './forest.mjs';
 import {
   PAL, firGeo, pineGeo, snagGeo, boulderGeo, outcropGeo, skierGeo, carGeo,
   snowcatGeo, lodgeGeo, hutGeo, fenceRun, wand, aNet, gatePanel, finishArch, bannerWall, carGeoLo,
@@ -792,13 +792,18 @@ export async function buildWorld(THREE, opts = {}) {
   // shadow split) cannot change a single tree's height: the stretch stays keyed
   // to the tree's position in the ORIGINAL array, not to its row in whichever
   // sub-mesh it ended up in.
-  function instance(name, geoBuf, pts, mat, { castShadow = true, zScale = true, sink = 0, idx = null } = {}) {
+  // `yawOf` overrides the placement yaw. It exists for T4: the two-tone canopy
+  // is baked against SUN_DIR in the prototype's own frame, so a fir has to stay
+  // within a narrow band of the orientation it was baked at or its lit side
+  // ends up in shadow. Nothing but the three fir classes passes it.
+  function instance(name, geoBuf, pts, mat, { castShadow = true, zScale = true, sink = 0, idx = null, yawOf = null } = {}) {
     const g = toGeo(THREE, geoBuf);
     const im = new THREE.InstancedMesh(g, mat, Math.max(1, pts.length));
     im.name = name;
     im.castShadow = castShadow; im.receiveShadow = false;
     pts.forEach((p, i) => {
-      _v.set(p[0], p[1], p[2] - sink); _e.set(0, 0, p[3], 'XYZ'); _q.setFromEuler(_e);
+      _v.set(p[0], p[1], p[2] - sink);
+      _e.set(0, 0, yawOf ? yawOf(p[0], p[1]) : p[3], 'XYZ'); _q.setFromEuler(_e);
       const k = p[4], j = idx ? idx[i] : i;
       _s.set(k, k, zScale ? k * (0.9 + 0.25 * ((j * 37) % 7) / 7) : k);
       _m4.compose(_v, _q, _s);
@@ -829,12 +834,33 @@ export async function buildWorld(THREE, opts = {}) {
   // skirt tier, 5 -> 4, for 5 triangles a tree across ~10,000 of them. These
   // are the general pod forest, not the corridor-lining band — `firs-big` is
   // untouched at 7 tiers, which is what the player actually skis past.
-  instanceVariants('firs-big', (s) => firGeo(s, { h: 31, tiers: 7, sides: 7, flock: 0.32 }),
-    TREE_SEEDS.big, F.big, SOLID, { sink: 0.9 });
-  instanceVariants('firs-mid', (s) => firGeo(s, { h: 25, tiers: 4, sides: 5, flock: 0.28 }),
-    TREE_SEEDS.mid, F.mid, SOLID, { sink: 0.8 });
-  instanceVariants('firs-far', (s) => firGeo(s, { h: 22, tiers: 4, sides: 4, flock: 0.24, lite: true }),
-    TREE_SEEDS.far, F.small, SOLID, { castShadow: false, sink: 1.2 });
+  // ---------------------------------------------------- T3: THE SNOW LOAD
+  // `firGeo`'s own `snowLace` is keyed to granite angles (lo 0.30) and a fir
+  // canopy face never gets past nz 0.36, so the shipped world had NO snow on
+  // any fir at all. `firSnowLoad` (forest.mjs) re-bases the curve on the range
+  // the canopy actually occupies, per class, and gates the trunk out by colour.
+  // Bake time, ~375 floats, nine prototypes: 0 tris, 0 draws, 0 runtime.
+  // ------------------------------------------- T4: THE TWO-TONE CANOPY
+  // The sun/shade split is baked into the needles against SUN_AZ, BEFORE the
+  // snow load, so the white plates sit on top of the split rather than being
+  // tinted by it. It is baked in the prototype's own frame at yaw 0, which is
+  // why `yawOf: firYaw` goes on the three fir classes: a baked split on a
+  // randomly-yawed instance faces away from the sun as often as toward it, and
+  // MeshLambertMaterial is already shading these faces against the real
+  // SUN_DIR — a mis-oriented albedo would fight the light instead of amplifying
+  // it. forest.mjs's T4 header has the whole argument, and the measurement that
+  // says the ±20° band costs no variety worth having.
+  const dressed = (B, snow) => firSnowLoad(firTwoTone(B, { sunAz: SUN_AZ }), snow);
+  const SNOW_BIG = { sides: 7, lo: 0.34, hi: 0.92, amount: 0.94 };
+  const SNOW_MID = { sides: 5, lo: 0.30, hi: 0.90, amount: 0.90 };
+  const SNOW_FAR = { sides: 4, lo: 0.24, hi: 0.88, amount: 0.86 };
+  const FIR_YAW = { yawOf: firYaw };
+  instanceVariants('firs-big', (s) => dressed(firGeo(s, { h: 31, tiers: 7, sides: 7, flock: 0.32 }), { ...SNOW_BIG, seed: s + 17 }),
+    TREE_SEEDS.big, F.big, SOLID, { sink: 0.9, ...FIR_YAW });
+  instanceVariants('firs-mid', (s) => dressed(firGeo(s, { h: 25, tiers: 4, sides: 5, flock: 0.28 }), { ...SNOW_MID, seed: s + 17 }),
+    TREE_SEEDS.mid, F.mid, SOLID, { sink: 0.8, ...FIR_YAW });
+  instanceVariants('firs-far', (s) => dressed(firGeo(s, { h: 22, tiers: 4, sides: 4, flock: 0.24, lite: true }), { ...SNOW_FAR, seed: s + 17 }),
+    TREE_SEEDS.far, F.small, SOLID, { castShadow: false, sink: 1.2, ...FIR_YAW });
   instance('snags', snagGeo(5, { h: 17 }), F.snags, SOLID, { castShadow: false, sink: 0.6 });
   instance('boulders', boulderGeo(31, 1.1), F.boulders, SOLID, { castShadow: false, sink: 0.5 });
 

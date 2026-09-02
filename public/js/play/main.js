@@ -1149,6 +1149,15 @@ const typingIn = (t) => !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA
 
 // ------------------------------------------------------------------ input
 window.__playFX.init({ THREE, scene: world.scene, camera, renderer: world.renderer, ctrl, hud });
+// specs/0006 — the jump-power aura hangs its flame ribbon ON the ski meshes, so
+// it inherits the bob, the edge roll, the tip rise, the splay and BOTH rigs'
+// visibility for free rather than re-deriving any of it. This is the whole hook:
+// fx.js adds one child to each of the four rigs and never touches them again.
+// `skiId` is passed as a getter because the locker can change it mid-run, and
+// `camMode` because §2.3 gives the two cameras two presentations of the same
+// power — the flame on the skis in first person, the fire trail off the rider
+// in third — and this rig is the only thing that knows which one you are in.
+window.__playFX.skis({ rigs: liveSkis, skiId: () => skiId, camMode: () => camRig.mode });
 window.__playAudio.init({ THREE, scene: world.scene, camera, renderer: world.renderer, ctrl, hud });
 window.__playSurprise.init({ THREE, scene: world.scene, camera, renderer: world.renderer, ctrl, hud, collision, poi: cfg.poi, run: cfg.run });
 window.__playSnowball.init({ THREE, scene: world.scene, camera, renderer: world.renderer, ctrl, hud, collision, poi: cfg.poi, run: cfg.run });
