@@ -26,7 +26,7 @@
 //
 // Boots physics live in controller.js and never come through here.
 
-import { BRAND, pick } from './flags.js';
+import { BRAND, pick, pickBrand } from './flags.js';
 
 export const SKI_TUNING = {
   maxSpeed: 29,          // m/s — hard backstop; drag normally caps you below it
@@ -1301,7 +1301,7 @@ export const SKI_REF = { len: 180, waist: 88 };   // the geometry of lab-standar
 
 export const SKI_MODELS = [
   {
-    id: 'lab-standard', name: pick('Lab Standard', 'Red Dog 180'), brand: BRAND,
+    id: 'lab-standard', name: pickBrand({ lab: 'Lab Standard', 'RED DOG': 'Red Dog 180', SIBERIA: 'Siberia 180' }), brand: BRAND,
     disc: 'lab', group: 'lab', len: 180, waist: 88, radius: 18,
     blurb: 'The house ski. Every number in ski.js exactly as written — the ruler the rest of the rack is measured against.',
     look: { base: '#ff4d00', ink: '#17161a', accent: '#f4f1ea', pattern: 'lab' },

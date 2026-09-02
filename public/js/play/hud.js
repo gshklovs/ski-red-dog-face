@@ -3,7 +3,7 @@
 
 import { gliderState } from './glider.js';
 import { skiState } from './ski.js';
-import { DEBUG_HUD, BRAND, pick } from './flags.js';
+import { DEBUG_HUD, BRAND, pick, pickBrand } from './flags.js';
 
 // THE WIPEOUT SUBTITLE, by `why`. One line per thing the world is allowed to
 // put you down with: the controller decides which, this only prints it. specs/
@@ -456,7 +456,7 @@ export function createHud({ poi, run, adapter, onResume, onRespawn }) {
   // specs/0003 — `brand`. The bench names the run it is playing; the shareable
   // build names itself, because "palisades-front-A-merge-01" is an internal
   // identity string (D9) and nobody outside this repo can read it.
-  hd.append(el('span', 'lbl lbl--accent', 'paused'), el('span', 'spacer'), el('span', 'lbl', pick(run || '', 'red dog chair')));
+  hd.append(el('span', 'lbl lbl--accent', 'paused'), el('span', 'spacer'), el('span', 'lbl', pickBrand({ lab: run || '', 'RED DOG': 'red dog chair', SIBERIA: 'siberia express' })));
   const bd = el('div', 'panel__bd ppause__bd');
   const keys = el('div', 'ppause__keys');
   // 'lift' rows only exist for worlds that declare lifts[] — setLiftKey() below

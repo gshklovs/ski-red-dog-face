@@ -2,8 +2,8 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "world": "red-dog",
-  "pin": "d568273fa3b6f3129194393ce29b23113519357c",
-  "builtAt": "2026-09-02T18:21:20.397Z",
+  "pin": "918eab22bfeaa261d344971ce65b2b50a625e21d",
+  "builtAt": "2026-09-02T19:50:50.919Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -111,9 +111,9 @@
   "files": 70,
   "sizes": {
     "n": 69,
-    "raw": 7881340,
-    "gz": 3246419,
-    "br": 2532008,
+    "raw": 7894813,
+    "gz": 3251649,
+    "br": 2536422,
     "byGroup": {
       "css": {
         "n": 4,
@@ -129,9 +129,9 @@
       },
       "player": {
         "n": 33,
-        "raw": 1345120,
-        "gz": 475679,
-        "br": 406553
+        "raw": 1358593,
+        "gz": 480909,
+        "br": 410967
       },
       "scene:data": {
         "n": 7,
@@ -185,21 +185,21 @@
       },
       {
         "file": "js/play/fx.js",
-        "raw": 137109,
-        "gzip": 48507,
-        "brotli": 39969
+        "raw": 137834,
+        "gzip": 48816,
+        "brotli": 40271
       },
       {
         "file": "js/play/main.js",
-        "raw": 128341,
-        "gzip": 44975,
-        "brotli": 38580
+        "raw": 130429,
+        "gzip": 45778,
+        "brotli": 39245
       },
       {
         "file": "js/play/ski.js",
-        "raw": 134712,
-        "gzip": 45532,
-        "brotli": 38577
+        "raw": 134772,
+        "gzip": 45575,
+        "brotli": 38614
       },
       {
         "file": "scene/world.mjs",
@@ -259,21 +259,21 @@
       },
       {
         "file": "js/play/fx.js",
-        "raw": 137109,
-        "gzip": 48507,
-        "brotli": 39969
+        "raw": 137834,
+        "gzip": 48816,
+        "brotli": 40271
       },
       {
         "file": "js/play/main.js",
-        "raw": 128341,
-        "gzip": 44975,
-        "brotli": 38580
+        "raw": 130429,
+        "gzip": 45778,
+        "brotli": 39245
       },
       {
         "file": "js/play/ski.js",
-        "raw": 134712,
-        "gzip": 45532,
-        "brotli": 38577
+        "raw": 134772,
+        "gzip": 45575,
+        "brotli": 38614
       },
       {
         "file": "scene/world.mjs",
@@ -319,9 +319,9 @@
       },
       {
         "file": "js/play/bike.js",
-        "raw": 70284,
-        "gzip": 23356,
-        "brotli": 20031
+        "raw": 70343,
+        "gzip": 23400,
+        "brotli": 20083
       },
       {
         "file": "scene/kt-rocks.mjs",
@@ -336,16 +336,16 @@
         "brotli": 18262
       },
       {
+        "file": "js/play/controller.js",
+        "raw": 58480,
+        "gzip": 21049,
+        "brotli": 18169
+      },
+      {
         "file": "scene/ground.mjs",
         "raw": 52419,
         "gzip": 18989,
         "brotli": 16325
-      },
-      {
-        "file": "js/play/controller.js",
-        "raw": 51051,
-        "gzip": 18307,
-        "brotli": 15870
       },
       {
         "file": "scene/poulsen.mjs",
@@ -354,16 +354,16 @@
         "brotli": 15411
       },
       {
+        "file": "js/play/hud.js",
+        "raw": 48357,
+        "gzip": 16916,
+        "brotli": 14583
+      },
+      {
         "file": "js/play/surprise.js",
         "raw": 49063,
         "gzip": 16976,
         "brotli": 14568
-      },
-      {
-        "file": "js/play/hud.js",
-        "raw": 48293,
-        "gzip": 16874,
-        "brotli": 14548
       },
       {
         "file": "js/play/snowmobile.js",
@@ -451,9 +451,9 @@
       },
       {
         "file": "js/play/audio.js",
-        "raw": 29322,
-        "gzip": 9409,
-        "brotli": 8169
+        "raw": 29551,
+        "gzip": 9516,
+        "brotli": 8250
       },
       {
         "file": "scene/granite.mjs",
@@ -522,16 +522,16 @@
         "brotli": 4165
       },
       {
+        "file": "js/play/intro.js",
+        "raw": 11559,
+        "gzip": 4972,
+        "brotli": 4115
+      },
+      {
         "file": "css/te.css",
         "raw": 21769,
         "gzip": 4702,
         "brotli": 4107
-      },
-      {
-        "file": "js/play/intro.js",
-        "raw": 11167,
-        "gzip": 4813,
-        "brotli": 3987
       },
       {
         "file": "index.html",
@@ -582,6 +582,12 @@
         "brotli": 2692
       },
       {
+        "file": "js/play/flags.js",
+        "raw": 7092,
+        "gzip": 3035,
+        "brotli": 2491
+      },
+      {
         "file": "js/play/clean.js",
         "raw": 5695,
         "gzip": 2644,
@@ -592,12 +598,6 @@
         "raw": 4974,
         "gzip": 2255,
         "brotli": 1833
-      },
-      {
-        "file": "js/play/flags.js",
-        "raw": 4665,
-        "gzip": 2054,
-        "brotli": 1676
       },
       {
         "file": "css/speedo.css",
