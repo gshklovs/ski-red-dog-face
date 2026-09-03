@@ -2,8 +2,8 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "world": "red-dog",
-  "pin": "7792863f5733b1ce0f80f91d93d3beee6c6eae9b",
-  "builtAt": "2026-09-02T23:54:49.647Z",
+  "pin": "66b950e5e9778023a6dbed419db6dcff5d841c56",
+  "builtAt": "2026-09-03T01:21:29.269Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -111,9 +111,9 @@
   "files": 70,
   "sizes": {
     "n": 69,
-    "raw": 7924069,
-    "gz": 3261080,
-    "br": 2544748,
+    "raw": 7929847,
+    "gz": 3263361,
+    "br": 2546573,
     "byGroup": {
       "css": {
         "n": 4,
@@ -129,9 +129,9 @@
       },
       "player": {
         "n": 33,
-        "raw": 1387849,
-        "gz": 490340,
-        "br": 419293
+        "raw": 1393627,
+        "gz": 492621,
+        "br": 421118
       },
       "scene:data": {
         "n": 7,
@@ -185,15 +185,15 @@
       },
       {
         "file": "js/play/fx.js",
-        "raw": 142341,
-        "gzip": 50561,
-        "brotli": 41814
+        "raw": 147095,
+        "gzip": 52450,
+        "brotli": 43354
       },
       {
         "file": "js/play/main.js",
-        "raw": 138055,
-        "gzip": 48426,
-        "brotli": 41608
+        "raw": 139079,
+        "gzip": 48818,
+        "brotli": 41893
       },
       {
         "file": "js/play/ski.js",
@@ -259,15 +259,15 @@
       },
       {
         "file": "js/play/fx.js",
-        "raw": 142341,
-        "gzip": 50561,
-        "brotli": 41814
+        "raw": 147095,
+        "gzip": 52450,
+        "brotli": 43354
       },
       {
         "file": "js/play/main.js",
-        "raw": 138055,
-        "gzip": 48426,
-        "brotli": 41608
+        "raw": 139079,
+        "gzip": 48818,
+        "brotli": 41893
       },
       {
         "file": "js/play/ski.js",
