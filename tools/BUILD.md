@@ -6,7 +6,7 @@ Everything under `public/` is written by one script in a private research repo:
 poi-lab/tools/export-red-dog/build.mjs --out <this repo> --gate
 ```
 
-Built from poi-lab commit `6014afa7905d3784b5ea2def40ba5ff81a766407` on `2026-09-06T21:02:51Z`.
+Built from poi-lab commit `ae294e6b8963cd05e8c9ef26153d6ddd87ae1937` on `2026-09-06T21:54:57Z`.
 
 A hand-edited change here is lost on the next bake, silently. If something in
 `public/` is wrong, the fix belongs in one of three places in poi-lab:
