@@ -2,41 +2,120 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "world": "red-dog",
-  "pin": "2cab12cce7b7b225902dbfa0f7cb30a425803407",
-  "builtAt": "2026-09-05T13:24:57.135Z",
+  "pin": "29f5583e4ab6344763acaa1c980c1af87b6d720a",
+  "builtAt": "2026-09-06T06:16:01.613Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
+    "$widen": [
+      "WIDENED 2026-09-05, Greg: \"widen now — widen as chunking is coming\". The",
+      "east and north edges did not move (x1 430, box y1 740, core y1 500); the",
+      "WEST and SOUTH edges did, from x0 -620 / y0 -730 to x0 -1320 / y0 -1130.",
+      "",
+      "WHY. Everything Greg has built since 2026-09-05 is on the KT-22 WEST FACE,",
+      "and every metre of it was outside the old box — which meant outside the",
+      "stamp raster, and `groundZ` returns bare DEM outside the raster (ground.mjs:",
+      "`if (!inRaster(x, y)) return dem`). So the GS Bowl cliff benches, the 75",
+      "Chute wall, the box-chute lanes and the ledge field were all built in the",
+      "source world and all ABSENT from the export's ground, while the rock meshes",
+      "that read `groundZ` to find their own lips stood on the wrong mountain. The",
+      "crop was not hiding backdrop any more, it was deleting the feature.",
+      "",
+      "MEASURED, not chosen. Every west-face feature's ENU AABB out of the source",
+      "modules (work: the extents sweep in renders/export/PROGRESS-crop-widen.md):",
+      "  75 Chute wall stamp      x -1211.0 .. -1149.0   y  -734.0 ..  -667.0",
+      "  chute75-wall-rock mesh   x -1199.1 .. -1169.2   y  -733.5 ..  -667.4",
+      "  PLANT green-a (ring)     x -1019.8 ..  -798.5   y  -346.0 ..  -178.1",
+      "  PLANT green-b (ring)     x  -967.7 ..  -831.7   y  -373.7 ..  -286.0",
+      "  kt spires (merged frame) x  -948.1 ..  -857.8   y -1023.4 ..  -977.0",
+      "  gs-bowl marker           x  -981.3               y  -942.0",
+      "  kt22 summit marker       x  -913.4               y  -996.4",
+      "  the-nose-drop-in marker  x  -904.6               y  -607.4",
+      "  GS Bowl cliff stamp      x  -840.0 ..  -794.0   y  -855.0 ..  -767.0",
+      "  gsbowl-cliff-rock mesh   x  -839.0 ..  -793.6   y  -849.4 ..  -766.5",
+      "  box-chute lanes/stamp    x  -828.0 ..  -781.0   y  -276.8 ..  -184.0",
+      "  the Fingers (merged)     x  -826.6 ..  -705.7   y  -379.4 ..  -187.4",
+      "  olympic-lady marker      x  -685.1               y -1027.2",
+      "  staggered-ledge rock     x  -456.5 ..  -358.5   y  -977.9 ..  -841.8",
+      "  PLANT rdridge-shoulder   x  -354.9 ..  -159.7   y -1012.2 ..  -773.2",
+      "West-most is the 75 Chute wall at x -1211.0; south-most is the olympic-lady",
+      "top-station marker at y -1027.2. Plus Greg's 100 m margin, rounded outward",
+      "to a 10 m tick: x0 -1320 (109 m of margin past -1211), y0 -1130 (103 m past",
+      "-1027.2). Y IS ENU NORTHING and the KT massif is SOUTH of the village, so",
+      "every one of these features has a negative y and the south edge is the one",
+      "that had to travel — a sign flip here would have cropped the whole face out",
+      "while reporting success.",
+      "",
+      "CORE FOLLOWS on the same two edges, and that is a declaration rather than a",
+      "mechanism: the fence has been surface-aware since 2026-08-30 and its hard",
+      "box is CORE +/- 8,000 m, so nothing about the fence needed CORE to move.",
+      "What moved is the claim. CORE means \"the playable area\", and the west face",
+      "is ridden — the-nose-drop-in is a spawn point on it. Leaving CORE at -470",
+      "would have kept saying the face is backdrop after this build stopped",
+      "treating it as any. On the west and south edges CORE and BOX are now the",
+      "same line; the east and north keep D12's original nudge.",
+      "",
+      "COST, and it is the forcing function for 0052. The stamp raster goes 566 x",
+      "777 = 439,782 cells to 916 x 977 = 894,932, and 18 Float32Arrays of it goes",
+      "31,664,304 B to 64,435,104 B. `rasterHeapBytes` had to be raised for it (see",
+      "that field's own $note). This is the whole D23 argument arriving on cue:",
+      "one flat raster sized to a box cannot follow a world that keeps growing",
+      "west. specs/0051-0052's per-tile raster is the fix; this is the number that",
+      "makes it urgent."
+    ],
     "core": {
-      "x0": -470,
+      "x0": -1320,
       "x1": 430,
-      "y0": -730,
+      "y0": -1130,
       "y1": 500
     },
     "box": {
-      "x0": -620,
+      "x0": -1320,
       "x1": 430,
-      "y0": -730,
+      "y0": -1130,
       "y1": 740
     },
     "rasterPadM": 40,
     "markerFilter": {
-      "x0": -620,
+      "x0": -1320,
       "y1": 740,
-      "$keep": "D37a is POSITIONAL, and as of 2026-08-31 the allowlist is the WHOLE upper mountain (Greg). The positional rule was written when the crop was the product and everything west of CORE was backdrop nobody could reach; then all seven lifts started boarding and the fence became surface-aware, and the far west stopped being scenery — you can ride to it and ski down from it. A place you can stand on with no sign on it is the defect the crop was trying to avoid, not the tidiness it was trying to buy. So all 19 markers ship: the 9 that were always inside CORE, kt22, and these 9 upper-mountain ids by name.",
+      "$keep": "D37a is POSITIONAL, and as of 2026-08-31 the allowlist is the WHOLE upper mountain (Greg). The positional rule was written when the crop was the product and everything west of CORE was backdrop nobody could reach; then all seven lifts started boarding and the fence became surface-aware, and the far west stopped being scenery — you can ride to it and ski down from it. A place you can stand on with no sign on it is the defect the crop was trying to avoid, not the tidiness it was trying to buy. ALL 18 MARKERS SHIP, and that count has not changed since 2026-09-05; what changed with the crop widening the same day is HOW each one survives. x0 moved -620 -> -1320, so four ids the allowlist used to be carrying — kt22 (-913.4), gs-bowl (-981.3), olympic-lady (-685.1) and the-nose-drop-in (-904.6) — now clear the POSITIONAL half on their own, which is the honest outcome: the KT-22 west face they stand on is inside the export's ground now, not backdrop. Five still need their name, and all five are Gold Coast / High Camp, 2.6-3.0 km west and still outside any raster this build can afford: funitel-top (-2912.5), gold-coast (-2995), mountain-run (-2646.5), high-camp (-2579.3), gold-coast-park (~-2800). The four redundant ids STAY IN THE LIST ANYWAY — an allowlist entry for a marker that also passes positionally costs nothing and fails safe if the box ever narrows again, and the gate asserts this list by exact contents (gate.markersKept), so quietly shrinking it would be a second edit with no reason behind it. Earlier history: 19 markers / 9 kept until 2026-09-05, when Greg deleted the eagles-nest sign outright and the summit sign kt22 took the name; tuning req-20260905-175147 added the-nose-drop-in, the spawn point Greg asked for on that ridge, which the old positional rule missed by 285 m.",
       "keep": [
         "kt22",
-        "eagles-nest",
         "gs-bowl",
         "olympic-lady",
         "funitel-top",
         "gold-coast",
         "high-camp",
         "mountain-run",
-        "gold-coast-park"
+        "gold-coast-park",
+        "the-nose-drop-in"
       ]
     },
     "$fence": "D16.2 is SURFACE-AWARE as of 2026-08-30, and since specs/0003 the rule lives in bench/public/js/play/main.js rather than in a patch — the bench simply declares no `fence` for it to read. It no longer fires on POSITION at CORE+250: standing on real collision ground never trips it, at any coordinate, because four of the seven rideable top terminals are outside that box and riding to one used to fade you home in a loop. It fires on the absence of recoverable ground. fenceHardPadM is a backstop for coordinates no physics can produce, not a play boundary.",
+    "$voidProbe": [
+      "RE-DERIVED at the 2026-09-05 crop widening, because the obvious guess is",
+      "wrong and the next person to widen this box will make it too.",
+      "",
+      "verify.mjs [3b]'s west void case teleports to three-space x -6000 and leans",
+      "on controller.js clamping x/z into `collision.bounds` every frame: the body",
+      "lands on the grid's west edge, where the grid is wider than the terrain in",
+      "it and `groundAt` returns null. THE CLAMP LINE DID NOT MOVE WITH THE BOX.",
+      "Measured on both builds, byte-identical:",
+      "  collision.bounds  x0 -4527.2598  z0 -2994.6998  x1 1892.7402  z1 3425.3002",
+      "                    minY -84.3613  maxY 973.9617",
+      "The grid is sized to the collidable MESHES, and the crop adds and removes no",
+      "mesh — it changes what `groundZ` answers, which moves vertices inside meshes",
+      "that were already shipped. The west edge is set by the lift plant (cables to",
+      "x -3797, structures to x -3707) and the Gold Coast terrain, all of which the",
+      "old box shipped too. On the widened build the probe settles at x -4526.3 —",
+      "one metre inside the last cell — groundAt null, fence fires at 2.25 sim s.",
+      "",
+      "WHAT DID MOVE is the hard backstop below, because it is CORE +/- this pad:",
+      "x0 -8470 -> -9320, y0 -8730 -> -9130. Strictly more permissive, and 3.8 km",
+      "outside the clamp line, so it cannot reach the probe. Full numbers in",
+      "runs/palisades-front-A-merge-01/renders/export/PROGRESS-crop-widen.md §8."
+    ],
     "fenceHardPadM": 8000,
     "fenceVoidMarginM": 60,
     "fenceGraceMs": 2000
@@ -44,22 +123,96 @@
   "raster": {
     "mode": "crop",
     "RES": 2,
-    "RX0": -660,
-    "RY0": -770.5,
-    "RNX": 566,
-    "RNY": 777,
-    "arrays": 18,
-    "cells": 439782,
-    "bytes": 31664304,
+    "arrays": 20,
+    "pack": [
+      {
+        "bits": 16,
+        "name": "MC",
+        "max": 1
+      },
+      {
+        "bits": 8,
+        "name": "ML",
+        "max": 1
+      },
+      {
+        "bits": 16,
+        "name": "MW",
+        "max": 1
+      },
+      {
+        "bits": 8,
+        "name": "MR",
+        "max": 1
+      },
+      {
+        "bits": 8,
+        "name": "MX",
+        "max": 1
+      },
+      {
+        "bits": 8,
+        "name": "MWL",
+        "max": 0.92
+      },
+      {
+        "bits": 8,
+        "name": "MPG",
+        "max": 1
+      },
+      {
+        "bits": 8,
+        "name": "MPW",
+        "max": 0.85
+      }
+    ],
+    "packed": [
+      "MC",
+      "ML",
+      "MW",
+      "MR",
+      "MX",
+      "MWL",
+      "MPG",
+      "MPW"
+    ],
+    "release": [
+      {
+        "name": "GUARDF",
+        "readers": "GUARD_READERS"
+      }
+    ],
+    "released": [],
+    "releaseCandidates": [
+      "GUARDF"
+    ],
+    "retained": [
+      "GUARDF"
+    ],
+    "releaseDecided": true,
+    "f32Arrays": 12,
+    "RX0": -1360,
+    "RY0": -1170.5,
+    "RNX": 916,
+    "RNY": 977,
+    "cells": 894932,
+    "bytes": 51906056,
+    "f32Bytes": 71594560,
     "srcNX": 2077,
     "srcNY": 944,
     "srcCells": 1960688,
-    "srcBytes": 141169536
+    "srcBytes": 156855040,
+    "retainedWhy": {
+      "GUARDF": [
+        "the GS Bowl cliff bands (cliffAt -> guardAt)",
+        "the 75 Chute west wall (chute75WallAt -> guardAt)"
+      ]
+    }
   },
   "fence": {
-    "x0": -8470,
+    "x0": -9320,
     "x1": 8430,
-    "y0": -8730,
+    "y0": -9130,
     "y1": 8500,
     "graceMs": 2000,
     "voidMarginM": 60,
@@ -108,30 +261,30 @@
       }
     }
   },
-  "files": 85,
+  "files": 98,
   "sizes": {
-    "n": 84,
-    "raw": 7319748,
-    "gz": 1969552,
-    "br": 1635496,
+    "n": 97,
+    "raw": 7627282,
+    "gz": 2094849,
+    "br": 1745951,
     "byGroup": {
       "css": {
         "n": 4,
-        "raw": 65489,
-        "gz": 17429,
-        "br": 14803
+        "raw": 89102,
+        "gz": 25613,
+        "br": 21824
       },
       "html": {
         "n": 1,
         "raw": 10928,
-        "gz": 4889,
-        "br": 3958
+        "gz": 4890,
+        "br": 3973
       },
       "player": {
-        "n": 46,
-        "raw": 1209166,
-        "gz": 470706,
-        "br": 416578
+        "n": 50,
+        "raw": 1380707,
+        "gz": 539224,
+        "br": 477448
       },
       "rider:maps": {
         "n": 2,
@@ -139,17 +292,17 @@
         "gz": 82892,
         "br": 82648
       },
+      "scene:code": {
+        "n": 32,
+        "raw": 427182,
+        "gz": 176640,
+        "br": 150863
+      },
       "scene:data": {
         "n": 7,
         "raw": 4935805,
         "gz": 1085846,
         "br": 862903
-      },
-      "scene:code": {
-        "n": 23,
-        "raw": 314802,
-        "gz": 128046,
-        "br": 108314
       },
       "vendor": {
         "n": 1,
@@ -168,8 +321,8 @@
       {
         "file": "js/play/rider-mesh.js",
         "raw": 595978,
-        "gzip": 228455,
-        "brotli": 201247
+        "gzip": 228456,
+        "brotli": 201051
       },
       {
         "file": "scene/dem-upper.mjs",
@@ -203,33 +356,33 @@
       },
       {
         "file": "js/play/fx.js",
-        "raw": 53230,
-        "gzip": 21342,
-        "brotli": 18414
-      },
-      {
-        "file": "js/play/inventory.js",
-        "raw": 55898,
-        "gzip": 18856,
-        "brotli": 16686
+        "raw": 81227,
+        "gzip": 31758,
+        "brotli": 27619
       },
       {
         "file": "js/play/rider.js",
-        "raw": 40813,
-        "gzip": 17257,
-        "brotli": 15758
+        "raw": 49143,
+        "gzip": 20858,
+        "brotli": 19006
       },
       {
-        "file": "js/play/guide.js",
-        "raw": 46096,
-        "gzip": 17384,
-        "brotli": 15476
+        "file": "js/play/inventory.js",
+        "raw": 62869,
+        "gzip": 21308,
+        "brotli": 18764
       },
       {
-        "file": "js/play/main.js",
-        "raw": 39726,
-        "gzip": 15669,
-        "brotli": 14182
+        "file": "js/play/hud.js",
+        "raw": 55972,
+        "gzip": 20886,
+        "brotli": 18384
+      },
+      {
+        "file": "js/play/markers.js",
+        "raw": 50442,
+        "gzip": 19841,
+        "brotli": 17310
       }
     ],
     "perFile": [
@@ -242,8 +395,8 @@
       {
         "file": "js/play/rider-mesh.js",
         "raw": 595978,
-        "gzip": 228455,
-        "brotli": 201247
+        "gzip": 228456,
+        "brotli": 201051
       },
       {
         "file": "scene/dem-upper.mjs",
@@ -277,45 +430,57 @@
       },
       {
         "file": "js/play/fx.js",
-        "raw": 53230,
-        "gzip": 21342,
-        "brotli": 18414
-      },
-      {
-        "file": "js/play/inventory.js",
-        "raw": 55898,
-        "gzip": 18856,
-        "brotli": 16686
+        "raw": 81227,
+        "gzip": 31758,
+        "brotli": 27619
       },
       {
         "file": "js/play/rider.js",
-        "raw": 40813,
-        "gzip": 17257,
-        "brotli": 15758
+        "raw": 49143,
+        "gzip": 20858,
+        "brotli": 19006
       },
       {
-        "file": "js/play/guide.js",
-        "raw": 46096,
-        "gzip": 17384,
-        "brotli": 15476
+        "file": "js/play/inventory.js",
+        "raw": 62869,
+        "gzip": 21308,
+        "brotli": 18764
       },
       {
-        "file": "js/play/main.js",
-        "raw": 39726,
-        "gzip": 15669,
-        "brotli": 14182
-      },
-      {
-        "file": "js/play/ski.js",
-        "raw": 42827,
-        "gzip": 16000,
-        "brotli": 13984
+        "file": "js/play/hud.js",
+        "raw": 55972,
+        "gzip": 20886,
+        "brotli": 18384
       },
       {
         "file": "js/play/markers.js",
-        "raw": 41066,
-        "gzip": 15865,
-        "brotli": 13891
+        "raw": 50442,
+        "gzip": 19841,
+        "brotli": 17310
+      },
+      {
+        "file": "js/play/main.js",
+        "raw": 44304,
+        "gzip": 17394,
+        "brotli": 15724
+      },
+      {
+        "file": "js/play/guide.js",
+        "raw": 45362,
+        "gzip": 17539,
+        "brotli": 15616
+      },
+      {
+        "file": "scene/world.mjs",
+        "raw": 41675,
+        "gzip": 17512,
+        "brotli": 15489
+      },
+      {
+        "file": "js/play/ski.js",
+        "raw": 43028,
+        "gzip": 16112,
+        "brotli": 14052
       },
       {
         "file": "rider/rider-ach.webp",
@@ -324,10 +489,16 @@
         "brotli": 13046
       },
       {
-        "file": "scene/world.mjs",
-        "raw": 33576,
-        "gzip": 14153,
-        "brotli": 12454
+        "file": "scene/forest.mjs",
+        "raw": 34243,
+        "gzip": 14028,
+        "brotli": 11609
+      },
+      {
+        "file": "js/play/chunks.js",
+        "raw": 30607,
+        "gzip": 12404,
+        "brotli": 11362
       },
       {
         "file": "scene/kt-runs-data.mjs",
@@ -342,10 +513,16 @@
         "brotli": 11012
       },
       {
+        "file": "css/play.css",
+        "raw": 45600,
+        "gzip": 12360,
+        "brotli": 10645
+      },
+      {
         "file": "js/play/surprise.js",
-        "raw": 27903,
-        "gzip": 11856,
-        "brotli": 10236
+        "raw": 28616,
+        "gzip": 12111,
+        "brotli": 10463
       },
       {
         "file": "js/play/bike.js",
@@ -354,46 +531,58 @@
         "brotli": 9718
       },
       {
+        "file": "scene/layout.mjs",
+        "raw": 24652,
+        "gzip": 10043,
+        "brotli": 8487
+      },
+      {
         "file": "scene/sector-data.mjs",
         "raw": 32060,
         "gzip": 10828,
         "brotli": 8449
       },
       {
-        "file": "scene/layout.mjs",
-        "raw": 24448,
-        "gzip": 9980,
-        "brotli": 8444
+        "file": "js/play/rig/clips.js",
+        "raw": 20949,
+        "gzip": 8976,
+        "brotli": 8240
       },
       {
-        "file": "js/play/hud.js",
+        "file": "scene/stamp-tile.mjs",
         "raw": 23909,
-        "gzip": 9266,
-        "brotli": 8266
+        "gzip": 9248,
+        "brotli": 8084
+      },
+      {
+        "file": "scene/ground.mjs",
+        "raw": 20849,
+        "gzip": 9211,
+        "brotli": 8009
       },
       {
         "file": "js/play/snowball.js",
-        "raw": 19859,
-        "gzip": 8227,
-        "brotli": 7275
+        "raw": 19891,
+        "gzip": 8243,
+        "brotli": 7294
       },
       {
         "file": "scene/park.mjs",
-        "raw": 17416,
-        "gzip": 7879,
-        "brotli": 7095
+        "raw": 18040,
+        "gzip": 8102,
+        "brotli": 7278
       },
       {
         "file": "scene/terrain.mjs",
-        "raw": 16501,
-        "gzip": 7455,
-        "brotli": 6506
+        "raw": 16841,
+        "gzip": 7622,
+        "brotli": 6663
       },
       {
-        "file": "css/play.css",
-        "raw": 31135,
-        "gzip": 7315,
-        "brotli": 6300
+        "file": "js/play/controller.js",
+        "raw": 16519,
+        "gzip": 7013,
+        "brotli": 6413
       },
       {
         "file": "scene/kt-rocks.mjs",
@@ -402,10 +591,28 @@
         "brotli": 6274
       },
       {
-        "file": "scene/ground.mjs",
-        "raw": 14084,
-        "gzip": 6068,
-        "brotli": 5387
+        "file": "js/play/tricks.js",
+        "raw": 17370,
+        "gzip": 6669,
+        "brotli": 6199
+      },
+      {
+        "file": "scene/tiles.mjs",
+        "raw": 14137,
+        "gzip": 6447,
+        "brotli": 5794
+      },
+      {
+        "file": "css/intro.css",
+        "raw": 17548,
+        "gzip": 6515,
+        "brotli": 5434
+      },
+      {
+        "file": "js/play/collision-router.js",
+        "raw": 13251,
+        "gzip": 5873,
+        "brotli": 5280
       },
       {
         "file": "js/play/snowmobile.js",
@@ -414,10 +621,16 @@
         "brotli": 5022
       },
       {
-        "file": "js/play/rig/clips.js",
-        "raw": 10381,
-        "gzip": 4788,
-        "brotli": 4460
+        "file": "scene/chunk-worker.mjs",
+        "raw": 11282,
+        "gzip": 5126,
+        "brotli": 4649
+      },
+      {
+        "file": "js/play/collision.js",
+        "raw": 10804,
+        "gzip": 5170,
+        "brotli": 4633
       },
       {
         "file": "scene/kit.mjs",
@@ -432,12 +645,6 @@
         "brotli": 4358
       },
       {
-        "file": "js/play/controller.js",
-        "raw": 10633,
-        "gzip": 4631,
-        "brotli": 4283
-      },
-      {
         "file": "js/play/tracks.js",
         "raw": 11169,
         "gzip": 4643,
@@ -450,16 +657,16 @@
         "brotli": 4107
       },
       {
-        "file": "scene/forest.mjs",
-        "raw": 9901,
-        "gzip": 4514,
-        "brotli": 3984
+        "file": "js/play/audio.js",
+        "raw": 13027,
+        "gzip": 4496,
+        "brotli": 4005
       },
       {
         "file": "index.html",
         "raw": 10928,
-        "gzip": 4889,
-        "brotli": 3958
+        "gzip": 4890,
+        "brotli": 3973
       },
       {
         "file": "scene/poulsen.mjs",
@@ -468,40 +675,22 @@
         "brotli": 3832
       },
       {
-        "file": "js/play/audio.js",
-        "raw": 12375,
-        "gzip": 4282,
-        "brotli": 3808
-      },
-      {
         "file": "scene/funitel.mjs",
         "raw": 10318,
         "gzip": 4195,
         "brotli": 3752
       },
       {
-        "file": "js/play/tricks.js",
-        "raw": 9665,
-        "gzip": 3857,
-        "brotli": 3621
+        "file": "js/play/lift.js",
+        "raw": 8951,
+        "gzip": 3904,
+        "brotli": 3609
       },
       {
         "file": "scene/lib/core.mjs",
         "raw": 8633,
         "gzip": 3935,
         "brotli": 3522
-      },
-      {
-        "file": "js/play/collision.js",
-        "raw": 7998,
-        "gzip": 3770,
-        "brotli": 3428
-      },
-      {
-        "file": "js/play/lift.js",
-        "raw": 8465,
-        "gzip": 3708,
-        "brotli": 3426
       },
       {
         "file": "scene/runs-data.mjs",
@@ -528,6 +717,12 @@
         "brotli": 3019
       },
       {
+        "file": "scene/staggered-ledges-palisades.mjs",
+        "raw": 7268,
+        "gzip": 3358,
+        "brotli": 2998
+      },
+      {
         "file": "js/play/canopy.js",
         "raw": 9687,
         "gzip": 3309,
@@ -538,6 +733,12 @@
         "raw": 6855,
         "gzip": 3139,
         "brotli": 2838
+      },
+      {
+        "file": "js/play/touch.js",
+        "raw": 7496,
+        "gzip": 3238,
+        "brotli": 2831
       },
       {
         "file": "scene/lift.mjs",
@@ -552,22 +753,22 @@
         "brotli": 2793
       },
       {
-        "file": "css/intro.css",
-        "raw": 8400,
-        "gzip": 3376,
-        "brotli": 2758
-      },
-      {
         "file": "js/play/glider.js",
         "raw": 5999,
         "gzip": 2938,
         "brotli": 2682
       },
       {
-        "file": "js/play/touch.js",
-        "raw": 6775,
-        "gzip": 2925,
-        "brotli": 2577
+        "file": "scene/box-chute.mjs",
+        "raw": 5689,
+        "gzip": 2837,
+        "brotli": 2646
+      },
+      {
+        "file": "js/play/rail.js",
+        "raw": 5898,
+        "gzip": 2807,
+        "brotli": 2609
       },
       {
         "file": "js/play/boost.js",
@@ -577,9 +778,9 @@
       },
       {
         "file": "js/play/spawn.js",
-        "raw": 5055,
-        "gzip": 2341,
-        "brotli": 2136
+        "raw": 5371,
+        "gzip": 2495,
+        "brotli": 2283
       },
       {
         "file": "js/play/outfits/armour.js",
@@ -588,16 +789,40 @@
         "brotli": 2088
       },
       {
+        "file": "js/play/loader.js",
+        "raw": 5488,
+        "gzip": 2396,
+        "brotli": 2080
+      },
+      {
         "file": "scene/village.mjs",
         "raw": 5102,
         "gzip": 2246,
         "brotli": 1993
       },
       {
+        "file": "scene/signs.mjs",
+        "raw": 5063,
+        "gzip": 2196,
+        "brotli": 1985
+      },
+      {
+        "file": "js/play/speedo.js",
+        "raw": 4351,
+        "gzip": 2158,
+        "brotli": 1955
+      },
+      {
         "file": "js/play/intro.js",
-        "raw": 4786,
-        "gzip": 2133,
-        "brotli": 1841
+        "raw": 4826,
+        "gzip": 2155,
+        "brotli": 1836
+      },
+      {
+        "file": "scene/feature-index.mjs",
+        "raw": 3762,
+        "gzip": 1841,
+        "brotli": 1677
       },
       {
         "file": "js/play/outfits/race.js",
@@ -606,28 +831,10 @@
         "brotli": 1673
       },
       {
-        "file": "js/play/loader.js",
-        "raw": 4213,
-        "gzip": 1908,
-        "brotli": 1649
-      },
-      {
         "file": "css/speedo.css",
         "raw": 4185,
         "gzip": 2036,
         "brotli": 1638
-      },
-      {
-        "file": "js/play/speedo.js",
-        "raw": 3567,
-        "gzip": 1795,
-        "brotli": 1621
-      },
-      {
-        "file": "scene/signs.mjs",
-        "raw": 3469,
-        "gzip": 1479,
-        "brotli": 1319
       },
       {
         "file": "js/play/rocket.js",
@@ -636,10 +843,22 @@
         "brotli": 1299
       },
       {
+        "file": "scene/chute75-rock.mjs",
+        "raw": 1842,
+        "gzip": 1068,
+        "brotli": 996
+      },
+      {
         "file": "scene/upper-props.mjs",
         "raw": 3022,
         "gzip": 1221,
         "brotli": 967
+      },
+      {
+        "file": "scene/gsbowl-cliffs.mjs",
+        "raw": 1733,
+        "gzip": 1012,
+        "brotli": 940
       },
       {
         "file": "js/play/outfits/shell.js",
@@ -684,10 +903,22 @@
         "brotli": 506
       },
       {
+        "file": "js/play/recorder.js",
+        "raw": 976,
+        "gzip": 542,
+        "brotli": 494
+      },
+      {
         "file": "scene/rock.mjs",
         "raw": 754,
         "gzip": 477,
         "brotli": 444
+      },
+      {
+        "file": "scene/frames.mjs",
+        "raw": 790,
+        "gzip": 471,
+        "brotli": 434
       },
       {
         "file": "js/play/atlas.js",
@@ -715,15 +946,15 @@
       },
       {
         "file": "js/play/flags.js",
-        "raw": 496,
-        "gzip": 346,
-        "brotli": 299
+        "raw": 539,
+        "gzip": 379,
+        "brotli": 326
       },
       {
         "file": "js/play/dev.js",
         "raw": 562,
-        "gzip": 342,
-        "brotli": 295
+        "gzip": 340,
+        "brotli": 291
       },
       {
         "file": "js/play/outfits/after.js",
@@ -742,8 +973,9 @@
   "minify": {
     "enabled": true,
     "esbuild": "0.24.2",
-    "files": 63,
+    "files": 74,
     "exempt": [
+      "public/scene/stamp-tile.mjs",
       "public/scene/pou-data.mjs",
       "public/scene/kt-runs-data.mjs",
       "public/scene/runs-data.mjs",
@@ -755,14 +987,15 @@
       "public/scene/sector-canopy.mjs",
       "public/scene/sector-rock.mjs",
       "public/js/play/dev.js",
+      "public/js/play/recorder.js",
       "public/js/play/rider-mesh.js",
       "public/js/play/rig/clips.js",
       "public/vendor/three.module.min.js"
     ],
-    "rawBefore": 2418925,
-    "rawAfter": 853601,
-    "brotliBefore": 744076,
-    "brotliAfter": 301348,
+    "rawBefore": 3358986,
+    "rawAfter": 1102069,
+    "brotliBefore": 1034106,
+    "brotliAfter": 392609,
     "consts": {
       "LOOK": 0.0022
     }
@@ -792,14 +1025,332 @@
       "its own module. If you want the gate noisy about growth, tighten THIS one",
       "(a 950,000 would still clear today's harvest by 44,556) and leave",
       "collision.js alone — a gate cap below the harvester's cap only reports, but",
-      "a harvester cap below the truth silently drops geometry."
+      "a harvester cap below the truth silently drops geometry.",
+      "",
+      "RE-MEASURED at the req-20260905-175655 pin (Greg, 2026-09-05: \"Thin out",
+      "trees to 15% (red). Steep staggered cliffs with 5 ft drops blue.\"), on a",
+      "green 82-check gate: 1,879,928 triangles of 1,900,000 — 20,072 of headroom —",
+      "and 914,222 collidable of 1,200,000. Source forest census over the same",
+      "change: 24,696 -> 24,535 placements, -161 (work/tune_175655_forest.mjs).",
+      "The growth in the collidable set since the 0025 measurement is two merged",
+      "rock meshes: gsbowl-cliff-rock (req-20260905-063533) and",
+      "palisades-staggered-ledge-rock (req-20260905-175655, 1,398 triangles for",
+      "thirteen 1.5 m ledges, 68-186 each). BOTH NUMBERS BELOW ARE STILL CEILINGS",
+      "AND NEITHER MOVED: the cap binds at neither, and 175655's ledges cost less",
+      "than the 4,000-odd triangles its own 161 removed trees gave back."
+    ],
+    "$triangles": [
+      "spec 0051 §4.5 redefines this as resident triangles at the chunking merge;",
+      "raised by 33013 for req-20260905-175418 — Greg, 2026-09-05.",
+      "",
+      "req-20260905-175418 (\"Add trees in green area\") plants 402 firs on the bare",
+      "shoulder east of Red Dog Ridge, at the density the CORE passes would have",
+      "grown there — +32,396 triangles, ~81 a tree. The world measured 1,881,478",
+      "before it (18,522 of headroom under the old 1,900,000) and 1,913,874 after,",
+      "so the stand does not fit under the old cap. Greg's instruction was to plant",
+      "at full natural density rather than plant to the cap, and to raise this",
+      "literal to measured + 1 %. Collidable triangles are UNCHANGED at 912,824:",
+      "a fir is not collidable."
+    ],
+    "$measured": [
+      "specs/0051 §10.13 — EVERY FIELD BELOW THAT 0051 MOVED CITES THIS RUN, and",
+      "no field was written before it (D-6: 'measure before any cap is written').",
+      "",
+      "THE RUN. 2026-09-05, wave 3c, on chunk/w0-3c off chunk/w0 @ d686f06",
+      "(waves 0, 1, 2 and 3a + 3b merged). EXPORT BUILDS, both worlds, never the",
+      "bench (§0.3, D-2):",
+      "  node tools/export-red-dog/build.mjs --world <w> --pin HEAD --out <dir>",
+      "then §7.4 check 8's traversal at its spec duration:",
+      "  --soak 300 --tripwire 60",
+      "Renderer d3d11 — ANGLE (NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D59),",
+      "D3D11), quiet box, the two worlds run sequentially. Series: 602 samples",
+      "per world at 500 ms, of usedJSHeapSize, world.report.stats.gpuBytes,",
+      "the collision router's RESIDENT collidableTriangles, drawCalls and",
+      "triangles. Raw series in the run's soak-3c.json; the table is in",
+      "runs/palisades-front-A-merge-01/renders/chunking/PROGRESS-0051-3c.md.",
+      "",
+      "WHAT MADE THIS TRAVERSAL DIFFERENT FROM THE ONE WAVE 1a REPORTED. Check 8",
+      "held `{ w: true }` and controller.js:228-236 names the key `forward`, so",
+      "every earlier 'traverse' was a parked rider — 1a said so of its own",
+      "red-dog leg (19.4 m of net displacement in 300 s). It now rides each lift",
+      "the world declares and skis the fall line off every unload:",
+      "  red-dog  5,502 m of path, 3,707 m net, max 29.00 m/s, 7 lift legs of 7",
+      "  siberia  2,834 m of path,   241 m net, max 24.73 m/s, 9 legs of 1 lift",
+      "and at --soak 300 the row ASSERTS a 1,500 m path floor, so a soak that",
+      "did not move can no longer be read as one that did."
     ],
     "drawCalls": 250,
-    "triangles": 1900000,
+    "triangles": 1933013,
     "collidableTriangles": 1200000,
+    "$collidableTrianglesResident": [
+      "specs/0051 D-11, §7.1, §11 Q2 — THE RESIDENT CAP, AND IT IS NOT 900,000.",
+      "",
+      "`collidableTriangles` above is the WHOLE-WORLD HARVEST cap and is",
+      "unchanged at 1,200,000 (collision.js:196 holds the same number; §7.1).",
+      "This is the other one D-11 asked 3c to add: the soup ACTUALLY RESIDENT",
+      "around the player, read from collision-router.js:547-556's residency()",
+      "every 500 ms across the 300 s traversal.",
+      "",
+      "Measured peak: red-dog 1,796,906, siberia 1,188,527. Cap = the higher",
+      "peak + 10 % = 1,976,597, the way D-11 words it.",
+      "",
+      "IT IS LARGER THAN THE WHOLE-WORLD HARVEST, AND THAT IS THE DESIGN. The",
+      "old soup harvested the whole mountain at the terrain's shipped density;",
+      "the ring builds its collision from the TILE LATTICE, 8,192 collidable",
+      "triangles per L0 tile at 1.00 m spacing (§3.5) against a whole-world",
+      "harvest that never sampled the ground that finely. 64 L0 + 48 L1 tiles of",
+      "terrain alone is 622,592 — which is exactly the series' MINIMUM (619,620,",
+      "drained at spawn). The rest is props and trees inside the guaranteed",
+      "384 m band. Median 1,325,705, p95 1,794,100: this is a sustained level,",
+      "not a teleport transient.",
+      "",
+      "§11 Q2 proposed 900,000 and the spec refused to write it (D-11: 'Q2's",
+      "900,000 is not written'). It was half the truth. Greg may tighten this",
+      "later — the lever is L1 decimation (§3.5) or prop density inside 384 m,",
+      "and either is a detail-spend decision (wave 4a), not a harness one."
+    ],
+    "collidableTrianglesResident": 1976597,
+    "$transferBrotliBytes": [
+      "D23. THE ONLY PRODUCT CAP IN THIS BLOCK, AND IT DOES NOT MOVE: 2,621,440",
+      "B on the wire, brotli, measured at build. On the 2026-09-06 export build",
+      "at --pin HEAD sizes.br reads 1,745,951 — 67 % of D23, 875,489 B spare.",
+      "",
+      "specs/0051 §10.11 carries a SECOND line beside it and that one is NOT a",
+      "product cap: sizes.br less sizes.byGroup['rider:maps'].br — the world +",
+      "player bytes with the two baked rider maps excluded, per",
+      "specs/0050-DECISIONS §1, so the rider's own ceilings and this world budget",
+      "do not fight over one number. It was drawn 2026-09-05 from §0.4 M7's",
+      "measured 1,470,208 + 8.8 %, rounded up to a 10 k tick: 1,600,000 red-dog /",
+      "1,400,000 siberia. A no-regression line, not a physical constraint.",
+      "",
+      "D-17, 2026-09-06 — THE LINE IS RE-BASED, by the rule that drew it, off",
+      "today's measurement. This is the D-16 precedent applied a fourth time:",
+      "a planning gauge is re-derived from measurement, never relaxed by hand to",
+      "make a run green.",
+      "  measured  1,745,951 - 82,648 (rider:maps) = 1,663,303 B",
+      "            (over the old 1,600,000 by 63,303 B, 3.96 %)",
+      "  + 8.8 %   1,663,303 x 1.088 = 1,809,673.66",
+      "  10 k tick 1,810,000   <- the red-dog line from 2026-09-06",
+      "Siberia moves the same way, off its own measurement, to 1,530,000 (see",
+      "worlds/siberia.json).",
+      "",
+      "ATTRIBUTION, because on a no-regression line who spent the bytes IS the",
+      "question. Of red-dog's 57,869 B of regression since the line was drawn,",
+      "0051 owns 19,299 B (W4FIX1's per-file decomposition, rebuilt against the",
+      "wave-3 gate commit 6a12333); 38,570 B belongs to 0059/0060, 0055, 0057 and",
+      "rider/v3, none of which read this row. The last +13,420 B landed on BOTH",
+      "worlds with the rider/v3 tip 9fe39b2, merged 2026-09-06, and that is what",
+      "took siberia over its line for the first time — 0051 owns NONE of",
+      "siberia's regression. Deleting every byte 0051 has ever added would still",
+      "leave red-dog 43,999 B over the old 1,600,000.",
+      "",
+      "AND D23 STAYS THE ONLY PRODUCT CAP. 1,745,951 of 2,621,440 is 67 % with",
+      "875,489 B spare, so nothing a player fetches is anywhere near a limit; the",
+      "line above is a growth tracker for the next spec that ships bytes here."
+    ],
     "transferBrotliBytes": 2621440,
-    "rasterHeapBytes": 34000000,
-    "usedJSHeapBytes": 420000000,
-    "buildMs": 20000
+    "$rasterHeapBytes": [
+      "specs/0051 §7.3 / §10.9 / B.6 keep this field and tighten it once the",
+      "§3.3 reclaim lands. 34000000 was the pre-0051 ceiling and it was being",
+      "VIOLATED: the true heap was 439782 x 20 x 4 = 35182560 B (§0.4 M5, over",
+      "by 1182560), while verify.mjs printed 31664304 from a stale arrays: 18.",
+      "assertRasterHeap() now makes that particular lie impossible.",
+      "",
+      "The spec's 23000000 was computed with all 8 red-dog channels at Uint8.",
+      "Two of them, MC and MW, move 2 and 32 of 24845 trees in the forest RNG",
+      "at 8 bits (check 1 stays 0 diff; the stream order does not) and D-3",
+      "authorises exactly two C15/C16 re-records, in waves 1b and 3a. They ship",
+      "at Uint16, so the measured export-build heap is 23748228 B:",
+      "  439782 cells x (11 f32 + 2 u16 + 6 u8) = 54 B/cell, GUARDF released.",
+      "Siberia measures 470016 x (9 f32 + 1 u16 + 4 u8) = 42 B/cell = 19740672.",
+      "24000000 is the smallest round cap both worlds clear (red-dog by 251772,",
+      "1.05 %). It is a CAP, shared by both worlds like every other budget row —",
+      "not a target. If Greg takes the other branch (MC/MW back to 8 bits and a",
+      "third re-record), this goes to 23000000 and the note above it changes.",
+      "",
+      "3c re-checked it against the build (§10.9): build-report.json raster.bytes",
+      "reads 23748228 red-dog / 19740672 siberia. UNCHANGED by this wave.",
+      "",
+      "MERGE 2026-09-05 (rider/v3 326a083 -> chunk/w0). The export crop widened",
+      "west onto the KT-22 face (x -1320..430 / y -1130..740, Greg: \"widen now",
+      "— widen as chunking is coming\"). rider/v3 raised this field to",
+      "70,880,000 for the UN-CHUNKED bridge, where one flat array is sized to",
+      "the whole crop box: 894,932 cells x 18 Float32 = 64,435,104 B. That",
+      "literal is NOT taken here. On chunk/w0 the raster is per-tile (§3.3), so",
+      "the cap is a per-tile figure and the crop box does not multiply it; the",
+      "24,000,000 above stands, re-measured against build-report.json",
+      "raster.bytes on the merged tree (see the merge note in",
+      "renders/chunking/PROGRESS-0051-int.md). rider/v3's usedJSHeapBytes",
+      "420,000,000 and buildMs 20,000 were likewise not taken: 3c's measured",
+      "395,513,793 and D-13's 24,714 are the derived ones and are tighter.",
+      "",
+      "RE-MEASURED ON THE MERGED TREE, and 24,000,000 DID NOT HOLD. Waves 1-4",
+      "ship on the whole-map raster (D-2: 'the per-tile stamp replay is built",
+      "behind a flag as a MEASUREMENT, not a kill gate ... Waves 1-4 ship on the",
+      "whole-map raster'), so this cap is still sized to the CROP BOX on",
+      "chunk/w0 and the widened box multiplies it exactly the way it multiplies",
+      "the un-chunked one. build-report.json raster.bytes on the merge commit:",
+      "  894,932 cells x (11 f32 + 2 u16 + 6 u8) = 54 B/cell = 48,326,328 B",
+      "against 439,782 x 54 = 23,748,228 before the widen. 2.035x, which is the",
+      "cell count and nothing else: arrays 20, the same 8 packed channels, the",
+      "same GUARDF release. RAISED to measured + 10 % = 53,158,961, rounded up",
+      "to a 10 k tick: 53,160,000. Greg, 2026-09-05: \"widen now — widen as",
+      "chunking is coming\" (D-9/D-11/D-13 house style: the number is measured",
+      "off the build, the rounding is stated, the decision is cited).",
+      "",
+      "STILL 17.9 MB UNDER rider/v3's 70,880,000 for the same box, because the",
+      "chunked branch packs 8 of the 20 channels (54 B/cell, W0's D-9 work)",
+      "where the un-chunked bridge carries 18 raw Float32 (72 B/cell,",
+      "64,435,104 B). SIBERIA IS NOT RAISED: its crop did not move and its",
+      "raster still measures 19,740,672 B against the 24,000,000 in",
+      "worlds/siberia.json. The two worlds carry different literals for the",
+      "first time; 0052's per-tile raster is what makes them one number again,",
+      "and this field is a bridge until then, not a new ceiling.",
+      "",
+      "D-15, 2026-09-05 — AND THE 54 B/cell ABOVE IS NOW 58. The widened crop",
+      "put the two query-time readers of GUARDF (cliffAt's GS Bowl cliff bands,",
+      "chute75WallAt's 75 Chute west wall) INSIDE the raster, so the channel is",
+      "no longer released and the shipped raster is 12 f32 + 2 u16 + 6 u8:",
+      "  894,932 cells x 58 B/cell = 51,906,056 B",
+      "against the 48,326,328 measured with it released. THE CAP IS NOT RAISED",
+      "AGAIN: 53,160,000 was set from measured + 10 % before this was known and",
+      "51,906,056 clears it by 1,253,944 B (2.4 %). See raster.$release."
+    ],
+    "rasterHeapBytes": 53160000,
+    "$usedJSHeapBytes": [
+      "specs/0051 §11 Q3, D-6 — WHAT REPLACED 420,000,000, and why it took until",
+      "wave 3c to write it.",
+      "",
+      "420,000,000 was never measured against a moving player. §6.6: the only",
+      "number the spec had was a 3-minute sample in which the rider PARKED after",
+      "leg 1 and the heap FELL 27.6 MB. Q3 asked Greg to leave the field loose",
+      "rather than tighten it on that sample, and D-6 forbade writing anything",
+      "until check 8's curve existed.",
+      "",
+      "It exists now, on a rider that actually crosses the mountain. Peak",
+      "usedJSHeapSize over the 300 s traversal:",
+      "  red-dog  359,557,994 B   (two runs: 359,557,994 and 315,747,577;",
+      "                            median 293,524,695, min 272,431,070)",
+      "  siberia  246,599,780 B",
+      "Cap = the highest peak seen on either world + 10 % = 395,513,793.",
+      "",
+      "A TIGHTENING OF 24,486,207 B, and a real one: the old cap had 60 MB of",
+      "slack over a number nobody had ever pushed. HEADS-UP, stated rather than",
+      "smoothed over: the heap is a GC sawtooth and the two red-dog runs of the",
+      "same bytes differ by 43.8 MB (14 %), so +10 % over the worst sample seen",
+      "is roughly one sawtooth of headroom. If this row starts flaking, the",
+      "answer is a second measured peak and a re-derived cap — not a nudge.",
+      "",
+      "W4FIX1, 2026-09-05 — RE-DERIVED, by the rule the paragraph above states.",
+      "395,513,793 was measured on the PRE-WIDEN crop and has been unmeasurable",
+      "since: the widened red-dog export build did not boot (the GUARDF release",
+      "meeting the widened crop, D-15) so no check-8 curve existed for it until",
+      "this agent unblocked the boot. Wave 4a's green sheet, the last real one,",
+      "reads RX0 -660.",
+      "",
+      "Three check-8 runs on the widened crop, export builds --pin HEAD, --soak",
+      "300, ANGLE/d3d11 on the RTX 5060, box quiet:",
+      "  437,439,440 B   602 samples, 5,290 m of path, 3,959 m net, 7/7 lift legs",
+      "  400,776,454 B   602 samples, 5,559 m of path, 3,945 m net, 7/7 lift legs",
+      "  446,253,245 B   602 samples, 5,558 m of path, 3,959 m net, 7/7 lift legs",
+      "Spread 45,476,791 B (11.3 %) on identical bytes — the same GC sawtooth the",
+      "paragraph above measured at 14 %, not a trend. Three samples, because two",
+      "put the cap under the third.",
+      "",
+      "WHY IT ROSE, arithmetic before rounding. The whole-map raster (waves 1-4",
+      "ship on it, D-2) went 23,748,228 -> 51,906,056 B when the crop widened",
+      "and GUARDF stayed resident: +28,157,828 B, 33 % of the rise, and it is",
+      "not reclaimable before 0052's per-tile raster. The rest is the LF ring:",
+      "the widened anchor spans 8 x 6 LF tiles where it spanned 7 x 5, and",
+      "resident LF forest instances went 3,736 -> 14,952 (check 7's per-level",
+      "table). Every other cap in the same check still holds at every one of the",
+      "602 samples: gpu 84,207,892 <= 89,371,995, collidable resident 1,814,027",
+      "<= 1,976,597, draws 147 <= 250, tris 1,020,880 <= 1,933,013. The",
+      "drained-at-spawn reading in verify's [3] block is 290.29 MB.",
+      "",
+      "Cap = the highest peak seen on either world + 10 %, unchanged as a rule:",
+      "  446,253,245 x 1.1 = 490,878,570.",
+      "The run recorded above PASSED at the interim 481,183,384; raising a cap",
+      "cannot turn a green row red, so this literal is not re-gated for its own",
+      "sake — the gated evidence is 446,253,245 <= 481,183,384 <= 490,878,570.",
+      "Siberia is NOT raised — its crop did not move and its measured peak is",
+      "277,244,515 against the 395,513,793 in worlds/siberia.json. Like",
+      "rasterHeapBytes, the two worlds carry different literals until 0052's",
+      "per-tile raster makes them one number again; this is a bridge, not a new",
+      "ceiling, and it is the ONLY cap W4FIX1 moved."
+    ],
+    "usedJSHeapBytes": 490878570,
+    "$gpuBytes": [
+      "specs/0051 §7.3, §6.2, critic A.7 — 'no VRAM number anywhere' was the",
+      "finding; this is the cap that answers it. Wave 1a #9 exposed the series",
+      "on world.report.stats.gpuBytes (summed uploaded attribute byteLength +",
+      "texture bytes) and 3c is the first wave allowed to cap it (D-6).",
+      "",
+      "Peak over the 300 s traversal: red-dog 81,247,268 B, siberia 30,447,624 B.",
+      "Cap = 81,247,268 + 10 % = 89,371,995.",
+      "",
+      "It does not move: all 602 red-dog samples read the same 81,247,268. That",
+      "is the design working — §2.2's pools and §2.3's 144/160 slots are",
+      "allocated once and rewritten in place, so the GPU side of a traverse is",
+      "flat by construction. A gpuBytes series that starts to CLIMB across a",
+      "traverse is the signal this row exists to catch.",
+      "",
+      "§6.2 estimated 52,775,536 B for T1 plus the world-independent rider",
+      "textures. The measured 81.2 MB is the whole scene, T0 geometry included,",
+      "so the two are not the same accounting; this is the measured one."
+    ],
+    "gpuBytes": 89371995,
+    "$buildMs": [
+      "specs/0051 §7.3, §9.2 #8, critic A.14 — THIS FIELD CHANGED MEANING, and",
+      "the number changed with it. Read both halves before comparing it to an",
+      "older log.",
+      "",
+      "WHAT IT USED TO MEAN: world.report.stats.buildMs, the wall time inside",
+      "buildWorld() alone — 1,966 ms on red-dog against a 20,000 cap. The player",
+      "waits for nav -> window.__playerReady, which is a different clock: 16,309",
+      "ms wall on the same build (§0.4 M8). A cap of 20,000 on the 1,966 ms clock",
+      "was measuring the wrong thing with 18 s of slack, and §7.3 records that",
+      "the design's proposed 12,000 would have failed on day one against the",
+      "clock a player actually feels.",
+      "",
+      "WHAT IT MEANS NOW: navigation start -> window.__playerReady, verbatim",
+      "§7.3. verify.mjs's boot() defines an accessor on window.__playerReady",
+      "before any page script runs and stamps performance.now() (whose origin IS",
+      "navigation start) when main.js:2810 sets it — so this is the definition",
+      "measured, not a harness poll interval rounded off. main.js is not touched.",
+      "",
+      "MEASURED, COLD (first page of the process, empty HTTP and V8 code caches —",
+      "what a first-time visitor gets):",
+      "  red-dog  19,771 ms      siberia  12,812 ms",
+      "A page opened later in the same browser reads ~3,900 ms warm; the cap is",
+      "written against the cold one, which is the honest one.",
+      "Cap = 19,771 + 25 % = 24,714 ms.",
+      "",
+      "D-18, 2026-09-06 — WHICH BOOT THIS ROW MEANS IS NOW SAID OUT LOUD, AND IT",
+      "IS THE WARM ONE. GATE-W4 measured the row four times through verify.mjs's",
+      "own serve()/newBrowser()/boot() and found it BIMODAL, not noisy:",
+      "  first boot in a fresh node process   33,969 ms   34,831 ms",
+      "  second boot in the same process       9,284 ms    9,205 ms",
+      "across a 2x swing in box load (100 % / 46 %) — the readings pair off by",
+      "position in the process, not by load. The first boot pays a ~25 s",
+      "browser/shader-cache cold start the second does not, and the 24,714 cap",
+      "sits BETWEEN the two modes, so the row as written passed or failed on",
+      "which boot of the run happened to be measured. Check 8's warm reading in",
+      "the same run was 8,467 ms — the warm mode exactly.",
+      "",
+      "That is a measurement-definition defect in the harness, not a build",
+      "regression, and it is fixed in verify.mjs's [3] section: [3] now boots",
+      "ONCE TO PRIME (discarded, printed as an informational cold-start reading)",
+      "and gates the SECOND boot. THE CAP DID NOT MOVE — warm 9,284 + 10 % is",
+      "10,213, far under 24,714, and D-6 does not let a fix agent tighten a cap",
+      "on the way past. Warm is also the mode check 8 has always read, so the",
+      "two rows now measure the same clock at last.",
+      "",
+      "buildWorld()'s own figure is still measured and still printed on the D23",
+      "row beside this one — as a reading, not a cap. Losing it would lose the",
+      "one number that says whether a slow boot is the world build or the 9.2 s",
+      "of module fetch/eval that 1a's timeline found ahead of it."
+    ],
+    "buildMs": 24714
   }
 }
