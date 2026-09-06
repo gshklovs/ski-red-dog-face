@@ -2,8 +2,8 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "world": "red-dog",
-  "pin": "31626d98b88eb96c2822a1a5c2d91531f45e1e3c",
-  "builtAt": "2026-09-06T18:38:33.687Z",
+  "pin": "caeed51af2b2131c81c58587736e6e3ff6374354",
+  "builtAt": "2026-09-06T19:23:59.557Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
