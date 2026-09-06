@@ -6,7 +6,7 @@ Everything under `public/` is written by one script in a private research repo:
 poi-lab/tools/export-red-dog/build.mjs --out <this repo> --gate
 ```
 
-Built from poi-lab commit `07b759e08b81db9fe355a927b75027d46f7a36f5` on `2026-09-06T19:40:30Z`.
+Built from poi-lab commit `6014afa7905d3784b5ea2def40ba5ff81a766407` on `2026-09-06T21:02:51Z`.
 
 A hand-edited change here is lost on the next bake, silently. If something in
 `public/` is wrong, the fix belongs in one of three places in poi-lab:
@@ -54,25 +54,36 @@ A hand-edited change here is lost on the next bake, silently. If something in
    `manifest.json`'s `budget` block: draw calls, triangles, collidable
    triangles, brotli transfer, JS heap.
 
-## Caching — a ship is atomic (`vercel.json`)
+## Caching — every release gets its own URL prefix (`vercel.json`)
 
-Every URL under `public/` except `og.png` is served
+Everything the page loads — `js/`, `scene/`, `vendor/`, `css/`, the rider maps —
+ships under **`r/<pin8>/`**, where `pin8` is the first eight hex of the commit
+this build was pinned to. Only `index.html` and `og.png` live at the deploy
+root. So a URL looks like
 
 ```
-Cache-Control: public, max-age=0, must-revalidate
+/r/4f3a91c2/js/play/main.js
+/r/4f3a91c2/scene/world.mjs
 ```
 
-That is not "no caching". The bytes stay in the browser's cache; what they lose
-is *freshness*, so the browser re-asks on every load and Vercel answers the
-conditional GET with a `304 Not Modified` off the ETag. A second visit is a
-handful of empty responses.
+and the headers are two rules:
 
-**Why.** Nothing this builder emits is content-addressed. `flags.js` is
-`flags.js` in every release, `world.mjs` is `world.mjs`, and the vendored
-`three.module.min.js` never changes name either. A cache lifetime on a URL whose
-name does not change when its bytes change gives every module its own private
-expiry — and a page assembled out of two different releases is then the ordinary
-case, not the unlucky one. On 2026-09-06 that is exactly what production did:
+```
+/r/(.*)                 public, max-age=31536000, immutable      the name IS the release
+/((?!r/|og\.png$).*)    public, max-age=0, must-revalidate       index.html
+/og.png                 public, max-age=3600, must-revalidate    the config canary
+```
+
+A returning visitor makes **one** conditional GET — `index.html` — and it tells
+them, by name, which release they are on. Everything else they either already
+hold under a URL that can never mean anything else, or have never seen.
+
+**Why a prefix and not just short caches.** Nothing this builder emits carries a
+per-file content hash. `flags.js` is `flags.js` in every release, `world.mjs` is
+`world.mjs`, and the vendored `three.module.min.js` never changes name either.
+Give a URL like that any cache lifetime and every module gets its own private
+expiry — so a page assembled out of two different releases is the ordinary case,
+not the unlucky one. On 2026-09-06 that is exactly what production did:
 
 ```
 COULD NOT START — The requested module './flags.js' does not provide an
@@ -86,21 +97,47 @@ week-old `flags.js` with a `hud.js` it had just fetched. `must-revalidate` is no
 the guard it reads as — it forbids serving *stale*, and six days of remaining
 freshness is not stale.
 
-**The rule.** A URL may be reused past this request only if its **name** changes
-when its bytes change. `og.png` is the single exception, and it earns it twice:
-the player never fetches it (only a link-preview crawler does, so it can never be
-half of a mixed-version page), and its `max-age=3600` is the one value on the
-site that a deployment ignoring `vercel.json` could not produce by accident —
-which is what `ship.mjs`'s live probe reads to prove the config is in force.
+The first fix was to make every URL `max-age=0, must-revalidate`. That is
+correct, and it was not enough: **a header only governs requests the browser
+still makes.** Anyone who had loaded the site during the week before the fix was
+holding `flags.js` with six days of freshness left, and a browser in that state
+does not re-ask — the same card came back on an empty-cache hard reload, with
+`flags.js` served "from memory cache". Freshness already granted is never
+withdrawn.
 
-**Enforced, not documented.** `build.mjs` step 10c compiles the emitted
-`vercel.json` with Vercel's own router and asks it, for every file it just
-wrote, what `Cache-Control` the browser will be told; anything unhashed that is
-not `max-age=0, must-revalidate` fails the build. `verify.mjs` asserts the same
-property in the gate, `ship.mjs`'s live probe (3) asserts it against the live
-origin plus a real 304, and `cachepolicy.test.mjs` proves it end to end in a
-browser — it serves two builds off one origin and shows the old headers
-reproducing that boot failure and the current ones not.
+Changing the URL is what reaches those browsers. `r/<pin8>/js/play/flags.js` is
+a path no returning browser has ever seen, whatever it is holding, so it must
+fetch it — and everything it fetches comes from one release. **Users self-heal
+on their next visit, with no clearing and no hard reload.**
+
+It is a directory rather than a `?v=` query on each import for a practical
+reason as well as a correctness one: the whole tree moves together, so not one
+of the ~90 modules' relative imports changes, and the scene's `<base>` and the
+importmap follow the prefix as single strings. The entire edit to `index.html`
+is eight references. (A query string is also a hint a cache may key past; a
+different directory is a different resource.)
+
+**Old prefixes disappear on the next ship**, because `public/` is regenerated
+from scratch each time — and that is safe in both directions. Nobody is sent to
+a dead prefix, since `index.html` is always revalidated and always names the
+live one; and a browser mid-session on the previous release keeps running out of
+its own cache, which is what the year of `immutable` is for.
+
+`og.png` keeps its hour, and its job: it is the one value on the site a
+deployment ignoring `vercel.json` could not produce by accident, which is what
+`ship.mjs`'s live probe reads to prove the config is in force at all.
+
+**Enforced, not documented.** `build.mjs` step 9c moves the tree and rebases the
+one root-absolute asset path in it (`rider.js`'s two texture loads), failing if
+any survives; step 10c compiles the emitted `vercel.json` with Vercel's own
+router and asks it, for every file just written, what `Cache-Control` the
+browser will be told — under the prefix it must be the immutable year, outside
+it `max-age=0, must-revalidate`. `verify.mjs` reads the prefix out of the built
+`index.html` and asserts the same split in the gate; `ship.mjs`'s live probe (3)
+asserts it against the live origin plus a real 304; and `cachepolicy.test.mjs`
+proves it in a browser in three arms — the old layout under the old headers
+still reproducing that boot failure, two prefixed releases booting clean, and a
+browser cached under the old 7-day headers booting clean on a prefixed release.
 
 ## What shipped in this wave
 
