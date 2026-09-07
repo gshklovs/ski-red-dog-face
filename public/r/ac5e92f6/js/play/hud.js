@@ -595,8 +595,22 @@ body.play.is-devbar .phud__read .phud__fps { margin-top:0; }
 .phud__read .r:last-child { padding-bottom:8px; }
 
 /* §4.8 — LEADERBOARD **B**: the breadcrumb rotates 45° into a diamond, at zero
-   pixel cost. It is the smallest instance of §1.8's alphabet in the build. */
-.phud__bdot { border-radius:0; transform:rotate(45deg); }
+   pixel cost. It is the smallest instance of §1.8's alphabet in the build.
+
+   specs/0071 §3.1 — AND IT MOVES DOWN, because the top-right corner is the
+   minimap's now. play.css:201 pins the dot at right:19px / top:44px, which is
+   inside a 222 px circle inset 14 px from the same two edges; the dot cleared
+   the fps chip it was placed under and nothing else, and the fps chip is
+   lab-tier, so on the shipped screen that corner was empty until now.
+
+   specs/0071 R3 — AND IT MOVES AGAIN, for the same reason and by the same
+   arithmetic. Greg asked for the circle 50 % bigger, so 148 became 222, the
+   circle's bottom edge went from 162 to 236, and the dot goes to 244: the
+   bottom edge plus the 8 px the register puts between two stacked instruments.
+   It is still the ONE hunk 0071 takes in this file — the panel itself is
+   minimap.js, appended to document.body on speedo.js's precedent, and it asks
+   hud.js for nothing but the room. */
+.phud__bdot { border-radius:0; transform:rotate(45deg); top:244px; }
 
 /* §4.8 — KEY HINT: the six free-floating chips become ONE BOARD WITH HAIRLINE
    DIVIDERS — the sign-post strip at the bottom of a lift line. Six contrast

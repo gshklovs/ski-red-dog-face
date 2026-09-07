@@ -2,8 +2,8 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "world": "red-dog",
-  "pin": "f2b318b77209636c361e3ac0e2761ec1d4d3d599",
-  "builtAt": "2026-09-07T08:38:37.999Z",
+  "pin": "ac5e92f6e94f11f08488a22fe11610ffccbea04d",
+  "builtAt": "2026-09-07T21:37:55.567Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -260,7 +260,7 @@
         "base": null,
         "RX0": -710,
         "RY0": -540,
-        "bundleBrotliBytes": 1032557
+        "bundleBrotliBytes": 1041483
       }
     ],
     "bootFrames": [
@@ -289,45 +289,51 @@
       "bundle": "regions/siberia/region-siberia.mjs",
       "files": [
         {
-          "file": "r/f2b318b7/regions/siberia/dem-siberia.mjs",
+          "file": "r/ac5e92f6/regions/siberia/dem-siberia.mjs",
           "raw": 2800623,
           "gzip": 1366893,
           "brotli": 838345
         },
         {
-          "file": "r/f2b318b7/regions/siberia/sib-canopy-data.mjs",
+          "file": "r/ac5e92f6/regions/siberia/sib-canopy-data.mjs",
           "raw": 699864,
           "gzip": 121691,
           "brotli": 110219
         },
         {
-          "file": "r/f2b318b7/regions/siberia/sib-cliff-data.mjs",
+          "file": "r/ac5e92f6/regions/siberia/sib-cliff-data.mjs",
           "raw": 264017,
           "gzip": 73595,
           "brotli": 70696
         },
         {
-          "file": "r/f2b318b7/regions/siberia/sib-runs-data.mjs",
+          "file": "r/ac5e92f6/regions/siberia/sib-runs-data.mjs",
           "raw": 43285,
           "gzip": 15607,
           "brotli": 12434
         },
         {
-          "file": "r/f2b318b7/regions/siberia/sib-ridge-data.mjs",
+          "file": "r/ac5e92f6/regions/siberia/sib-plant.mjs",
+          "raw": 21769,
+          "gzip": 9935,
+          "brotli": 8906
+        },
+        {
+          "file": "r/ac5e92f6/regions/siberia/sib-ridge-data.mjs",
           "raw": 1408,
           "gzip": 781,
           "brotli": 561
         },
         {
-          "file": "r/f2b318b7/regions/siberia/region-siberia.mjs",
-          "raw": 580,
-          "gzip": 332,
-          "brotli": 302
+          "file": "r/ac5e92f6/regions/siberia/region-siberia.mjs",
+          "raw": 671,
+          "gzip": 364,
+          "brotli": 322
         }
       ],
-      "raw": 3809777,
-      "gzip": 1578899,
-      "brotli": 1032557,
+      "raw": 3831637,
+      "gzip": 1588866,
+      "brotli": 1041483,
       "residentHeapBytes": 19740672,
       "origin": {
         "lat": 39.18375,
@@ -417,18 +423,18 @@
       }
     }
   },
-  "files": 108,
+  "files": 111,
   "sizes": {
-    "n": 100,
-    "raw": 7806335,
-    "gz": 2165325,
-    "br": 1807500,
+    "n": 101,
+    "raw": 7826859,
+    "gz": 2174001,
+    "br": 1815286,
     "byGroup": {
       "html": {
         "n": 1,
         "raw": 13532,
-        "gz": 6037,
-        "br": 4939
+        "gz": 6036,
+        "br": 4942
       },
       "css": {
         "n": 4,
@@ -437,10 +443,10 @@
         "br": 22591
       },
       "player": {
-        "n": 53,
-        "raw": 1502391,
-        "gz": 585896,
-        "br": 518875
+        "n": 54,
+        "raw": 1520750,
+        "gz": 593761,
+        "br": 525973
       },
       "rider:maps": {
         "n": 2,
@@ -450,9 +456,9 @@
       },
       "scene:code": {
         "n": 32,
-        "raw": 480480,
-        "gz": 198392,
-        "br": 169252
+        "raw": 482645,
+        "gz": 199204,
+        "br": 169937
       },
       "scene:data": {
         "n": 7,
@@ -469,73 +475,73 @@
     },
     "top": [
       {
-        "file": "r/f2b318b7/scene/dem-data.mjs",
+        "file": "r/ac5e92f6/scene/dem-data.mjs",
         "raw": 3496794,
         "gzip": 656184,
         "brotli": 499272
       },
       {
-        "file": "r/f2b318b7/js/play/rider-mesh.js",
+        "file": "r/ac5e92f6/js/play/rider-mesh.js",
         "raw": 595978,
         "gzip": 228456,
         "brotli": 201051
       },
       {
-        "file": "r/f2b318b7/scene/dem-upper.mjs",
+        "file": "r/ac5e92f6/scene/dem-upper.mjs",
         "raw": 529179,
         "gzip": 192821,
         "brotli": 157602
       },
       {
-        "file": "r/f2b318b7/vendor/three.module.min.js",
+        "file": "r/ac5e92f6/vendor/three.module.min.js",
         "raw": 700430,
         "gzip": 179744,
         "brotli": 146292
       },
       {
-        "file": "r/f2b318b7/scene/canopy-data.mjs",
+        "file": "r/ac5e92f6/scene/canopy-data.mjs",
         "raw": 699658,
         "gzip": 161746,
         "brotli": 144289
       },
       {
-        "file": "r/f2b318b7/rider/rider-nrm.webp",
+        "file": "r/ac5e92f6/rider/rider-nrm.webp",
         "raw": 70080,
         "gzip": 69821,
         "brotli": 69602
       },
       {
-        "file": "r/f2b318b7/scene/dem-kt.mjs",
+        "file": "r/ac5e92f6/scene/dem-kt.mjs",
         "raw": 176774,
         "gzip": 63333,
         "brotli": 52546
       },
       {
-        "file": "r/f2b318b7/js/play/inventory.js",
+        "file": "r/ac5e92f6/js/play/inventory.js",
         "raw": 95787,
         "gzip": 34283,
-        "brotli": 30010
+        "brotli": 30123
       },
       {
-        "file": "r/f2b318b7/js/play/fx.js",
+        "file": "r/ac5e92f6/js/play/fx.js",
         "raw": 82919,
         "gzip": 32491,
         "brotli": 28216
       },
       {
-        "file": "r/f2b318b7/js/play/hud.js",
-        "raw": 68171,
-        "gzip": 25124,
-        "brotli": 22106
+        "file": "r/ac5e92f6/js/play/hud.js",
+        "raw": 69066,
+        "gzip": 25503,
+        "brotli": 22437
       },
       {
-        "file": "r/f2b318b7/js/play/rider.js",
+        "file": "r/ac5e92f6/js/play/rider.js",
         "raw": 49919,
-        "gzip": 21102,
-        "brotli": 19234
+        "gzip": 21100,
+        "brotli": 19197
       },
       {
-        "file": "r/f2b318b7/js/play/markers.js",
+        "file": "r/ac5e92f6/js/play/markers.js",
         "raw": 53890,
         "gzip": 21248,
         "brotli": 18501
@@ -543,253 +549,253 @@
     ],
     "perFile": [
       {
-        "file": "r/f2b318b7/scene/dem-data.mjs",
+        "file": "r/ac5e92f6/scene/dem-data.mjs",
         "raw": 3496794,
         "gzip": 656184,
         "brotli": 499272
       },
       {
-        "file": "r/f2b318b7/js/play/rider-mesh.js",
+        "file": "r/ac5e92f6/js/play/rider-mesh.js",
         "raw": 595978,
         "gzip": 228456,
         "brotli": 201051
       },
       {
-        "file": "r/f2b318b7/scene/dem-upper.mjs",
+        "file": "r/ac5e92f6/scene/dem-upper.mjs",
         "raw": 529179,
         "gzip": 192821,
         "brotli": 157602
       },
       {
-        "file": "r/f2b318b7/vendor/three.module.min.js",
+        "file": "r/ac5e92f6/vendor/three.module.min.js",
         "raw": 700430,
         "gzip": 179744,
         "brotli": 146292
       },
       {
-        "file": "r/f2b318b7/scene/canopy-data.mjs",
+        "file": "r/ac5e92f6/scene/canopy-data.mjs",
         "raw": 699658,
         "gzip": 161746,
         "brotli": 144289
       },
       {
-        "file": "r/f2b318b7/rider/rider-nrm.webp",
+        "file": "r/ac5e92f6/rider/rider-nrm.webp",
         "raw": 70080,
         "gzip": 69821,
         "brotli": 69602
       },
       {
-        "file": "r/f2b318b7/scene/dem-kt.mjs",
+        "file": "r/ac5e92f6/scene/dem-kt.mjs",
         "raw": 176774,
         "gzip": 63333,
         "brotli": 52546
       },
       {
-        "file": "r/f2b318b7/js/play/inventory.js",
+        "file": "r/ac5e92f6/js/play/inventory.js",
         "raw": 95787,
         "gzip": 34283,
-        "brotli": 30010
+        "brotli": 30123
       },
       {
-        "file": "r/f2b318b7/js/play/fx.js",
+        "file": "r/ac5e92f6/js/play/fx.js",
         "raw": 82919,
         "gzip": 32491,
         "brotli": 28216
       },
       {
-        "file": "r/f2b318b7/js/play/hud.js",
-        "raw": 68171,
-        "gzip": 25124,
-        "brotli": 22106
+        "file": "r/ac5e92f6/js/play/hud.js",
+        "raw": 69066,
+        "gzip": 25503,
+        "brotli": 22437
       },
       {
-        "file": "r/f2b318b7/js/play/rider.js",
+        "file": "r/ac5e92f6/js/play/rider.js",
         "raw": 49919,
-        "gzip": 21102,
-        "brotli": 19234
+        "gzip": 21100,
+        "brotli": 19197
       },
       {
-        "file": "r/f2b318b7/js/play/markers.js",
+        "file": "r/ac5e92f6/js/play/markers.js",
         "raw": 53890,
         "gzip": 21248,
         "brotli": 18501
       },
       {
-        "file": "r/f2b318b7/js/play/main.js",
-        "raw": 50704,
-        "gzip": 19815,
-        "brotli": 17928
+        "file": "r/ac5e92f6/js/play/main.js",
+        "raw": 51245,
+        "gzip": 20039,
+        "brotli": 18147
       },
       {
-        "file": "r/f2b318b7/js/play/guide.js",
+        "file": "r/ac5e92f6/js/play/guide.js",
         "raw": 51836,
         "gzip": 19407,
         "brotli": 17302
       },
       {
-        "file": "r/f2b318b7/scene/world.mjs",
-        "raw": 44083,
-        "gzip": 18415,
-        "brotli": 16329
+        "file": "r/ac5e92f6/scene/world.mjs",
+        "raw": 46248,
+        "gzip": 19227,
+        "brotli": 17014
       },
       {
-        "file": "r/f2b318b7/js/play/chunks.js",
-        "raw": 42427,
-        "gzip": 16410,
-        "brotli": 14966
+        "file": "r/ac5e92f6/js/play/chunks.js",
+        "raw": 42870,
+        "gzip": 16557,
+        "brotli": 15169
       },
       {
-        "file": "r/f2b318b7/js/play/ski.js",
+        "file": "r/ac5e92f6/js/play/ski.js",
         "raw": 43266,
         "gzip": 16215,
         "brotli": 14162
       },
       {
-        "file": "r/f2b318b7/rider/rider-ach.webp",
+        "file": "r/ac5e92f6/rider/rider-ach.webp",
         "raw": 13048,
         "gzip": 13071,
         "brotli": 13046
       },
       {
-        "file": "r/f2b318b7/scene/forest.mjs",
+        "file": "r/ac5e92f6/scene/forest.mjs",
         "raw": 35417,
         "gzip": 14408,
         "brotli": 11999
       },
       {
-        "file": "r/f2b318b7/scene/runs-data.mjs",
+        "file": "r/ac5e92f6/scene/runs-data.mjs",
         "raw": 34894,
         "gzip": 14345,
         "brotli": 11541
       },
       {
-        "file": "r/f2b318b7/js/play/surprise.js",
+        "file": "r/ac5e92f6/js/play/surprise.js",
         "raw": 31432,
         "gzip": 13281,
         "brotli": 11461
       },
       {
-        "file": "r/f2b318b7/css/play.css",
+        "file": "r/ac5e92f6/css/play.css",
         "raw": 46382,
         "gzip": 12964,
         "brotli": 11156
       },
       {
-        "file": "r/f2b318b7/scene/kt-runs-data.mjs",
+        "file": "r/ac5e92f6/scene/kt-runs-data.mjs",
         "raw": 44447,
         "gzip": 15140,
         "brotli": 11026
       },
       {
-        "file": "r/f2b318b7/scene/village-props.mjs",
+        "file": "r/ac5e92f6/scene/village-props.mjs",
         "raw": 44274,
         "gzip": 14451,
         "brotli": 11012
       },
       {
-        "file": "r/f2b318b7/scene/layout.mjs",
+        "file": "r/ac5e92f6/scene/layout.mjs",
         "raw": 30594,
         "gzip": 12005,
         "brotli": 10224
       },
       {
-        "file": "r/f2b318b7/scene/tiles.mjs",
+        "file": "r/ac5e92f6/scene/tiles.mjs",
         "raw": 24673,
         "gzip": 10957,
         "brotli": 9841
       },
       {
-        "file": "r/f2b318b7/js/play/bike.js",
+        "file": "r/ac5e92f6/js/play/bike.js",
         "raw": 30500,
         "gzip": 11362,
         "brotli": 9718
       },
       {
-        "file": "r/f2b318b7/scene/ground.mjs",
+        "file": "r/ac5e92f6/scene/ground.mjs",
         "raw": 24754,
         "gzip": 10840,
         "brotli": 9513
       },
       {
-        "file": "r/f2b318b7/scene/sector-data.mjs",
+        "file": "r/ac5e92f6/scene/sector-data.mjs",
         "raw": 32060,
         "gzip": 10828,
         "brotli": 8449
       },
       {
-        "file": "r/f2b318b7/js/play/rig/clips.js",
+        "file": "r/ac5e92f6/js/play/rig/clips.js",
         "raw": 20949,
         "gzip": 8976,
         "brotli": 8240
       },
       {
-        "file": "r/f2b318b7/scene/stamp-tile.mjs",
+        "file": "r/ac5e92f6/js/play/collision-router.js",
+        "raw": 21644,
+        "gzip": 9094,
+        "brotli": 8128
+      },
+      {
+        "file": "r/ac5e92f6/scene/stamp-tile.mjs",
         "raw": 23909,
         "gzip": 9248,
         "brotli": 8084
       },
       {
-        "file": "r/f2b318b7/js/play/controller.js",
+        "file": "r/ac5e92f6/js/play/controller.js",
         "raw": 19610,
         "gzip": 8413,
         "brotli": 7739
       },
       {
-        "file": "r/f2b318b7/scene/park.mjs",
+        "file": "r/ac5e92f6/scene/park.mjs",
         "raw": 18371,
         "gzip": 8237,
         "brotli": 7406
       },
       {
-        "file": "r/f2b318b7/js/play/snowball.js",
-        "raw": 19891,
-        "gzip": 8243,
-        "brotli": 7294
+        "file": "r/ac5e92f6/js/play/snowball.js",
+        "raw": 19995,
+        "gzip": 8317,
+        "brotli": 7346
       },
       {
-        "file": "r/f2b318b7/js/play/collision-router.js",
-        "raw": 18064,
-        "gzip": 7863,
-        "brotli": 7084
-      },
-      {
-        "file": "r/f2b318b7/js/play/tricks.js",
+        "file": "r/ac5e92f6/js/play/tricks.js",
         "raw": 20014,
         "gzip": 7658,
         "brotli": 7084
       },
       {
-        "file": "r/f2b318b7/scene/terrain.mjs",
+        "file": "r/ac5e92f6/scene/terrain.mjs",
         "raw": 16841,
         "gzip": 7622,
         "brotli": 6663
       },
       {
-        "file": "r/f2b318b7/scene/kt-rocks.mjs",
+        "file": "r/ac5e92f6/scene/kt-rocks.mjs",
         "raw": 15920,
         "gzip": 7079,
         "brotli": 6274
       },
       {
-        "file": "r/f2b318b7/js/play/audio.js",
+        "file": "r/ac5e92f6/js/play/audio.js",
         "raw": 20488,
         "gzip": 6804,
         "brotli": 6081
       },
       {
-        "file": "r/f2b318b7/css/intro.css",
+        "file": "r/ac5e92f6/css/intro.css",
         "raw": 17548,
         "gzip": 6515,
         "brotli": 5434
       },
       {
-        "file": "r/f2b318b7/scene/chunk-worker.mjs",
+        "file": "r/ac5e92f6/scene/chunk-worker.mjs",
         "raw": 13574,
         "gzip": 5851,
         "brotli": 5296
       },
       {
-        "file": "r/f2b318b7/js/play/snowmobile.js",
+        "file": "r/ac5e92f6/js/play/snowmobile.js",
         "raw": 13767,
         "gzip": 5600,
         "brotli": 5022
@@ -797,347 +803,353 @@
       {
         "file": "index.html",
         "raw": 13532,
-        "gzip": 6037,
-        "brotli": 4939
+        "gzip": 6036,
+        "brotli": 4942
       },
       {
-        "file": "r/f2b318b7/js/play/collision.js",
+        "file": "r/ac5e92f6/js/play/collision.js",
         "raw": 11019,
         "gzip": 5239,
         "brotli": 4693
       },
       {
-        "file": "r/f2b318b7/scene/kit.mjs",
+        "file": "r/ac5e92f6/js/play/minimap.js",
+        "raw": 10701,
+        "gzip": 5000,
+        "brotli": 4452
+      },
+      {
+        "file": "r/ac5e92f6/scene/kit.mjs",
         "raw": 12102,
         "gzip": 4983,
         "brotli": 4367
       },
       {
-        "file": "r/f2b318b7/js/play/sled.js",
+        "file": "r/ac5e92f6/js/play/sled.js",
         "raw": 10585,
         "gzip": 4771,
         "brotli": 4358
       },
       {
-        "file": "r/f2b318b7/js/play/tracks.js",
+        "file": "r/ac5e92f6/js/play/tracks.js",
         "raw": 11169,
         "gzip": 4643,
         "brotli": 4191
       },
       {
-        "file": "r/f2b318b7/css/te.css",
+        "file": "r/ac5e92f6/css/te.css",
         "raw": 21769,
         "gzip": 4702,
         "brotli": 4107
       },
       {
-        "file": "r/f2b318b7/scene/pou-data.mjs",
+        "file": "r/ac5e92f6/scene/pou-data.mjs",
         "raw": 10661,
         "gzip": 5167,
         "brotli": 4002
       },
       {
-        "file": "r/f2b318b7/js/play/touch.js",
+        "file": "r/ac5e92f6/js/play/touch.js",
         "raw": 10567,
         "gzip": 4548,
         "brotli": 3975
       },
       {
-        "file": "r/f2b318b7/js/play/solids.js",
+        "file": "r/ac5e92f6/js/play/lift.js",
+        "raw": 9712,
+        "gzip": 4228,
+        "brotli": 3908
+      },
+      {
+        "file": "r/ac5e92f6/js/play/solids.js",
         "raw": 10100,
         "gzip": 4289,
         "brotli": 3853
       },
       {
-        "file": "r/f2b318b7/scene/poulsen.mjs",
+        "file": "r/ac5e92f6/scene/poulsen.mjs",
         "raw": 8720,
         "gzip": 4229,
         "brotli": 3832
       },
       {
-        "file": "r/f2b318b7/scene/funitel.mjs",
+        "file": "r/ac5e92f6/scene/funitel.mjs",
         "raw": 10318,
         "gzip": 4195,
         "brotli": 3752
       },
       {
-        "file": "r/f2b318b7/js/play/lift.js",
-        "raw": 8951,
-        "gzip": 3904,
-        "brotli": 3609
+        "file": "r/ac5e92f6/js/play/jumpset.js",
+        "raw": 8858,
+        "gzip": 4116,
+        "brotli": 3746
       },
       {
-        "file": "r/f2b318b7/scene/lib/core.mjs",
+        "file": "r/ac5e92f6/scene/lib/core.mjs",
         "raw": 8633,
         "gzip": 3935,
         "brotli": 3522
       },
       {
-        "file": "r/f2b318b7/js/play/jumpset.js",
-        "raw": 8254,
-        "gzip": 3832,
-        "brotli": 3514
-      },
-      {
-        "file": "r/f2b318b7/scene/granite.mjs",
+        "file": "r/ac5e92f6/scene/granite.mjs",
         "raw": 7909,
         "gzip": 3506,
         "brotli": 3106
       },
       {
-        "file": "r/f2b318b7/scene/staggered-ledges-palisades.mjs",
+        "file": "r/ac5e92f6/scene/staggered-ledges-palisades.mjs",
         "raw": 7422,
         "gzip": 3437,
         "brotli": 3067
       },
       {
-        "file": "r/f2b318b7/js/play/canopy.js",
+        "file": "r/ac5e92f6/js/play/canopy.js",
         "raw": 9687,
         "gzip": 3309,
         "brotli": 2978
       },
       {
-        "file": "r/f2b318b7/scene/env.mjs",
+        "file": "r/ac5e92f6/scene/env.mjs",
         "raw": 6855,
         "gzip": 3139,
         "brotli": 2838
       },
       {
-        "file": "r/f2b318b7/scene/lift.mjs",
+        "file": "r/ac5e92f6/scene/lift.mjs",
         "raw": 6917,
         "gzip": 3109,
         "brotli": 2802
       },
       {
-        "file": "r/f2b318b7/js/play/rig/bloom.js",
+        "file": "r/ac5e92f6/js/play/rig/bloom.js",
         "raw": 6950,
         "gzip": 3143,
         "brotli": 2793
       },
       {
-        "file": "r/f2b318b7/js/play/glider.js",
+        "file": "r/ac5e92f6/js/play/glider.js",
         "raw": 5999,
         "gzip": 2938,
         "brotli": 2682
       },
       {
-        "file": "r/f2b318b7/scene/box-chute.mjs",
+        "file": "r/ac5e92f6/scene/box-chute.mjs",
         "raw": 5689,
         "gzip": 2837,
         "brotli": 2646
       },
       {
-        "file": "r/f2b318b7/js/play/rail.js",
+        "file": "r/ac5e92f6/js/play/rail.js",
         "raw": 5950,
         "gzip": 2821,
         "brotli": 2621
       },
       {
-        "file": "r/f2b318b7/js/play/boost.js",
+        "file": "r/ac5e92f6/js/play/boost.js",
         "raw": 5642,
         "gzip": 2752,
         "brotli": 2500
       },
       {
-        "file": "r/f2b318b7/js/play/spawn.js",
-        "raw": 5371,
-        "gzip": 2495,
-        "brotli": 2283
+        "file": "r/ac5e92f6/js/play/spawn.js",
+        "raw": 5616,
+        "gzip": 2553,
+        "brotli": 2339
       },
       {
-        "file": "r/f2b318b7/js/play/speedo.js",
+        "file": "r/ac5e92f6/js/play/speedo.js",
         "raw": 5000,
         "gzip": 2424,
         "brotli": 2209
       },
       {
-        "file": "r/f2b318b7/js/play/outfits/armour.js",
+        "file": "r/ac5e92f6/js/play/loader.js",
+        "raw": 5548,
+        "gzip": 2412,
+        "brotli": 2093
+      },
+      {
+        "file": "r/ac5e92f6/js/play/outfits/armour.js",
         "raw": 8675,
         "gzip": 2400,
         "brotli": 2088
       },
       {
-        "file": "r/f2b318b7/js/play/loader.js",
-        "raw": 5488,
-        "gzip": 2396,
-        "brotli": 2080
-      },
-      {
-        "file": "r/f2b318b7/scene/village.mjs",
+        "file": "r/ac5e92f6/scene/village.mjs",
         "raw": 5102,
         "gzip": 2246,
         "brotli": 1993
       },
       {
-        "file": "r/f2b318b7/scene/signs.mjs",
+        "file": "r/ac5e92f6/scene/signs.mjs",
         "raw": 5063,
         "gzip": 2196,
         "brotli": 1985
       },
       {
-        "file": "r/f2b318b7/js/play/intro.js",
+        "file": "r/ac5e92f6/js/play/intro.js",
         "raw": 5209,
         "gzip": 2299,
         "brotli": 1955
       },
       {
-        "file": "r/f2b318b7/css/speedo.css",
+        "file": "r/ac5e92f6/css/speedo.css",
         "raw": 4870,
         "gzip": 2337,
         "brotli": 1894
       },
       {
-        "file": "r/f2b318b7/js/play/regions.js",
-        "raw": 4717,
-        "gzip": 1908,
-        "brotli": 1752
+        "file": "r/ac5e92f6/js/play/regions.js",
+        "raw": 5085,
+        "gzip": 2013,
+        "brotli": 1848
       },
       {
-        "file": "r/f2b318b7/scene/feature-index.mjs",
+        "file": "r/ac5e92f6/scene/feature-index.mjs",
         "raw": 3762,
         "gzip": 1841,
         "brotli": 1677
       },
       {
-        "file": "r/f2b318b7/js/play/outfits/race.js",
+        "file": "r/ac5e92f6/js/play/outfits/race.js",
         "raw": 9097,
         "gzip": 1914,
         "brotli": 1673
       },
       {
-        "file": "r/f2b318b7/js/play/bindings.js",
-        "raw": 3677,
-        "gzip": 1769,
-        "brotli": 1589
+        "file": "r/ac5e92f6/js/play/bindings.js",
+        "raw": 3734,
+        "gzip": 1794,
+        "brotli": 1614
       },
       {
-        "file": "r/f2b318b7/js/play/rocket.js",
+        "file": "r/ac5e92f6/js/play/rocket.js",
         "raw": 3150,
         "gzip": 1424,
         "brotli": 1299
       },
       {
-        "file": "r/f2b318b7/scene/chute75-rock.mjs",
+        "file": "r/ac5e92f6/scene/chute75-rock.mjs",
         "raw": 1842,
         "gzip": 1068,
         "brotli": 996
       },
       {
-        "file": "r/f2b318b7/scene/upper-props.mjs",
+        "file": "r/ac5e92f6/scene/upper-props.mjs",
         "raw": 3022,
         "gzip": 1221,
         "brotli": 967
       },
       {
-        "file": "r/f2b318b7/scene/gsbowl-cliffs.mjs",
+        "file": "r/ac5e92f6/scene/gsbowl-cliffs.mjs",
         "raw": 1733,
         "gzip": 1012,
         "brotli": 940
       },
       {
-        "file": "r/f2b318b7/js/play/outfits/shell.js",
+        "file": "r/ac5e92f6/js/play/outfits/shell.js",
         "raw": 3956,
         "gzip": 1042,
         "brotli": 920
       },
       {
-        "file": "r/f2b318b7/js/play/rig/env.js",
+        "file": "r/ac5e92f6/js/play/rig/env.js",
         "raw": 1622,
         "gzip": 959,
         "brotli": 875
       },
       {
-        "file": "r/f2b318b7/js/play/settings.js",
+        "file": "r/ac5e92f6/js/play/settings.js",
         "raw": 1824,
         "gzip": 987,
         "brotli": 847
       },
       {
-        "file": "r/f2b318b7/scene/canopy.mjs",
+        "file": "r/ac5e92f6/scene/canopy.mjs",
         "raw": 1435,
         "gzip": 725,
         "brotli": 674
       },
       {
-        "file": "r/f2b318b7/js/play/outfits/freeride.js",
+        "file": "r/ac5e92f6/js/play/outfits/freeride.js",
         "raw": 2227,
         "gzip": 691,
         "brotli": 624
       },
       {
-        "file": "r/f2b318b7/js/play/idle.js",
+        "file": "r/ac5e92f6/js/play/idle.js",
         "raw": 1312,
         "gzip": 712,
         "brotli": 573
       },
       {
-        "file": "r/f2b318b7/js/play/outfits/retro.js",
+        "file": "r/ac5e92f6/js/play/outfits/retro.js",
         "raw": 1259,
         "gzip": 558,
         "brotli": 506
       },
       {
-        "file": "r/f2b318b7/js/play/flags.js",
+        "file": "r/ac5e92f6/js/play/flags.js",
         "raw": 912,
         "gzip": 570,
         "brotli": 499
       },
       {
-        "file": "r/f2b318b7/js/play/recorder.js",
+        "file": "r/ac5e92f6/js/play/recorder.js",
         "raw": 976,
         "gzip": 542,
         "brotli": 494
       },
       {
-        "file": "r/f2b318b7/scene/rock.mjs",
+        "file": "r/ac5e92f6/scene/rock.mjs",
         "raw": 754,
         "gzip": 477,
         "brotli": 444
       },
       {
-        "file": "r/f2b318b7/scene/frames.mjs",
+        "file": "r/ac5e92f6/scene/frames.mjs",
         "raw": 790,
         "gzip": 471,
         "brotli": 434
       },
       {
-        "file": "r/f2b318b7/js/play/atlas.js",
+        "file": "r/ac5e92f6/js/play/atlas.js",
         "raw": 987,
         "gzip": 449,
         "brotli": 430
       },
       {
-        "file": "r/f2b318b7/js/play/clean.js",
+        "file": "r/ac5e92f6/js/play/clean.js",
         "raw": 882,
         "gzip": 502,
         "brotli": 429
       },
       {
-        "file": "r/f2b318b7/scene/sector-canopy.mjs",
+        "file": "r/ac5e92f6/scene/sector-canopy.mjs",
         "raw": 735,
         "gzip": 502,
         "brotli": 398
       },
       {
-        "file": "r/f2b318b7/scene/sector-rock.mjs",
+        "file": "r/ac5e92f6/scene/sector-rock.mjs",
         "raw": 605,
         "gzip": 432,
         "brotli": 347
       },
       {
-        "file": "r/f2b318b7/js/play/dev.js",
+        "file": "r/ac5e92f6/js/play/dev.js",
         "raw": 562,
         "gzip": 342,
         "brotli": 295
       },
       {
-        "file": "r/f2b318b7/js/play/outfits/after.js",
+        "file": "r/ac5e92f6/js/play/outfits/after.js",
         "raw": 628,
         "gzip": 320,
         "brotli": 272
       },
       {
-        "file": "r/f2b318b7/js/play/outfits/index.js",
+        "file": "r/ac5e92f6/js/play/outfits/index.js",
         "raw": 375,
         "gzip": 253,
         "brotli": 217
@@ -1147,7 +1159,7 @@
   "minify": {
     "enabled": true,
     "esbuild": "0.24.2",
-    "files": 78,
+    "files": 80,
     "exempt": [
       "public/regions/siberia/dem-siberia.mjs",
       "public/regions/siberia/sib-canopy-data.mjs",
@@ -1171,10 +1183,10 @@
       "public/js/play/rig/clips.js",
       "public/vendor/three.module.min.js"
     ],
-    "rawBefore": 3960350,
-    "rawAfter": 1251020,
-    "brotliBefore": 1216292,
-    "brotliAfter": 443719,
+    "rawBefore": 4119254,
+    "rawAfter": 1293393,
+    "brotliBefore": 1264994,
+    "brotliAfter": 460322,
     "consts": {
       "LOOK": 0.0022
     }
@@ -1703,9 +1715,34 @@
       "wrong again on the commit that recorded it.",
       "",
       "AND D23 IS UNTOUCHED: 1,793,661 of 2,621,440 is 68.4 %, 827,779 B spare,",
-      "with the siberia region's 1,032,557 B fetched at the seam and outside it."
+      "with the siberia region's 1,032,557 B fetched at the seam and outside it.",
+      "",
+      "RE-DERIVED AGAIN AT SHIP 2 (2026-09-07), the same D-16 precedent a third",
+      "time. Merging rider/v3 8c6c6a1d brings specs/0071's minimap into the",
+      "overlay chain, and a new player module is exactly the kind of byte this",
+      "band is NOT about. The measured ladder, each figure printed by a build:",
+      "  W6 alone,   chunk/w0-0052-W6 @ b2c06c75   1,810,186 B   (+0.921 %)",
+      "  SHIP 2,     this merge --pin HEAD          1,813,646 B   (+1.114 %)  <- the line",
+      "  0071's own share                             +3,460 B   (0.193 %)",
+      "and 0071's 3,460 B decompose to one file plus two hunks: js/play/",
+      "minimap.js 3,291 B brotli of its own, main.js's import row and its",
+      "`diff:` field on the runs contract, and hud.js's one CSS rule moving the",
+      "leaderboard dot out from under the circle. Nothing else in this merge is",
+      "shipped code, and the ±1 % band had 1,811,598 B of room, so the row went",
+      "red on 2,048 B of PLAYER CODE rather than on a region leak.",
+      "",
+      "WHY RE-BASELINING IS NOT LOOSENING. The row's question is 'did a region's",
+      "bytes leak into the first load', and the companion row beside it answers",
+      "that directly and independently: no path under r/<pin8>/regions/ appears",
+      "in the D23 file list at all, which still passes untouched. The smallest",
+      "region file this build ships is larger than the whole 0071 delta. D23",
+      "itself has not moved: 1,813,646 of 2,621,440 is 69.2 %, 807,794 B spare.",
+      "",
+      "THE MINIMAP TILE IS NOT IN THIS NUMBER. specs/0071 §2's 143.6 KB WebP is",
+      "held out of sizes.br by build.mjs step 9c-bis on the 0069 sheet's rule —",
+      "row N6 asserts it, both in the boot's wire list and in the D23 file list."
     ],
-    "firstLoadBrotliBytes": 1793661,
+    "firstLoadBrotliBytes": 1813646,
     "firstLoadBrotliTol": 0.01,
     "$gpuBytes": [
       "specs/0051 §7.3, §6.2, critic A.7 — 'no VRAM number anywhere' was the",
