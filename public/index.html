@@ -25,7 +25,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Red Dog Chair — Palisades Tahoe">
 <meta name="twitter:image" content="https://ski-red-dog-face.vercel.app/og.png">
-<!-- specs/0051 D-22 — EVERY RELEASE GETS ITS OWN URL PREFIX. `r/ae294e6b/` is
+<!-- specs/0051 D-22 — EVERY RELEASE GETS ITS OWN URL PREFIX. `r/f2b318b7/` is
      `r/<first 8 hex of the pinned commit>/`, and build.mjs writes EVERYTHING the
      page loads underneath it: css/, js/, scene/, vendor/, rider/. Only this
      document and og.png live at the deploy root. Two releases therefore share
@@ -33,10 +33,10 @@
      had with one it just fetched — which is what put
      "does not provide an export named 'labUI'" on production on 2026-09-06.
      Everything under r/ is immutable for a year; this file is max-age=0. -->
-<link rel="stylesheet" href="r/ae294e6b/css/te.css">
-<link rel="stylesheet" href="r/ae294e6b/css/play.css">
-<link rel="stylesheet" href="r/ae294e6b/css/intro.css">
-<link rel="stylesheet" href="r/ae294e6b/css/speedo.css">
+<link rel="stylesheet" href="r/f2b318b7/css/te.css">
+<link rel="stylesheet" href="r/f2b318b7/css/play.css">
+<link rel="stylesheet" href="r/f2b318b7/css/intro.css">
+<link rel="stylesheet" href="r/f2b318b7/css/speedo.css">
 <!-- The tab icon is the 🎿 emoji, drawn by the OS font inside an inline SVG
      data URI: no file to request, no bytes on the wire, nothing to 404. The
      <text> is centred with dominant-baseline + text-anchor and sized to fill
@@ -98,7 +98,7 @@
   // be mixed into this one. Nothing below had to change shape to get there:
   // `<base>`, the importmap and the entry import were already built off a
   // single root string, and this is that string with one segment added.
-  var ASSETS = ROOT + 'r/ae294e6b/';
+  var ASSETS = ROOT + 'r/f2b318b7/';
 
   function fail(reason, detail) {
     if (detail === reason) detail = null;
@@ -186,13 +186,20 @@
     // never trips it at any coordinate; it fires on the absence of recoverable
     // ground. x0..y1 are a hard backstop at CORE ± 8 km, unreachable in play.
     fence: {"x0":-9320,"x1":8430,"y0":-9130,"y1":8500,"graceMs":2000,"voidMarginM":60,"rule":"surface-aware"},
+    // specs/0052 W2R / D-1 — THE SEAMS. Each row is a chunk of mountain whose
+    // data is NOT in the bytes this page just downloaded: js/play/regions.js
+    // declares it to ground.mjs at boot (so the fence knows it is not playable
+    // yet), import()s `root + bundle` when the rider comes within the trigger
+    // box, and releases it again when the rider has been well away for a
+    // minute. A world with no seams ships `[]` and regions.js is inert.
+    regions: [{"id":"siberia","frame":"siberia","bundle":"regions/siberia/region-siberia.mjs","origin":{"lat":39.18375,"lon":-120.26625,"z0":2366},"core":{"x0":-640,"x1":850,"y0":-470,"y1":540},"trigger":{"seamX":-1360,"approachM":250,"box":{"x0":-4200,"x1":-1110,"y0":-800,"y1":220}},"unload":{"distanceM":1500,"holdS":60},"raster":{"nx":816,"ny":576,"cells":470016,"bytesPerCell":42,"bytes":19740672,"RX0":-710,"RY0":-540}}],
     // D-22 — the RELEASE root, not the page root. Everything that resolves a
     // module or a texture off this value must land inside this release's
     // prefix; `pageRoot` is kept beside it for the one thing that is genuinely
     // about the site rather than about the release (og.png, a shared link).
     root: ASSETS,
     pageRoot: ROOT,
-    release: 'r/ae294e6b/',
+    release: 'r/f2b318b7/',
   };
 
   say('loading player…');

@@ -2,8 +2,8 @@
   "generator": "poi-lab tools/export-red-dog/build.mjs",
   "spec": "specs/0001-ski-red-dog-face-architecture.md",
   "world": "red-dog",
-  "pin": "ae294e6b8963cd05e8c9ef26153d6ddd87ae1937",
-  "builtAt": "2026-09-06T21:55:10.427Z",
+  "pin": "f2b318b77209636c361e3ac0e2761ec1d4d3d599",
+  "builtAt": "2026-09-07T08:38:37.999Z",
   "tier": "A",
   "crop": {
     "$doc": "D12 — playable area is CORE, with the raster/marker bounds nudged out so base-west's tail (x -545), base-kt (-500) and the four parking lots (y 545-690) stay inside.",
@@ -195,9 +195,82 @@
     "RY0": -1170.5,
     "RNX": 916,
     "RNY": 977,
-    "cells": 894932,
-    "bytes": 51906056,
-    "f32Bytes": 71594560,
+    "cells": 1148943,
+    "bytes": 66638694,
+    "f32Bytes": 91915440,
+    "frames": [
+      {
+        "id": "red-dog",
+        "resident": "boot",
+        "mode": "crop",
+        "RES": 2,
+        "RX0": -1360,
+        "RY0": -1170.5,
+        "RNX": 916,
+        "RNY": 977,
+        "cells": 894932,
+        "box": {
+          "x0": -1320,
+          "x1": 430,
+          "y0": -1130,
+          "y1": 740
+        },
+        "padM": 40,
+        "x1": 470,
+        "y1": 781.5,
+        "base": 0,
+        "bytes": 51906056,
+        "bytesPerCell": 58
+      },
+      {
+        "id": "goldcoast",
+        "resident": "boot",
+        "mode": "pad",
+        "RES": 2,
+        "RX0": -2200,
+        "RY0": -840,
+        "RNX": 461,
+        "RNY": 551,
+        "cells": 254011,
+        "box": {
+          "x0": -2160,
+          "x1": -1320,
+          "y0": -800,
+          "y1": 220
+        },
+        "padM": 40,
+        "x1": -1280,
+        "y1": 260,
+        "base": 894932,
+        "bytes": 14732638,
+        "bytesPerCell": 58
+      },
+      {
+        "id": "siberia",
+        "resident": "region",
+        "region": "siberia",
+        "mode": "declared",
+        "RES": 2,
+        "RNX": 816,
+        "RNY": 576,
+        "cells": 470016,
+        "bytesPerCell": 42,
+        "bytes": 19740672,
+        "box": null,
+        "base": null,
+        "RX0": -710,
+        "RY0": -540,
+        "bundleBrotliBytes": 1032557
+      }
+    ],
+    "bootFrames": [
+      "red-dog",
+      "goldcoast"
+    ],
+    "bytesBoot": 66638694,
+    "bytesResident": 86379366,
+    "bytesPerCell": 58,
+    "residentCapBytes": 88000000,
     "srcNX": 2077,
     "srcNY": 944,
     "srcCells": 1960688,
@@ -209,6 +282,89 @@
       ]
     }
   },
+  "regions": [
+    {
+      "id": "siberia",
+      "frame": "siberia",
+      "bundle": "regions/siberia/region-siberia.mjs",
+      "files": [
+        {
+          "file": "r/f2b318b7/regions/siberia/dem-siberia.mjs",
+          "raw": 2800623,
+          "gzip": 1366893,
+          "brotli": 838345
+        },
+        {
+          "file": "r/f2b318b7/regions/siberia/sib-canopy-data.mjs",
+          "raw": 699864,
+          "gzip": 121691,
+          "brotli": 110219
+        },
+        {
+          "file": "r/f2b318b7/regions/siberia/sib-cliff-data.mjs",
+          "raw": 264017,
+          "gzip": 73595,
+          "brotli": 70696
+        },
+        {
+          "file": "r/f2b318b7/regions/siberia/sib-runs-data.mjs",
+          "raw": 43285,
+          "gzip": 15607,
+          "brotli": 12434
+        },
+        {
+          "file": "r/f2b318b7/regions/siberia/sib-ridge-data.mjs",
+          "raw": 1408,
+          "gzip": 781,
+          "brotli": 561
+        },
+        {
+          "file": "r/f2b318b7/regions/siberia/region-siberia.mjs",
+          "raw": 580,
+          "gzip": 332,
+          "brotli": 302
+        }
+      ],
+      "raw": 3809777,
+      "gzip": 1578899,
+      "brotli": 1032557,
+      "residentHeapBytes": 19740672,
+      "origin": {
+        "lat": 39.18375,
+        "lon": -120.26625,
+        "z0": 2366
+      },
+      "core": {
+        "x0": -640,
+        "x1": 850,
+        "y0": -470,
+        "y1": 540
+      },
+      "trigger": {
+        "seamX": -1360,
+        "approachM": 250,
+        "box": {
+          "x0": -4200,
+          "x1": -1110,
+          "y0": -800,
+          "y1": 220
+        }
+      },
+      "unload": {
+        "distanceM": 1500,
+        "holdS": 60
+      },
+      "rasterFrame": {
+        "nx": 816,
+        "ny": 576,
+        "cells": 470016,
+        "bytesPerCell": 42,
+        "bytes": 19740672,
+        "RX0": -710,
+        "RY0": -540
+      }
+    }
+  ],
   "fence": {
     "x0": -9320,
     "x1": 8430,
@@ -261,18 +417,18 @@
       }
     }
   },
-  "files": 98,
+  "files": 108,
   "sizes": {
-    "n": 97,
-    "raw": 7699603,
-    "gz": 2122237,
-    "br": 1770194,
+    "n": 100,
+    "raw": 7806335,
+    "gz": 2165325,
+    "br": 1807500,
     "byGroup": {
       "html": {
         "n": 1,
-        "raw": 12632,
-        "gz": 5572,
-        "br": 4545
+        "raw": 13532,
+        "gz": 6037,
+        "br": 4939
       },
       "css": {
         "n": 4,
@@ -281,10 +437,10 @@
         "br": 22591
       },
       "player": {
-        "n": 50,
-        "raw": 1447992,
-        "gz": 564544,
-        "br": 499810
+        "n": 53,
+        "raw": 1502391,
+        "gz": 585896,
+        "br": 518875
       },
       "rider:maps": {
         "n": 2,
@@ -294,9 +450,9 @@
       },
       "scene:code": {
         "n": 32,
-        "raw": 429047,
-        "gz": 177121,
-        "br": 151405
+        "raw": 480480,
+        "gz": 198392,
+        "br": 169252
       },
       "scene:data": {
         "n": 7,
@@ -313,657 +469,675 @@
     },
     "top": [
       {
-        "file": "r/ae294e6b/scene/dem-data.mjs",
+        "file": "r/f2b318b7/scene/dem-data.mjs",
         "raw": 3496794,
         "gzip": 656184,
         "brotli": 499272
       },
       {
-        "file": "r/ae294e6b/js/play/rider-mesh.js",
+        "file": "r/f2b318b7/js/play/rider-mesh.js",
         "raw": 595978,
         "gzip": 228456,
         "brotli": 201051
       },
       {
-        "file": "r/ae294e6b/scene/dem-upper.mjs",
+        "file": "r/f2b318b7/scene/dem-upper.mjs",
         "raw": 529179,
         "gzip": 192821,
         "brotli": 157602
       },
       {
-        "file": "r/ae294e6b/vendor/three.module.min.js",
+        "file": "r/f2b318b7/vendor/three.module.min.js",
         "raw": 700430,
         "gzip": 179744,
         "brotli": 146292
       },
       {
-        "file": "r/ae294e6b/scene/canopy-data.mjs",
+        "file": "r/f2b318b7/scene/canopy-data.mjs",
         "raw": 699658,
         "gzip": 161746,
         "brotli": 144289
       },
       {
-        "file": "r/ae294e6b/rider/rider-nrm.webp",
+        "file": "r/f2b318b7/rider/rider-nrm.webp",
         "raw": 70080,
         "gzip": 69821,
         "brotli": 69602
       },
       {
-        "file": "r/ae294e6b/scene/dem-kt.mjs",
+        "file": "r/f2b318b7/scene/dem-kt.mjs",
         "raw": 176774,
         "gzip": 63333,
         "brotli": 52546
       },
       {
-        "file": "r/ae294e6b/js/play/fx.js",
+        "file": "r/f2b318b7/js/play/inventory.js",
+        "raw": 95787,
+        "gzip": 34283,
+        "brotli": 30010
+      },
+      {
+        "file": "r/f2b318b7/js/play/fx.js",
         "raw": 82919,
         "gzip": 32491,
         "brotli": 28216
       },
       {
-        "file": "r/ae294e6b/js/play/inventory.js",
-        "raw": 82143,
-        "gzip": 28496,
-        "brotli": 25066
+        "file": "r/f2b318b7/js/play/hud.js",
+        "raw": 68171,
+        "gzip": 25124,
+        "brotli": 22106
       },
       {
-        "file": "r/ae294e6b/js/play/hud.js",
-        "raw": 67443,
-        "gzip": 24847,
-        "brotli": 21893
+        "file": "r/f2b318b7/js/play/rider.js",
+        "raw": 49919,
+        "gzip": 21102,
+        "brotli": 19234
       },
       {
-        "file": "r/ae294e6b/js/play/rider.js",
-        "raw": 49187,
-        "gzip": 20872,
-        "brotli": 19013
-      },
-      {
-        "file": "r/ae294e6b/js/play/markers.js",
-        "raw": 52384,
-        "gzip": 20722,
-        "brotli": 18033
+        "file": "r/f2b318b7/js/play/markers.js",
+        "raw": 53890,
+        "gzip": 21248,
+        "brotli": 18501
       }
     ],
     "perFile": [
       {
-        "file": "r/ae294e6b/scene/dem-data.mjs",
+        "file": "r/f2b318b7/scene/dem-data.mjs",
         "raw": 3496794,
         "gzip": 656184,
         "brotli": 499272
       },
       {
-        "file": "r/ae294e6b/js/play/rider-mesh.js",
+        "file": "r/f2b318b7/js/play/rider-mesh.js",
         "raw": 595978,
         "gzip": 228456,
         "brotli": 201051
       },
       {
-        "file": "r/ae294e6b/scene/dem-upper.mjs",
+        "file": "r/f2b318b7/scene/dem-upper.mjs",
         "raw": 529179,
         "gzip": 192821,
         "brotli": 157602
       },
       {
-        "file": "r/ae294e6b/vendor/three.module.min.js",
+        "file": "r/f2b318b7/vendor/three.module.min.js",
         "raw": 700430,
         "gzip": 179744,
         "brotli": 146292
       },
       {
-        "file": "r/ae294e6b/scene/canopy-data.mjs",
+        "file": "r/f2b318b7/scene/canopy-data.mjs",
         "raw": 699658,
         "gzip": 161746,
         "brotli": 144289
       },
       {
-        "file": "r/ae294e6b/rider/rider-nrm.webp",
+        "file": "r/f2b318b7/rider/rider-nrm.webp",
         "raw": 70080,
         "gzip": 69821,
         "brotli": 69602
       },
       {
-        "file": "r/ae294e6b/scene/dem-kt.mjs",
+        "file": "r/f2b318b7/scene/dem-kt.mjs",
         "raw": 176774,
         "gzip": 63333,
         "brotli": 52546
       },
       {
-        "file": "r/ae294e6b/js/play/fx.js",
+        "file": "r/f2b318b7/js/play/inventory.js",
+        "raw": 95787,
+        "gzip": 34283,
+        "brotli": 30010
+      },
+      {
+        "file": "r/f2b318b7/js/play/fx.js",
         "raw": 82919,
         "gzip": 32491,
         "brotli": 28216
       },
       {
-        "file": "r/ae294e6b/js/play/inventory.js",
-        "raw": 82143,
-        "gzip": 28496,
-        "brotli": 25066
+        "file": "r/f2b318b7/js/play/hud.js",
+        "raw": 68171,
+        "gzip": 25124,
+        "brotli": 22106
       },
       {
-        "file": "r/ae294e6b/js/play/hud.js",
-        "raw": 67443,
-        "gzip": 24847,
-        "brotli": 21893
+        "file": "r/f2b318b7/js/play/rider.js",
+        "raw": 49919,
+        "gzip": 21102,
+        "brotli": 19234
       },
       {
-        "file": "r/ae294e6b/js/play/rider.js",
-        "raw": 49187,
-        "gzip": 20872,
-        "brotli": 19013
+        "file": "r/f2b318b7/js/play/markers.js",
+        "raw": 53890,
+        "gzip": 21248,
+        "brotli": 18501
       },
       {
-        "file": "r/ae294e6b/js/play/markers.js",
-        "raw": 52384,
-        "gzip": 20722,
-        "brotli": 18033
+        "file": "r/f2b318b7/js/play/main.js",
+        "raw": 50704,
+        "gzip": 19815,
+        "brotli": 17928
       },
       {
-        "file": "r/ae294e6b/js/play/main.js",
-        "raw": 48285,
-        "gzip": 18950,
-        "brotli": 17142
+        "file": "r/f2b318b7/js/play/guide.js",
+        "raw": 51836,
+        "gzip": 19407,
+        "brotli": 17302
       },
       {
-        "file": "r/ae294e6b/js/play/guide.js",
-        "raw": 46974,
-        "gzip": 18136,
-        "brotli": 16105
+        "file": "r/f2b318b7/scene/world.mjs",
+        "raw": 44083,
+        "gzip": 18415,
+        "brotli": 16329
       },
       {
-        "file": "r/ae294e6b/scene/world.mjs",
-        "raw": 41727,
-        "gzip": 17528,
-        "brotli": 15538
+        "file": "r/f2b318b7/js/play/chunks.js",
+        "raw": 42427,
+        "gzip": 16410,
+        "brotli": 14966
       },
       {
-        "file": "r/ae294e6b/js/play/ski.js",
-        "raw": 42977,
-        "gzip": 16092,
-        "brotli": 14039
+        "file": "r/f2b318b7/js/play/ski.js",
+        "raw": 43266,
+        "gzip": 16215,
+        "brotli": 14162
       },
       {
-        "file": "r/ae294e6b/rider/rider-ach.webp",
+        "file": "r/f2b318b7/rider/rider-ach.webp",
         "raw": 13048,
         "gzip": 13071,
         "brotli": 13046
       },
       {
-        "file": "r/ae294e6b/js/play/chunks.js",
-        "raw": 35193,
-        "gzip": 14121,
-        "brotli": 12908
-      },
-      {
-        "file": "r/ae294e6b/scene/forest.mjs",
+        "file": "r/f2b318b7/scene/forest.mjs",
         "raw": 35417,
         "gzip": 14408,
         "brotli": 11999
       },
       {
-        "file": "r/ae294e6b/js/play/surprise.js",
+        "file": "r/f2b318b7/scene/runs-data.mjs",
+        "raw": 34894,
+        "gzip": 14345,
+        "brotli": 11541
+      },
+      {
+        "file": "r/f2b318b7/js/play/surprise.js",
         "raw": 31432,
         "gzip": 13281,
         "brotli": 11461
       },
       {
-        "file": "r/ae294e6b/css/play.css",
+        "file": "r/f2b318b7/css/play.css",
         "raw": 46382,
         "gzip": 12964,
         "brotli": 11156
       },
       {
-        "file": "r/ae294e6b/scene/kt-runs-data.mjs",
+        "file": "r/f2b318b7/scene/kt-runs-data.mjs",
         "raw": 44447,
         "gzip": 15140,
         "brotli": 11026
       },
       {
-        "file": "r/ae294e6b/scene/village-props.mjs",
+        "file": "r/f2b318b7/scene/village-props.mjs",
         "raw": 44274,
         "gzip": 14451,
         "brotli": 11012
       },
       {
-        "file": "r/ae294e6b/js/play/bike.js",
+        "file": "r/f2b318b7/scene/layout.mjs",
+        "raw": 30594,
+        "gzip": 12005,
+        "brotli": 10224
+      },
+      {
+        "file": "r/f2b318b7/scene/tiles.mjs",
+        "raw": 24673,
+        "gzip": 10957,
+        "brotli": 9841
+      },
+      {
+        "file": "r/f2b318b7/js/play/bike.js",
         "raw": 30500,
         "gzip": 11362,
         "brotli": 9718
       },
       {
-        "file": "r/ae294e6b/scene/layout.mjs",
-        "raw": 25298,
-        "gzip": 10131,
-        "brotli": 8557
+        "file": "r/f2b318b7/scene/ground.mjs",
+        "raw": 24754,
+        "gzip": 10840,
+        "brotli": 9513
       },
       {
-        "file": "r/ae294e6b/scene/sector-data.mjs",
+        "file": "r/f2b318b7/scene/sector-data.mjs",
         "raw": 32060,
         "gzip": 10828,
         "brotli": 8449
       },
       {
-        "file": "r/ae294e6b/js/play/rig/clips.js",
+        "file": "r/f2b318b7/js/play/rig/clips.js",
         "raw": 20949,
         "gzip": 8976,
         "brotli": 8240
       },
       {
-        "file": "r/ae294e6b/scene/stamp-tile.mjs",
+        "file": "r/f2b318b7/scene/stamp-tile.mjs",
         "raw": 23909,
         "gzip": 9248,
         "brotli": 8084
       },
       {
-        "file": "r/ae294e6b/scene/ground.mjs",
-        "raw": 20849,
-        "gzip": 9211,
-        "brotli": 8009
-      },
-      {
-        "file": "r/ae294e6b/js/play/controller.js",
+        "file": "r/f2b318b7/js/play/controller.js",
         "raw": 19610,
         "gzip": 8413,
         "brotli": 7739
       },
       {
-        "file": "r/ae294e6b/js/play/snowball.js",
+        "file": "r/f2b318b7/scene/park.mjs",
+        "raw": 18371,
+        "gzip": 8237,
+        "brotli": 7406
+      },
+      {
+        "file": "r/f2b318b7/js/play/snowball.js",
         "raw": 19891,
         "gzip": 8243,
         "brotli": 7294
       },
       {
-        "file": "r/ae294e6b/scene/park.mjs",
-        "raw": 18040,
-        "gzip": 8102,
-        "brotli": 7278
+        "file": "r/f2b318b7/js/play/collision-router.js",
+        "raw": 18064,
+        "gzip": 7863,
+        "brotli": 7084
       },
       {
-        "file": "r/ae294e6b/js/play/tricks.js",
-        "raw": 18774,
-        "gzip": 7278,
-        "brotli": 6758
+        "file": "r/f2b318b7/js/play/tricks.js",
+        "raw": 20014,
+        "gzip": 7658,
+        "brotli": 7084
       },
       {
-        "file": "r/ae294e6b/scene/terrain.mjs",
+        "file": "r/f2b318b7/scene/terrain.mjs",
         "raw": 16841,
         "gzip": 7622,
         "brotli": 6663
       },
       {
-        "file": "r/ae294e6b/scene/kt-rocks.mjs",
+        "file": "r/f2b318b7/scene/kt-rocks.mjs",
         "raw": 15920,
         "gzip": 7079,
         "brotli": 6274
       },
       {
-        "file": "r/ae294e6b/js/play/audio.js",
+        "file": "r/f2b318b7/js/play/audio.js",
         "raw": 20488,
         "gzip": 6804,
         "brotli": 6081
       },
       {
-        "file": "r/ae294e6b/scene/tiles.mjs",
-        "raw": 14130,
-        "gzip": 6444,
-        "brotli": 5827
-      },
-      {
-        "file": "r/ae294e6b/css/intro.css",
+        "file": "r/f2b318b7/css/intro.css",
         "raw": 17548,
         "gzip": 6515,
         "brotli": 5434
       },
       {
-        "file": "r/ae294e6b/js/play/collision-router.js",
-        "raw": 13323,
-        "gzip": 5897,
-        "brotli": 5306
+        "file": "r/f2b318b7/scene/chunk-worker.mjs",
+        "raw": 13574,
+        "gzip": 5851,
+        "brotli": 5296
       },
       {
-        "file": "r/ae294e6b/js/play/snowmobile.js",
+        "file": "r/f2b318b7/js/play/snowmobile.js",
         "raw": 13767,
         "gzip": 5600,
         "brotli": 5022
       },
       {
-        "file": "r/ae294e6b/js/play/collision.js",
-        "raw": 10996,
-        "gzip": 5223,
-        "brotli": 4683
-      },
-      {
-        "file": "r/ae294e6b/scene/chunk-worker.mjs",
-        "raw": 11282,
-        "gzip": 5126,
-        "brotli": 4649
-      },
-      {
         "file": "index.html",
-        "raw": 12632,
-        "gzip": 5572,
-        "brotli": 4545
+        "raw": 13532,
+        "gzip": 6037,
+        "brotli": 4939
       },
       {
-        "file": "r/ae294e6b/scene/kit.mjs",
+        "file": "r/f2b318b7/js/play/collision.js",
+        "raw": 11019,
+        "gzip": 5239,
+        "brotli": 4693
+      },
+      {
+        "file": "r/f2b318b7/scene/kit.mjs",
         "raw": 12102,
         "gzip": 4983,
         "brotli": 4367
       },
       {
-        "file": "r/ae294e6b/js/play/sled.js",
+        "file": "r/f2b318b7/js/play/sled.js",
         "raw": 10585,
         "gzip": 4771,
         "brotli": 4358
       },
       {
-        "file": "r/ae294e6b/js/play/tracks.js",
+        "file": "r/f2b318b7/js/play/tracks.js",
         "raw": 11169,
         "gzip": 4643,
         "brotli": 4191
       },
       {
-        "file": "r/ae294e6b/css/te.css",
+        "file": "r/f2b318b7/css/te.css",
         "raw": 21769,
         "gzip": 4702,
         "brotli": 4107
       },
       {
-        "file": "r/ae294e6b/js/play/touch.js",
+        "file": "r/f2b318b7/scene/pou-data.mjs",
+        "raw": 10661,
+        "gzip": 5167,
+        "brotli": 4002
+      },
+      {
+        "file": "r/f2b318b7/js/play/touch.js",
         "raw": 10567,
         "gzip": 4548,
         "brotli": 3975
       },
       {
-        "file": "r/ae294e6b/js/play/solids.js",
+        "file": "r/f2b318b7/js/play/solids.js",
         "raw": 10100,
         "gzip": 4289,
         "brotli": 3853
       },
       {
-        "file": "r/ae294e6b/scene/poulsen.mjs",
+        "file": "r/f2b318b7/scene/poulsen.mjs",
         "raw": 8720,
         "gzip": 4229,
         "brotli": 3832
       },
       {
-        "file": "r/ae294e6b/scene/funitel.mjs",
+        "file": "r/f2b318b7/scene/funitel.mjs",
         "raw": 10318,
         "gzip": 4195,
         "brotli": 3752
       },
       {
-        "file": "r/ae294e6b/js/play/lift.js",
+        "file": "r/f2b318b7/js/play/lift.js",
         "raw": 8951,
         "gzip": 3904,
         "brotli": 3609
       },
       {
-        "file": "r/ae294e6b/scene/lib/core.mjs",
+        "file": "r/f2b318b7/scene/lib/core.mjs",
         "raw": 8633,
         "gzip": 3935,
         "brotli": 3522
       },
       {
-        "file": "r/ae294e6b/scene/runs-data.mjs",
-        "raw": 10634,
-        "gzip": 4152,
-        "brotli": 3373
+        "file": "r/f2b318b7/js/play/jumpset.js",
+        "raw": 8254,
+        "gzip": 3832,
+        "brotli": 3514
       },
       {
-        "file": "r/ae294e6b/scene/pou-data.mjs",
-        "raw": 8365,
-        "gzip": 3931,
-        "brotli": 3143
-      },
-      {
-        "file": "r/ae294e6b/scene/granite.mjs",
+        "file": "r/f2b318b7/scene/granite.mjs",
         "raw": 7909,
         "gzip": 3506,
         "brotli": 3106
       },
       {
-        "file": "r/ae294e6b/scene/staggered-ledges-palisades.mjs",
-        "raw": 7268,
-        "gzip": 3358,
-        "brotli": 2998
+        "file": "r/f2b318b7/scene/staggered-ledges-palisades.mjs",
+        "raw": 7422,
+        "gzip": 3437,
+        "brotli": 3067
       },
       {
-        "file": "r/ae294e6b/js/play/canopy.js",
+        "file": "r/f2b318b7/js/play/canopy.js",
         "raw": 9687,
         "gzip": 3309,
         "brotli": 2978
       },
       {
-        "file": "r/ae294e6b/scene/env.mjs",
+        "file": "r/f2b318b7/scene/env.mjs",
         "raw": 6855,
         "gzip": 3139,
         "brotli": 2838
       },
       {
-        "file": "r/ae294e6b/scene/lift.mjs",
+        "file": "r/f2b318b7/scene/lift.mjs",
         "raw": 6917,
         "gzip": 3109,
         "brotli": 2802
       },
       {
-        "file": "r/ae294e6b/js/play/rig/bloom.js",
+        "file": "r/f2b318b7/js/play/rig/bloom.js",
         "raw": 6950,
         "gzip": 3143,
         "brotli": 2793
       },
       {
-        "file": "r/ae294e6b/js/play/glider.js",
+        "file": "r/f2b318b7/js/play/glider.js",
         "raw": 5999,
         "gzip": 2938,
         "brotli": 2682
       },
       {
-        "file": "r/ae294e6b/scene/box-chute.mjs",
+        "file": "r/f2b318b7/scene/box-chute.mjs",
         "raw": 5689,
         "gzip": 2837,
         "brotli": 2646
       },
       {
-        "file": "r/ae294e6b/js/play/rail.js",
+        "file": "r/f2b318b7/js/play/rail.js",
         "raw": 5950,
         "gzip": 2821,
         "brotli": 2621
       },
       {
-        "file": "r/ae294e6b/js/play/boost.js",
+        "file": "r/f2b318b7/js/play/boost.js",
         "raw": 5642,
         "gzip": 2752,
         "brotli": 2500
       },
       {
-        "file": "r/ae294e6b/js/play/spawn.js",
+        "file": "r/f2b318b7/js/play/spawn.js",
         "raw": 5371,
         "gzip": 2495,
         "brotli": 2283
       },
       {
-        "file": "r/ae294e6b/js/play/speedo.js",
+        "file": "r/f2b318b7/js/play/speedo.js",
         "raw": 5000,
         "gzip": 2424,
         "brotli": 2209
       },
       {
-        "file": "r/ae294e6b/js/play/outfits/armour.js",
+        "file": "r/f2b318b7/js/play/outfits/armour.js",
         "raw": 8675,
         "gzip": 2400,
         "brotli": 2088
       },
       {
-        "file": "r/ae294e6b/js/play/loader.js",
+        "file": "r/f2b318b7/js/play/loader.js",
         "raw": 5488,
         "gzip": 2396,
         "brotli": 2080
       },
       {
-        "file": "r/ae294e6b/scene/village.mjs",
+        "file": "r/f2b318b7/scene/village.mjs",
         "raw": 5102,
         "gzip": 2246,
         "brotli": 1993
       },
       {
-        "file": "r/ae294e6b/scene/signs.mjs",
+        "file": "r/f2b318b7/scene/signs.mjs",
         "raw": 5063,
         "gzip": 2196,
         "brotli": 1985
       },
       {
-        "file": "r/ae294e6b/css/speedo.css",
+        "file": "r/f2b318b7/js/play/intro.js",
+        "raw": 5209,
+        "gzip": 2299,
+        "brotli": 1955
+      },
+      {
+        "file": "r/f2b318b7/css/speedo.css",
         "raw": 4870,
         "gzip": 2337,
         "brotli": 1894
       },
       {
-        "file": "r/ae294e6b/js/play/intro.js",
-        "raw": 4876,
-        "gzip": 2186,
-        "brotli": 1873
+        "file": "r/f2b318b7/js/play/regions.js",
+        "raw": 4717,
+        "gzip": 1908,
+        "brotli": 1752
       },
       {
-        "file": "r/ae294e6b/scene/feature-index.mjs",
+        "file": "r/f2b318b7/scene/feature-index.mjs",
         "raw": 3762,
         "gzip": 1841,
         "brotli": 1677
       },
       {
-        "file": "r/ae294e6b/js/play/outfits/race.js",
+        "file": "r/f2b318b7/js/play/outfits/race.js",
         "raw": 9097,
         "gzip": 1914,
         "brotli": 1673
       },
       {
-        "file": "r/ae294e6b/js/play/rocket.js",
+        "file": "r/f2b318b7/js/play/bindings.js",
+        "raw": 3677,
+        "gzip": 1769,
+        "brotli": 1589
+      },
+      {
+        "file": "r/f2b318b7/js/play/rocket.js",
         "raw": 3150,
         "gzip": 1424,
         "brotli": 1299
       },
       {
-        "file": "r/ae294e6b/scene/chute75-rock.mjs",
+        "file": "r/f2b318b7/scene/chute75-rock.mjs",
         "raw": 1842,
         "gzip": 1068,
         "brotli": 996
       },
       {
-        "file": "r/ae294e6b/scene/upper-props.mjs",
+        "file": "r/f2b318b7/scene/upper-props.mjs",
         "raw": 3022,
         "gzip": 1221,
         "brotli": 967
       },
       {
-        "file": "r/ae294e6b/scene/gsbowl-cliffs.mjs",
+        "file": "r/f2b318b7/scene/gsbowl-cliffs.mjs",
         "raw": 1733,
         "gzip": 1012,
         "brotli": 940
       },
       {
-        "file": "r/ae294e6b/js/play/outfits/shell.js",
+        "file": "r/f2b318b7/js/play/outfits/shell.js",
         "raw": 3956,
         "gzip": 1042,
         "brotli": 920
       },
       {
-        "file": "r/ae294e6b/js/play/rig/env.js",
+        "file": "r/f2b318b7/js/play/rig/env.js",
         "raw": 1622,
         "gzip": 959,
         "brotli": 875
       },
       {
-        "file": "r/ae294e6b/js/play/settings.js",
+        "file": "r/f2b318b7/js/play/settings.js",
         "raw": 1824,
         "gzip": 987,
         "brotli": 847
       },
       {
-        "file": "r/ae294e6b/scene/canopy.mjs",
+        "file": "r/f2b318b7/scene/canopy.mjs",
         "raw": 1435,
         "gzip": 725,
         "brotli": 674
       },
       {
-        "file": "r/ae294e6b/js/play/outfits/freeride.js",
+        "file": "r/f2b318b7/js/play/outfits/freeride.js",
         "raw": 2227,
         "gzip": 691,
         "brotli": 624
       },
       {
-        "file": "r/ae294e6b/js/play/idle.js",
+        "file": "r/f2b318b7/js/play/idle.js",
         "raw": 1312,
         "gzip": 712,
         "brotli": 573
       },
       {
-        "file": "r/ae294e6b/js/play/outfits/retro.js",
+        "file": "r/f2b318b7/js/play/outfits/retro.js",
         "raw": 1259,
         "gzip": 558,
         "brotli": 506
       },
       {
-        "file": "r/ae294e6b/js/play/flags.js",
+        "file": "r/f2b318b7/js/play/flags.js",
         "raw": 912,
         "gzip": 570,
         "brotli": 499
       },
       {
-        "file": "r/ae294e6b/js/play/recorder.js",
+        "file": "r/f2b318b7/js/play/recorder.js",
         "raw": 976,
         "gzip": 542,
         "brotli": 494
       },
       {
-        "file": "r/ae294e6b/scene/rock.mjs",
+        "file": "r/f2b318b7/scene/rock.mjs",
         "raw": 754,
         "gzip": 477,
         "brotli": 444
       },
       {
-        "file": "r/ae294e6b/scene/frames.mjs",
+        "file": "r/f2b318b7/scene/frames.mjs",
         "raw": 790,
         "gzip": 471,
         "brotli": 434
       },
       {
-        "file": "r/ae294e6b/js/play/atlas.js",
+        "file": "r/f2b318b7/js/play/atlas.js",
         "raw": 987,
         "gzip": 449,
         "brotli": 430
       },
       {
-        "file": "r/ae294e6b/js/play/clean.js",
+        "file": "r/f2b318b7/js/play/clean.js",
         "raw": 882,
         "gzip": 502,
         "brotli": 429
       },
       {
-        "file": "r/ae294e6b/scene/sector-canopy.mjs",
+        "file": "r/f2b318b7/scene/sector-canopy.mjs",
         "raw": 735,
         "gzip": 502,
         "brotli": 398
       },
       {
-        "file": "r/ae294e6b/scene/sector-rock.mjs",
+        "file": "r/f2b318b7/scene/sector-rock.mjs",
         "raw": 605,
         "gzip": 432,
         "brotli": 347
       },
       {
-        "file": "r/ae294e6b/js/play/dev.js",
+        "file": "r/f2b318b7/js/play/dev.js",
         "raw": 562,
         "gzip": 342,
-        "brotli": 291
+        "brotli": 295
       },
       {
-        "file": "r/ae294e6b/js/play/outfits/after.js",
+        "file": "r/f2b318b7/js/play/outfits/after.js",
         "raw": 628,
         "gzip": 320,
         "brotli": 272
       },
       {
-        "file": "r/ae294e6b/js/play/outfits/index.js",
+        "file": "r/f2b318b7/js/play/outfits/index.js",
         "raw": 375,
         "gzip": 253,
         "brotli": 217
@@ -973,8 +1147,13 @@
   "minify": {
     "enabled": true,
     "esbuild": "0.24.2",
-    "files": 74,
+    "files": 78,
     "exempt": [
+      "public/regions/siberia/dem-siberia.mjs",
+      "public/regions/siberia/sib-canopy-data.mjs",
+      "public/regions/siberia/sib-cliff-data.mjs",
+      "public/regions/siberia/sib-ridge-data.mjs",
+      "public/regions/siberia/sib-runs-data.mjs",
       "public/scene/stamp-tile.mjs",
       "public/scene/pou-data.mjs",
       "public/scene/kt-runs-data.mjs",
@@ -992,10 +1171,10 @@
       "public/js/play/rig/clips.js",
       "public/vendor/three.module.min.js"
     ],
-    "rawBefore": 3637128,
-    "rawAfter": 1171175,
-    "brotliBefore": 1117150,
-    "brotliAfter": 415506,
+    "rawBefore": 3960350,
+    "rawAfter": 1251020,
+    "brotliBefore": 1216292,
+    "brotliAfter": 443719,
     "consts": {
       "LOOK": 0.0022
     }
@@ -1104,9 +1283,60 @@
       "The 0.8 s teleport flash (specs/0055 W6) is 48 frames at 60 Hz, which is",
       "what this number has to sit under on a real box: at 60 fps the settle is",
       "the same TILES over faster frames, so 38 frames of headless is the upper",
-      "bound and not the expectation."
+      "bound and not the expectation.",
+      "",
+      "0052 D-16, W5, 2026-09-06 — RE-STATED IN THE UNITS IT MEANS: 60 -> 90,",
+      "which is the SCHEDULER'S OWN HARD STOP and therefore the largest number",
+      "this row can ever carry. W4C asked for exactly this ('a budget that reads",
+      "45, 61 and 67 on three builds is a budget, not a measurement').",
+      "",
+      "THE MEASUREMENT, five runs, --chunk-only --only 15, --pin HEAD,",
+      "chunk/w0-0052-W5, three hops the-nose-drop-in -> the-village ->",
+      "the-nose-drop-in, WORST OF THE THREE each time:",
+      "  77   81   84   90   85        frame time 93.8-96.5 ms on every run",
+      "and the correctness half was CLEAN on all fifteen hops: first-frame stale",
+      "0, settled stale 0, missing 0, missingForested 0, refusals 0, evicted",
+      "180 / 209-225 / 189 (deterministic).",
+      "",
+      "THE BOX WAS NOT QUIET AND THE READING IS SAID WITH ITS LOAD: ~60 % CPU",
+      "sustained, 27 node and 42 chrome processes belonging to other agents,",
+      "which is the standing 'gate not under agent load' caveat. Frame time was",
+      "IDENTICAL to W4C's quiet box (93-96 ms), so the page was not being starved",
+      "of frames — the scheduler was getting less done inside each 64 ms",
+      "PIN_BUDGET_MS slice. That is the whole load sensitivity, and it is why the",
+      "same three hops read 45 (W2R, quiet), 56/57/61 (W4, three agents), 67/62/64",
+      "(W4C) and 77-90 here.",
+      "",
+      "WHY THE D-WAY RULE CANNOT BE APPLIED, and this is the finding. Measured",
+      "max 90, + 10 % = 99 — and `SETTLE_FRAMES` in bench/public/js/play/chunks.js",
+      "is 90. The settle is ABANDONED at 90 frames, so the census can never",
+      "report 91: a cap above 90 is a cap no reading can reach and a row that",
+      "cannot fail. The rule and the harness's own ceiling collide, and the",
+      "collision is the evidence that the frame count was never the right unit.",
+      "",
+      "SO THE ROW IS RE-POINTED AT WHAT IT ACTUALLY GUARDS. At 90 the assertion",
+      "becomes 'the settle finished before the scheduler gave up', which is the",
+      "only settle failure that is a defect rather than a reading of the box —",
+      "and the correctness rows beside it (stale = staleInst = missing =",
+      "missingForested = refusals = 0) are what carry the weight, were green on",
+      "every hop of every run from W2R to here, and are load-invariant.",
+      "",
+      "AND THE SHIP GATE'S OWN READING IS 56 / 53 / 60 — WORST 60, SAME BUILD,",
+      "SAME BOX, SAME THREE HOPS. `--chunk-only` boots a page and hops at once;",
+      "the full gate has driven that page over the whole mountain through",
+      "sections [1]-[6] first. 77-90 cold, 53-60 warm, one build: the row's",
+      "reading depends on how far the harness drove the page before it, and no",
+      "cap derived from either mode describes the other. 90 is the only value",
+      "that means the same thing in both — the gate's warm 60 clears it by 30,",
+      "and the cold 90 IS the abandonment.",
+      "",
+      "OPEN, and named in the ship gate: the PERFORMANCE half is now a printed",
+      "reading with no cap. To give it one honestly somebody has to measure this",
+      "on a genuinely quiet box (nothing else running), and if the quiet figure",
+      "is stable, either derive a tighter cap from it or raise `SETTLE_FRAMES`",
+      "first and derive from that. Both are scheduler work and neither is W5's."
     ],
-    "teleportSettleFrames": 60,
+    "teleportSettleFrames": 90,
     "triangles": 1933013,
     "collidableTriangles": 1200000,
     "$collidableTrianglesResident": [
@@ -1241,9 +1471,50 @@
       "  894,932 cells x 58 B/cell = 51,906,056 B",
       "against the 48,326,328 measured with it released. THE CAP IS NOT RAISED",
       "AGAIN: 53,160,000 was set from measured + 10 % before this was known and",
-      "51,906,056 clears it by 1,253,944 B (2.4 %). See raster.$release."
+      "51,906,056 clears it by 1,253,944 B (2.4 %). See raster.$release.",
+      "",
+      "0052 §7 row 6, W5, 2026-09-06 — 53,160,000 -> 88,000,000, AND THE ROW NOW",
+      "MEANS THE RESIDENT TOTAL OVER THREE FRAMES. This is the row every wave of",
+      "0052 from W2 to W4C handed on by name as W5's, and it is the last one open.",
+      "",
+      "WHY IT MOVED, and it is not a relaxation. The world stopped having one",
+      "raster. W2 added the `goldcoast` corridor frame (0052 D-5: res 2, because",
+      "`mountain-run` is a signed, named blue with a marker and a trail-map row",
+      "and shipping it as ungroomed hillside makes the merge look like a bug),",
+      "and W2R made siberia a REGION frame. 53,160,000 was drawn in 2026-09-05",
+      "against a single crop box and could not survive a second rectangle: every",
+      "gate from W2 onward read 63.55 MB against it and reported the corridor as",
+      "a budget failure.",
+      "",
+      "MEASURED, off build-report.json `raster` on --pin HEAD (2026-09-06,",
+      "chunk/w0-0052-W5), never transcribed:",
+      "  red-dog    boot     916 x  977 =  894,932 cells @ 58 B =  51,906,056 B",
+      "  goldcoast  boot     461 x  551 =  254,011 cells @ 58 B =  14,732,638 B",
+      "  siberia    region   816 x  576 =  470,016 cells @ 42 B =  19,740,672 B",
+      "                                                  boot     66,638,694 B",
+      "                                                  resident 86,379,366 B",
+      "and 86,379,366 is 1,620,634 B (1.8 %) under this cap. The cap is 0052",
+      "§1.3's own total rounded to a round number, which W0 corrected twice",
+      "(461 x 551 is 254,011, not the spec row's 253,411) and W2 corrected once",
+      "more (the corridor's y band is y[-800, 220], not y[-540, 480]) without",
+      "either correction moving one cell of the count.",
+      "",
+      "THE ROW MEASURES `raster.bytesResident`, NOT `raster.bytes`. `bytes` is",
+      "the BOOT sheet, 66,638,694 B, and it was the whole raster only while a",
+      "world had one frame. What a device has to survive is the boot sheet plus",
+      "every region the player can reach; gating the boot figure against a",
+      "resident cap would leave siberia's 19,740,672 B unmentioned by the row",
+      "that carries the word 'heap'. It was never UNGATED — build.mjs asserts it",
+      "against raster.residentCapBytes, the same 88,000,000, inside the build —",
+      "but one name over two numbers is exactly the defect D-15 is a scar from.",
+      "verify.mjs prints the three frames under the table every run.",
+      "",
+      "SIBERIA IS NOT RAISED and cannot be: worlds/siberia.json is retired",
+      "(0052 §5.3) and its 24,000,000 is the PRE-MERGE cap its control build has",
+      "to keep clearing at 19,740,672 B. The two worlds carrying different",
+      "literals ends when that file goes, one release from now."
     ],
-    "rasterHeapBytes": 53160000,
+    "rasterHeapBytes": 88000000,
     "$usedJSHeapBytes": [
       "specs/0051 §11 Q3, D-6 — WHAT REPLACED 420,000,000, and why it took until",
       "wave 3c to write it.",
@@ -1304,9 +1575,138 @@
       "277,244,515 against the 395,513,793 in worlds/siberia.json. Like",
       "rasterHeapBytes, the two worlds carry different literals until 0052's",
       "per-tile raster makes them one number again; this is a bridge, not a new",
-      "ceiling, and it is the ONLY cap W4FIX1 moved."
+      "ceiling, and it is the ONLY cap W4FIX1 moved.",
+      "",
+      "0052 §4 / D-4 (GREG, 2026-09-06), W5 — 490,878,570 -> 580,000,000, AND",
+      "THIS IS THE ONE 0052 SAID OUT LOUD BEFORE IT MEASURED ANYTHING. §4's own",
+      "row: 'T0 is carried twice (main + worker, 0051 §2.6) ... peak ≈ 523,000,000",
+      "(est.), D-way cap 580,000,000 — 0052-D-4', and D-4 put it to Greg as a real",
+      "device-compatibility change with the levers written out. He took it. Every",
+      "wave from W2R to W4C left the literal alone only because `budget` is W5's",
+      "block; this is the wave that writes it.",
+      "",
+      "WHY 490,878,570 CANNOT SURVIVE THE MERGE. It was derived on 2026-09-05",
+      "(W4FIX1) from 446,253,245 x 1.1, on a world with ONE raster frame. W2 added",
+      "the `goldcoast` corridor — 254,011 cells x 58 B = 14,732,638 B, carried in",
+      "the main thread AND the chunk worker (0051 §2.6), so ≈ +29.5 MB of Float32",
+      "before a tile is stamped. The cap did not move with the world it caps.",
+      "",
+      "MEASURED ON THE MERGED WORLD, 0051 check 8, 41 samples over 20 s of real",
+      "traversal (344 m of path, a lift leg), region NOT resident:",
+      "  480,072,166 B   run 1",
+      "  492,025,284 B   run 2      <- over the old cap by 1,146,714 (0.23 %)",
+      "a 12 MB spread on identical bytes, which is this row's own documented GC",
+      "sawtooth (the paragraph above measured 43.8 MB / 14 % between two runs of",
+      "one build). D-way, off the worse of the two: 492,025,284 x 1.1 =",
+      "541,227,812 — and D-4's 580,000,000 is ABOVE that, so this cap is Greg's",
+      "number and not a re-derivation of mine. §4's estimate of 523,000,000 was",
+      "high by 6 %; the reason it was high is W2R, which keeps siberia's own T0",
+      "out of memory entirely until the region loads.",
+      "",
+      "THREE HEAP ROWS, THREE STATES, AND EACH NOW ASSERTS WHAT IT MEASURES.",
+      "  usedJSHeapBytes            THIS ONE — 20 s of traversal, region absent.",
+      "                             0051 check 8. The world's real ceiling.",
+      "  usedJSHeapBytesFirstLoad   boot and stand still, region declared and",
+      "                             FENCED. 490,878,570, THE PRE-MERGE NUMBER,",
+      "                             UNMOVED — a seam must not cost the player who",
+      "                             never goes there. Measured 366,769,630 /",
+      "                             376,207,576, and the row is [W2R]'s.",
+      "  usedJSHeapBytesResident    the region loaded and its tiles stamped.",
+      "                             580,000,000 (D-4). Measured 400,731,330 /",
+      "                             413,113,438 / 453,342,356.",
+      "Before this wave all three read one literal, which is why a 20 s traversal",
+      "of the merged home frame was being graded against a cap drawn for the",
+      "unmerged one — and why the tighter claim (the first load did not move) had",
+      "nowhere of its own to live."
     ],
-    "usedJSHeapBytes": 490878570,
+    "usedJSHeapBytes": 580000000,
+    "$usedJSHeapBytesFirstLoad": [
+      "0052 §6 W2R / D-4, W5, 2026-09-06 — THE PRE-MERGE CAP, KEPT, AND THIS IS",
+      "THE FIELD THAT MAKES 'THE FIRST LOAD DID NOT MOVE' A STATEMENT RATHER THAN",
+      "A HOPE. 490,878,570 is W4FIX1's number for the un-merged world and it does",
+      "not move: [W2R] samples the heap with siberia DECLARED AND FENCED — the",
+      "state every player boots into and most players never leave — and reads",
+      "366,769,630 and 376,207,576 across two gate runs, 23 % under.",
+      "",
+      "It is a NO-REGRESSION LINE, not a device limit: the device limit is",
+      "`usedJSHeapBytes` above, which D-4 moved for the merge. What this one",
+      "guards is the promise that making Siberia reachable cost the player who",
+      "never goes west nothing — the same promise `firstLoadBrotliBytes` makes",
+      "about the download, measured in the other currency."
+    ],
+    "usedJSHeapBytesFirstLoad": 490878570,
+    "$usedJSHeapBytesResident": [
+      "0052 D-4 (GREG, 2026-09-06) AND §7 row 7 — THE RESIDENT PEAK, WITH THE",
+      "REGION LOADED. New field; W4's gate asserted 580,000,000 from a literal",
+      "in verify.mjs because the world file had no key for it, and W4 §10 item 3",
+      "asked W5 for exactly this.",
+      "",
+      "WHAT IT MEANS. `usedJSHeapBytes` above is measured while siberia is",
+      "declared and fenced — the state every player boots into and most players",
+      "never leave. This one is measured after the region's bundle has landed and",
+      "its tiles are stamped, which is main thread + chunk worker + siberia's",
+      "Int16 DEM + its canopy/cliff rasters + a second frame's lattice. Two",
+      "states, two numbers, and neither is a re-reading of the other.",
+      "",
+      "WHY IT IS GREG'S AND NOT MINE. §4/R2 says it plainly: this is the one",
+      "number in 0052 that could push the world off a low-memory phone. 0052 D-4",
+      "put it to him with the alternatives (a cheaper corridor raster, or having",
+      "the worker hold only the frames adjacent to the player) and he took",
+      "580,000,000 as the real cost of the merge.",
+      "",
+      "MEASURED, resident, across the waves that could reach it:",
+      "  W2R  368,536,214 B  region registered, no tiles stamped (bookkeeping)",
+      "  W4   429,243,755 B  region's tiles stamped — the first real reading",
+      "and 429,243,755 is 74 % of this cap. It is NOT re-derived down to",
+      "measured + 10 % (472,168,131): D-6 does not let a wave tighten a cap on",
+      "the way past, and this cap is a product decision with Greg's name on it",
+      "rather than a planning gauge. The lever if it ever needs to come down is",
+      "in D-4's own text."
+    ],
+    "usedJSHeapBytesResident": 580000000,
+    "$firstLoadBrotliBytes": [
+      "0052 §6 W2R, W5, 2026-09-06 — 'first-load transferBrotliBytes == today's",
+      "figure +/- 1 %'. THIS IS NOT D23. D23 is `transferBrotliBytes` above,",
+      "2,621,440, the only product cap, and it does not move. This is a",
+      "NO-REGRESSION LINE with one job: prove that making Siberia reachable cost",
+      "the player who never goes there nothing.",
+      "",
+      "IT LIVED IN verify.mjs AS A LITERAL FOR FOUR WAVES AND WENT STALE, which",
+      "is the argument for it being here. 1,771,824 was measured on chunk/w0 @",
+      "89b64e6 before W3 and D-24 landed; by W4 the MERGE BASE alone built to",
+      "1,786,666 (+0.838 %), so the row was spending W3's and D-24's bytes and",
+      "reporting them as W4's, then as W4C's. Both waves decomposed their own",
+      "share file by file to say so: W4 +4,899 B, W4C +1,839 B.",
+      "",
+      "RE-DERIVED OFF THE BUILD, the D-16 precedent, the same way check 7's",
+      "forest census was re-recorded in W4:",
+      "  W4C's tip, chunk/w0 @ 4a05d73      1,793,404 B",
+      "  W5, --pin HEAD, this branch        1,793,661 B   <- the line",
+      "  W5's own share                          +257 B   (0.014 %)",
+      "and W5's 257 B are one hunk: main.js's `?travel=<slug>` deep link, which",
+      "is what 0052 D-12's redirect from ski-siberia-palisades.vercel.app lands",
+      "on. Nothing else in this wave is shipped code.",
+      "",
+      "WHAT THE +/- 1 % BAND IS FOR. It is a band and not a ceiling because the",
+      "row's question is 'did a region's bytes leak into the first load', and a",
+      "leak is thousands of bytes, not hundreds. 1 % of this figure is 17,936 B —",
+      "smaller than the smallest region file this build ships. The companion row",
+      "beside it asserts the stronger statement directly: no path under",
+      "r/<pin8>/regions/ appears in the D23 file list at all.",
+      "",
+      "THE LAST TWO DIGITS ARE PIN ENTROPY AND CHASING THEM IS A LOOP. The",
+      "release prefix r/<pin8>/ is in index.html and in the module URLs, so a",
+      "commit that changes nothing but this file still moves brotli by tens of",
+      "bytes: the same tree at pin 3de1b7ea measured 1,793,661 and at e6ecbe7b",
+      "1,793,623, a 38 B swing on identical source. That is the second reason",
+      "this is a BAND and not a ceiling — a line re-derived to the byte would be",
+      "wrong again on the commit that recorded it.",
+      "",
+      "AND D23 IS UNTOUCHED: 1,793,661 of 2,621,440 is 68.4 %, 827,779 B spare,",
+      "with the siberia region's 1,032,557 B fetched at the seam and outside it."
+    ],
+    "firstLoadBrotliBytes": 1793661,
+    "firstLoadBrotliTol": 0.01,
     "$gpuBytes": [
       "specs/0051 §7.3, §6.2, critic A.7 — 'no VRAM number anywhere' was the",
       "finding; this is the cap that answers it. Wave 1a #9 exposed the series",
