@@ -65,7 +65,7 @@ body.clean-frame .pmk-flash { display: none !important; }
     radial-gradient(120% 90% at 50% 42%, rgba(12, 14, 18, 0.26) 0%, rgba(12, 14, 18, 0.6) 100%);
   opacity: 0;
   transition: opacity 620ms ease;
-  cursor: pointer;
+  /* 0072 - no cursor:pointer: clicking the sky chooses nothing. */
   -webkit-tap-highlight-color: transparent;
   touch-action: none;
 }
@@ -77,57 +77,46 @@ body.clean-frame .pmk-flash { display: none !important; }
    a custom property — so the intro cards read `--p-cream`, `--p-ink`,
    `--p-seam` and `--p-hazard` by name and this sheet types none of the three
    hexes §10.3 reserves. */
-/* ==================================================================== 0055
-   specs/0055 5.4 - INTRO **B** for the Red Dog chair (D16), and BOOT CONTROLS
-   **A** ("the pause board with a different header").
-
-   Card 1 is the MARQUEE: label / rule / hero, the construction B is built on,
-   with RED DOG CHAIR at 56 px - "the system's largest instance, once, at boot"
-   (5.4). The lookbook's B draws its lead rule in the gradient; this one does
-   NOT, and that is deliberate rather than a shortcut: 1.5 says the gradient
-   belongs to the rider - speed, air, multiplier, score, race time - and 5.1
-   says the results score is the ONE gradient allowed outside register 1. A
-   place name is the mountain's word, not the rider's, so the rule is the 2 px
-   mounting rule in cream (1.10) and the hero is set in cream too.
-
-   Card 2 is the pause board with a different header: the same cream map board,
-   the same 66 px ink key plates, the same hairline rows, the same solid ink
-   action plate - .ppause's construction, reached by a different route. Two
-   screens, one component.
-
-   Both cards arrive RISE (220 ms, +10 px, 1.11) and leave FALL with the
-   overlay. Nothing here loops except .intro__go, which is 0027's call to
-   action and predates this spec. */
-
+/* 0072 - THE FIRST SCREEN: one board, the controls card then six tiles. The
+   card is 0055 5.4's boot controls A with six ski rows; the tiles are the
+   locker row's plates (0055 5.3). D19 holds - no third slab, no new colour. */
+.intro__board {
+  width: min(1120px, 94vw);
+  display: grid;
+  gap: 14px;
+  animation: intro-rise 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 .intro__card {
-  max-width: 34rem;
   text-align: center;
   color: var(--p-cream);
-  animation: intro-rise 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes intro-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-/* ---- card 1, the marquee. Label, rule, hero, subtitle, credit. */
-.intro__card--title { text-shadow: 0 1px 22px rgba(0, 0, 0, 0.85), 0 1px 4px rgba(0, 0, 0, 0.95); }
+/* the header: label, rule, hero, subtitle. Not the gradient (1.5). */
+.intro__head {
+  padding: 16px 14px 13px;
+  border-bottom: 2px solid #171614;
+  text-align: center;
+}
 .intro__h1 {
   margin: 0;
-  font: 500 clamp(2rem, 6.2vw, 56px) / 1.02 "Avenir Next", Avenir, "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  font: 500 clamp(1.5rem, 3.2vw, 32px) / 1.04 "Avenir Next", Avenir, "Nunito Sans", "Segoe UI", system-ui, sans-serif;
   letter-spacing: 0.06em;
   text-indent: 0.06em;
   text-transform: uppercase;
   transform: skewX(-12deg);
+  color: #171614;
 }
-/* the 2 px mounting rule, drawn above the hero the way the marquee draws it.
-   NOT the gradient - see the block comment above. */
-.intro__card--title .intro__h1::before {
+.intro__head .intro__h1::before {
   content: "";
   display: block;
-  width: min(100%, 30rem);
+  width: min(100%, 22rem);
   height: 2px;
-  margin: 0 auto 18px;
-  background: var(--p-cream);
+  margin: 0 auto 12px;
+  background: #171614;
   transform: skewX(12deg);
 }
+.intro__head .intro__sub { margin: 0.55rem 0 0; color: #46433c; font-size: 0.78rem; }
 .intro__h2 {
   margin: 0 0 1.1rem;
   font: 500 11px / 1 "Avenir Next", Avenir, "Nunito Sans", "Segoe UI", system-ui, sans-serif;
@@ -152,7 +141,7 @@ body.clean-frame .pmk-flash { display: none !important; }
   text-align: left;
   text-shadow: none;
   padding: 0;
-  width: min(460px, 90vw);
+  width: 100%;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
   overflow: hidden;
 }
@@ -172,13 +161,16 @@ body.clean-frame .pmk-flash { display: none !important; }
   content: "";
   width: 6px; height: 6px; border-radius: 1px; background: var(--p-hazard); flex: none;
 }
+/* 0072 1.1 - six rows stacked, in a centred 440 px column: the card is the
+   whole board now and a key list across 1120 px is plates in a desert. */
 .intro__keys {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0;
   align-items: center;
-  margin: 0;
-  padding: 12px 14px 4px;
+  width: min(440px, 100%);
+  margin: 0 auto;
+  padding: 14px 14px 6px;
 }
 .intro__cap,
 .intro__what { border-bottom: 1px solid #c8c2b3; padding-bottom: 5px; margin-bottom: 5px; }
@@ -204,33 +196,7 @@ body.clean-frame .pmk-flash { display: none !important; }
   padding-left: 12px;
   opacity: 1;
 }
-/* the action, as the solid ink plate .ppause__big is */
-.intro__card--keys .intro__go {
-  margin: 6px 14px 0;
-  padding: 11px 0;
-  background: #171614;
-  color: var(--p-cream);
-  border-radius: 2px;
-  text-align: center;
-  font: 500 11px / 1 "Avenir Next", Avenir, "Nunito Sans", "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.16em;
-  text-indent: 0.16em;
-  text-transform: uppercase;
-  animation: none;
-}
-/* the guided run's skip line (intro.js inserts a SECOND .intro__go before the
-   credit). It is a line, not a second action, so it takes neither the plate nor
-   the pulse: 9 px mono under the button, the way the lookbook draws it. */
-.intro__card--keys .intro__go + .intro__go {
-  margin: 11px 14px 0;
-  padding: 0;
-  background: none;
-  color: #8b8578;
-  font: 400 9px / 1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  letter-spacing: 0.1em;
-  text-indent: 0;
-  animation: none;
-}
+/* 0072 - the action plate and the skip line went with their nodes. */
 .intro__card--keys .intro__credit {
   margin: 11px 14px 14px;
   color: #8b8578;
@@ -238,20 +204,88 @@ body.clean-frame .pmk-flash { display: none !important; }
   text-align: center;
 }
 
-/* the touch card keeps its own construction (5.4: "the touch card keeps its
-   cream zone plates") and therefore keeps the cinematic veil type */
+/* 0072 1.2 - six tiles on the locker row's plates; the whole tile is the
+   target, no GO plate (0061). */
+.intro__tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.intro__tile {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  justify-items: start;
+  min-height: 116px;
+  padding: 12px 12px 13px;
+  background: var(--p-cream);
+  color: #171614;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--p-seam), 0 14px 34px rgba(0, 0, 0, 0.3);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  text-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* the locker's "this one": the wash plus the 3 px ink spine (0055 5.3) */
+.intro__tile.is-sel {
+  background: #e5e2db;
+  box-shadow: inset 0 0 0 1px var(--p-seam), inset 3px 0 0 #171614, 0 14px 34px rgba(0, 0, 0, 0.3);
+}
+.intro__tile:focus-visible { outline: 2px solid var(--p-hazard); outline-offset: 2px; }
+/* the number is the key that picks it */
+.intro__tnum {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  font: 400 9px / 1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.1em;
+  color: #8b8578;
+}
+/* 1.8's alphabet on cream: the chevron would vanish, so it takes ink here. */
+.intro__tile .pmark { margin: 1px 0 1px; }
+.intro__tile .pmark--free { --m: #171614; }
+.intro__tband {
+  font: 400 8.5px / 1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8b8578;
+}
+/* the trail blade's type: family, 500, oblique 12 deg, tracked, caps */
+.intro__tname {
+  font-family: "Avenir Next", Avenir, "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: skewX(-12deg);
+  color: #171614;
+}
+.intro__tteach {
+  font: 400 9px / 1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #46433c;
+}
+
+/* the phone tier (1.2): two rows of three, one key pair a line. */
+@media (max-width: 900px) {
+  .intro__board { width: min(560px, 94vw); gap: 10px; }
+  .intro__tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .intro__tile { min-height: 104px; padding: 10px 10px 11px; }
+  .intro__tname { font-size: 13px; }
+  .intro__head { padding: 13px 12px 11px; }
+}
+
+/* the touch card keeps its cream zone plates (0055 5.4) */
 .intro__card--touch { text-shadow: 0 1px 22px rgba(0, 0, 0, 0.85), 0 1px 4px rgba(0, 0, 0, 0.95); }
 .intro__card--touch .intro__h2 { color: #cdc7ba; }
 
-.intro__go {
-  margin: 1.5rem 0 0;
-  font: 500 0.74rem / 1 ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  color: #ff8d4d;
-  animation: intro-pulse 2.2s ease-in-out infinite;
-}
-@keyframes intro-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 
 /* the credit sets in mono the way a map carries its attribution (5.1, 5.4) */
 .intro__credit {
@@ -408,6 +442,6 @@ body.clean-frame .pmk-flash { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   /* specs/0055 §3.10 — the ropes WIPE on a transition of their own, so they
      have to be named here too or reduced motion would still animate them */
-  .intro, .intro__card, .intro__go, .fence-fade, .pidle,
+  .intro, .intro__card, .intro__board, .fence-fade, .pidle,
   .fence-fade__rope::before, .fence-fade__rope::after { animation: none !important; transition-duration: 1ms !important; }
 }

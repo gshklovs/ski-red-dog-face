@@ -25,7 +25,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Red Dog Chair — Palisades Tahoe">
 <meta name="twitter:image" content="https://ski-red-dog-face.vercel.app/og.png">
-<!-- specs/0051 D-22 — EVERY RELEASE GETS ITS OWN URL PREFIX. `r/ac5e92f6/` is
+<!-- specs/0051 D-22 — EVERY RELEASE GETS ITS OWN URL PREFIX. `r/8952f56c/` is
      `r/<first 8 hex of the pinned commit>/`, and build.mjs writes EVERYTHING the
      page loads underneath it: css/, js/, scene/, vendor/, rider/. Only this
      document and og.png live at the deploy root. Two releases therefore share
@@ -33,10 +33,10 @@
      had with one it just fetched — which is what put
      "does not provide an export named 'labUI'" on production on 2026-09-06.
      Everything under r/ is immutable for a year; this file is max-age=0. -->
-<link rel="stylesheet" href="r/ac5e92f6/css/te.css">
-<link rel="stylesheet" href="r/ac5e92f6/css/play.css">
-<link rel="stylesheet" href="r/ac5e92f6/css/intro.css">
-<link rel="stylesheet" href="r/ac5e92f6/css/speedo.css">
+<link rel="stylesheet" href="r/8952f56c/css/te.css">
+<link rel="stylesheet" href="r/8952f56c/css/play.css">
+<link rel="stylesheet" href="r/8952f56c/css/intro.css">
+<link rel="stylesheet" href="r/8952f56c/css/speedo.css">
 <!-- The tab icon is the 🎿 emoji, drawn by the OS font inside an inline SVG
      data URI: no file to request, no bytes on the wire, nothing to 404. The
      <text> is centred with dominant-baseline + text-anchor and sized to fill
@@ -98,7 +98,7 @@
   // be mixed into this one. Nothing below had to change shape to get there:
   // `<base>`, the importmap and the entry import were already built off a
   // single root string, and this is that string with one segment added.
-  var ASSETS = ROOT + 'r/ac5e92f6/';
+  var ASSETS = ROOT + 'r/8952f56c/';
 
   function fail(reason, detail) {
     if (detail === reason) detail = null;
@@ -132,6 +132,32 @@
 
   var imports = { 'three': ASSETS + 'vendor/three.module.min.js' };
   inject('script', { type: 'importmap' }, JSON.stringify({ imports: imports }));
+
+  // specs/0073 §1.4 — THE LEADERBOARD's OWN CONFIG. Its own object, not four
+  // more fields on __PLAY: __PLAY is this world and the specs/0003 flags, and
+  // where the boards live is neither of those things.
+  //
+  // BOTH VALUES ARE PUBLIC. `apiBase` is a URL any devtools panel shows; the
+  // Google client id is the `aud` the server verifies against and is public by
+  // design. The two secrets (DATABASE_URL, JWT_SECRET) are in the API's own
+  // Vercel project and no build ever sees them.
+  //
+  // An EMPTY client id is a shipping state, not a broken one: the sign-in button
+  // reads SIGN-IN NOT CONFIGURED, posting is off, and every board still loads —
+  // reading is anonymous (§2.1).
+  //
+  // ASSIGNED ONLY IF NOTHING SET IT FIRST. Anything that ran before this page's
+  // own script and left a `__playConfig` behind knew something this build does
+  // not — it is the gate pointing the shipped bytes at a local API (verify.mjs
+  // [3l], which is how §6.2 asks whether a race actually posts), and it would be
+  // a preview deployment pointed at a preview API. Clobbering it would make both
+  // of those silently do nothing, which is exactly the failure [3l]'s first run
+  // hit. It is not a security surface: script that runs before this line already
+  // owns the page.
+  window.__playConfig = window.__playConfig || {
+    apiBase: "",
+    googleClientId: "",
+  };
 
   // What the bench used to fetch from /api/run/<poi>/<run>, inlined.
   window.__PLAY = {
@@ -199,7 +225,7 @@
     // about the site rather than about the release (og.png, a shared link).
     root: ASSETS,
     pageRoot: ROOT,
-    release: 'r/ac5e92f6/',
+    release: 'r/8952f56c/',
   };
 
   say('loading player…');
