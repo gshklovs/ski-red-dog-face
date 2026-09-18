@@ -1,0 +1,1 @@
+const a=[{name:"deck-benches",x0:-3024.98,y0:-350.58,x1:-2970.14,y1:-336.84},{name:"park-jibs",x0:-3763.36,y0:-402.19,x1:-2946.99,y1:-336.61},{name:"park-props",x0:-3740.11,y0:-436.73,x1:-2894.82,y1:-321.66},{name:"park-snow",x0:-3804.82,y0:-462.5,x1:-2870.11,y1:-289.15},{name:"terrain-gold-coast-park",x0:-3826,y0:-484,x1:-2851,y1:-269}];export{a as PARK_RESERVE};

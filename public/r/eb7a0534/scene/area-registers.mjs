@@ -1,0 +1,1 @@
+import{REGISTER as o}from"./north-register.mjs";export*from"./north-register.mjs";const R=[o],r=R,A=R.flatMap(t=>t.runs),p=R.flatMap(t=>t.lifts),s=R.map(t=>t.sector),S=R.flatMap(t=>t.markers||[]);export{p as AREA_LIFTS,S as AREA_MARKERS,r as AREA_REGISTERS,A as AREA_RUNS,s as AREA_SECTORS};
